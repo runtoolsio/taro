@@ -1,12 +1,12 @@
-from tarotools.taro.client import JobsClient
-from tarotools.taro.util import MatchingStrategy
 from tarotools.cli import printer, style, argsutil, cliutil
 from tarotools.cli.printer import print_styled
 from tarotools.cli.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
+from tarotools.taro.client import APIClient
+from tarotools.taro.util import MatchingStrategy
 
 
 def run(args):
-    with JobsClient() as client:
+    with APIClient() as client:
         instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.FN_MATCH)
         stop_jobs, _ = client.read_job_instances(instance_match)
 
