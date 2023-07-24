@@ -12,7 +12,7 @@ def run(args):
     elif args.queued:
         if not instance_match:
             raise ValueError("Instance must be specified when releasing queued")
-        responses, _ = taro.client.release_waiting_instances(instance_match, ExecutionState.QUEUED)
+        responses, _ = taro.client.release_waiting_instances(ExecutionState.QUEUED, instance_match)
     else:
         assert False, "Missing release option"
 
