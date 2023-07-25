@@ -3,19 +3,19 @@ from typing import List, Callable, Set
 
 from tarotools.taro import JobInstanceID
 from tarotools.taro.jobs.execution import Flag, ExecutionStateFlag
-from tarotools.taro.jobs.inst import IDMatchingCriteria, InstanceMatchingCriteria, compound_id_filter, IntervalCriteria, \
+from tarotools.taro.jobs.inst import IDMatchCriteria, InstanceMatchCriteria, compound_id_filter, IntervalCriteria, \
     LifecycleEvent, StateCriteria
 from tarotools.taro.util import DateTimeFormat
 
 
-def id_matching_criteria(args, def_id_match_strategy) -> List[IDMatchingCriteria]:
+def id_matching_criteria(args, def_id_match_strategy) -> List[IDMatchCriteria]:
     """
     :param args: cli args
     :param def_id_match_strategy: id match strategy used when not overridden by args TODO
     :return: list of ID match criteria or empty when args has no criteria
     """
     if args.instances:
-        return [IDMatchingCriteria.parse_pattern(i, def_id_match_strategy) for i in args.instances]
+        return [IDMatchCriteria.parse_pattern(i, def_id_match_strategy) for i in args.instances]
     else:
         return []
 
@@ -70,8 +70,8 @@ def instance_state_criteria(args):
 
 
 def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \
-        InstanceMatchingCriteria:
-    return InstanceMatchingCriteria(
+        InstanceMatchCriteria:
+    return InstanceMatchCriteria(
         id_matching_criteria(args, def_id_match_strategy),
         interval_criteria_converted_utc(args, interval_event),
         instance_state_criteria(args))
