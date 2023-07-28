@@ -3,19 +3,21 @@ from multiprocessing.context import Process
 from pathlib import Path
 from typing import Dict, Tuple
 
+# TODO Remove
 import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
+from tarotools.cli import main
 from tarotools.taro import paths, JobInst, Warn, WarningObserver, cfg, ExecutionStateObserver
 from tarotools.taro.jobs import program, runner
 from tarotools.taro.jobs.inst import WarnEventCtx
-from tarotools.cli import main
 
 
 # TODO consider to move to taro.test to be accessible from dependencies
 
 def reset_config():
+    # TODO Automate
     cfg.log_mode = cfg.DEF_LOG
     cfg.log_stdout_level = cfg.DEF_LOG_STDOUT_LEVEL
     cfg.log_file_level = cfg.DEF_LOG_FILE_LEVEL
@@ -25,7 +27,7 @@ def reset_config():
     cfg.persistence_type = cfg.DEF_PERSISTENCE_TYPE
     cfg.persistence_database = cfg.DEF_PERSISTENCE_DATABASE
 
-    cfg.plugins = cfg.DEF_PLUGINS
+    cfg.plugins_load = cfg.DEF_PLUGINS_LOAD
 
 
 def run_app_as_process(command, daemon=False, shell=False, state_queue=None) -> Process:
