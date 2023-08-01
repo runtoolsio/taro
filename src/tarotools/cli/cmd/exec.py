@@ -1,7 +1,8 @@
 import logging
 import signal
 
-from tarotools.taro import util, cfgfile
+from tarotools.cli.logutil import logger_name
+from tarotools.taro import util, cfg
 from tarotools.taro.jobs import sync, warning
 from tarotools.taro.jobs.execution import ExecutionOutputTracker, Flag
 from tarotools.taro.jobs.inst import Warn
@@ -12,14 +13,13 @@ from tarotools.taro.jobs.sync import ExecutionsLimit
 from tarotools.taro.jobs.track import MutableTrackedTask, Fields, OutputTracker
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.util import KVParser, iso_date_time_parser
-from tarotools.cli.logutil import logger_name
 
 log = logging.getLogger(logger_name(__name__))
 
 
 # TODO refactor -> extract methods
 def run(args):
-    log.debug("event=[exec_cmd_started] loaded_config=[%s]", cfgfile.loaded_config_path)
+    log.debug("event=[exec_cmd_started] loaded_config=[%s]", cfg.loaded_config_path)
 
     if args.dry_run:
         execution = TestExecution(args.dry_run)

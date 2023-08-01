@@ -2,12 +2,12 @@ import os
 import sys
 
 from tarotools import taro
-from tarotools.taro import util, paths, cfgfile
-from tarotools.taro.err import TaroException, ConfigFileNotFoundError
-from tarotools.taro.theme import Theme
 from tarotools.cli import cmd, cli
 from tarotools.cli.cli import ACTION_SETUP
 from tarotools.cli.printer import print_styled
+from tarotools.taro import util, paths, cfg
+from tarotools.taro.err import TaroException, ConfigFileNotFoundError
+from tarotools.taro.theme import Theme
 
 __version__ = "0.1.0"
 
@@ -63,7 +63,7 @@ def run_config(args):
         else:
             util.print_file(paths.lookup_config_file())
     elif args.config_action == cli.ACTION_CONFIG_CREATE:
-        created_file = cfgfile.copy_default_file_to_search_path(args.overwrite)
+        created_file = cfg.copy_default_config_to_search_path(args.overwrite)
         print_styled((Theme.success, "Created "), ('', str(created_file)))
 
 
