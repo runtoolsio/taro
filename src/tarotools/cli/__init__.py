@@ -77,9 +77,9 @@ def init_taro(args):
     if getattr(args, 'config', None):
         taro.load_config(args.config, **config_vars)
     elif getattr(args, 'def_config', False):
-        taro.load_defaults(**config_vars)
+        taro.load_defaults(**config_vars) # TODO
     elif getattr(args, 'min_config', False):
-        taro.setup(**config_vars)
+        taro.configure(**config_vars)
     else:
         taro.load_config(**config_vars)
 
