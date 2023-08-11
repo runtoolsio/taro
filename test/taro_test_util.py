@@ -9,7 +9,7 @@ import yaml
 from prompt_toolkit.output import DummyOutput
 
 from tarotools.cli import main
-from tarotools.taro import paths, JobInst, Warn, WarningObserver, cfg, ExecutionStateObserver
+from tarotools.taro import paths, JobInst, Warn, WarningObserver, cfg, InstanceStateObserver
 from tarotools.taro.jobs import program, runner
 from tarotools.taro.jobs.inst import WarnEventCtx
 
@@ -137,7 +137,7 @@ class StateWaiter:
                 return
 
 
-class PutStateToQueueObserver(ExecutionStateObserver):
+class PutStateToQueueObserver(InstanceStateObserver):
     """
     This observer puts execution states into the provided queue. With multiprocessing queue this can be used for sending
     execution states into the parent process.
@@ -148,7 +148,7 @@ class PutStateToQueueObserver(ExecutionStateObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         self.queue.put_nowait(new_state)
 
 
