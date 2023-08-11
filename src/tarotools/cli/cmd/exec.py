@@ -4,7 +4,7 @@ import signal
 from tarotools.cli.logutil import logger_name
 from tarotools.taro import util, cfg
 from tarotools.taro.jobs import sync, warning
-from tarotools.taro.jobs.execution import ExecutionOutputTracker, Flag
+from tarotools.taro.jobs.execution import Flag
 from tarotools.taro.jobs.inst import Warn
 from tarotools.taro.jobs.managed import ManagedJobContext
 from tarotools.taro.jobs.program import ProgramExecution
@@ -47,7 +47,7 @@ def run(args):
     if output_parsers:
         task = MutableTrackedTask(max_events=1)
         execution.tracking = task
-        tracker = ExecutionOutputTracker(OutputTracker(task, output_parsers))
+        tracker = OutputTracker(task, output_parsers)
         execution.add_output_observer(tracker)
 
     job_instance = RunnerJobInstance(
