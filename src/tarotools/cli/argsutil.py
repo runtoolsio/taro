@@ -33,19 +33,19 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
         criteria.append(IntervalCriteria.to_utc(interval_event, from_, to))
 
     if getattr(args, 'today', None):
-        criteria.append(IntervalCriteria.today(interval_event, local_tz=True))
+        criteria.append(IntervalCriteria.today(interval_event, to_utc=True))
 
     if getattr(args, 'yesterday', None):
-        criteria.append(IntervalCriteria.yesterday(interval_event, local_tz=True))
+        criteria.append(IntervalCriteria.yesterday(interval_event, to_utc=True))
 
     if getattr(args, 'week', None):
-        criteria.append(IntervalCriteria.week_back(interval_event, local_tz=True))
+        criteria.append(IntervalCriteria.week_back(interval_event, to_utc=True))
 
     if getattr(args, 'fortnight', None):
-        criteria.append(IntervalCriteria.days_interval(interval_event, -14, local_tz=True))
+        criteria.append(IntervalCriteria.days_interval(interval_event, -14, to_utc=True))
 
     if getattr(args, 'month', None):
-        criteria.append(IntervalCriteria.days_interval(interval_event, -31, local_tz=True))
+        criteria.append(IntervalCriteria.days_interval(interval_event, -31, to_utc=True))
 
     return criteria
 
