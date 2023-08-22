@@ -9,7 +9,7 @@ import yaml
 from prompt_toolkit.output import DummyOutput
 
 from tarotools.cli import main
-from tarotools.taro import paths, JobInst, Warn, InstanceWarningObserver, cfg, InstanceStateObserver
+from tarotools.taro import paths, JobInst, InstanceWarningObserver, cfg, InstanceStateObserver
 from tarotools.taro.jobs import program, runner
 from tarotools.taro.jobs.inst import WarnEventCtx
 
@@ -155,7 +155,7 @@ class PutStateToQueueObserver(InstanceStateObserver):
 class TestWarningObserver(InstanceWarningObserver):
 
     def __init__(self):
-        self.warnings: Dict[str, Tuple[JobInst, Warn, WarnEventCtx]] = {}
+        self.warnings: Dict[str, Tuple[JobInst, WarnEventCtx]] = {}
 
-    def new_instance_warning(self, job_inst: JobInst, warning: Warn, event_ctx):
-        self.warnings[warning.name] = (job_inst, warning, event_ctx)
+    def new_instance_warning(self, job_inst: JobInst, warning_ctx):
+        self.warnings[warning_ctx.warning.name] = (job_inst, warning_ctx)
