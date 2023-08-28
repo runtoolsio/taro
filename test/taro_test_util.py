@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 
 # TODO Remove
 import prompt_toolkit
-import yaml
+import tomli_w
 from prompt_toolkit.output import DummyOutput
 
 from tarotools.cli import main
@@ -84,8 +84,8 @@ def create_test_config(config):
 
 def create_custom_test_config(filename, config):
     path = _custom_test_config_path(filename)
-    with open(path, 'w') as outfile:
-        yaml.dump(config, outfile, default_flow_style=False)
+    with open(path, 'wb') as outfile:
+        tomli_w.dump(config, outfile)
     return path
 
 

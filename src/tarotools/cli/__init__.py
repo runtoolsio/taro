@@ -1,4 +1,5 @@
 import os
+
 import sys
 
 from tarotools import taro
@@ -81,7 +82,8 @@ def init_taro(args):
     elif getattr(args, 'min_config', False):
         taro.configure(**config_vars)
     else:
-        taro.load_config(**config_vars)
+        # taro.load_config(**config_vars)
+        pass
 
 
 def run_command(args_ns):
