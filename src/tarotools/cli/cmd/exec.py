@@ -5,8 +5,8 @@ from tarotools.cli.logutil import logger_name
 from tarotools.taro import util, cfg
 from tarotools.taro.jobs import sync, warning
 from tarotools.taro.jobs.execution import Flag
+from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import Warn
-from tarotools.taro.jobs.managed import ManagedJobContext
 from tarotools.taro.jobs.program import ProgramExecution
 from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.jobs.sync import ExecutionsLimit
@@ -62,7 +62,8 @@ def run(args):
 
     _set_signal_handlers(job_instance, args.timeout)
 
-    with ManagedJobContext() as ctx:
+    plugins = cfg.plugins_load if cfg.plugins_enabled else None
+    with FeaturedContextBuilder().standard_features(plugins=plugins).build() as ctx:
         ctx.add(job_instance)
         job_instance.run()
 
