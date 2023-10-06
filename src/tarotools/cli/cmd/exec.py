@@ -3,12 +3,11 @@ import signal
 
 from tarotools.cli.logutil import logger_name
 from tarotools.taro import util, cfg
-from tarotools.taro.jobs import sync, warning
+from tarotools.taro.jobs import sync, warning, runner
 from tarotools.taro.jobs.execution import Flag
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import Warn
 from tarotools.taro.jobs.program import ProgramExecution
-from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.jobs.sync import ExecutionsLimit
 from tarotools.taro.jobs.track import MutableTrackedTask, Fields, OutputTracker
 from tarotools.taro.test.execution import TestExecution
@@ -50,7 +49,7 @@ def run(args):
         tracker = OutputTracker(task, output_parsers)
         execution.add_output_observer(tracker)
 
-    job_instance = RunnerJobInstance(
+    job_instance = runner.job_instance(
         job_id,
         execution,
         sync.create_composite(executions_limit=exec_limit, no_overlap=args.no_overlap, depends_on=args.depends_on),
