@@ -2,8 +2,9 @@ import logging
 import signal
 
 from tarotools.cli.logutil import logger_name
+from tarotools.taro import job_instance
 from tarotools.taro import util, cfg
-from tarotools.taro.jobs import sync, warning, runner
+from tarotools.taro.jobs import sync, warning
 from tarotools.taro.jobs.execution import Flag
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import Warn
@@ -49,7 +50,7 @@ def run(args):
         tracker = OutputTracker(task, output_parsers)
         execution.add_output_observer(tracker)
 
-    job_instance = runner.job_instance(
+    instance = job_instance(
         job_id,
         execution,
         sync.create_composite(executions_limit=exec_limit, no_overlap=args.no_overlap, depends_on=args.depends_on),
@@ -57,14 +58,14 @@ def run(args):
         pending_group=args.pending,
         **(dict(args.param) if args.param else dict()))
 
-    warning.register(job_instance, warn_times=args.warn_time, warn_outputs=args.warn_output)
+    warning.register(instance, warn_times=args.warn_time, warn_outputs=args.warn_output)
 
-    _set_signal_handlers(job_instance, args.timeout)
+    _set_signal_handlers(instance, args.timeout)
 
     plugins = cfg.plugins_load if cfg.plugins_enabled else None
     with FeaturedContextBuilder().standard_features(plugins=plugins).build() as ctx:
-        ctx.add(job_instance)
-        job_instance.run()
+        ctx.add(instance)
+        instance.run()
 
     if isinstance(execution, ProgramExecution) and execution.ret_code:
         if execution.ret_code > 0:
@@ -72,7 +73,7 @@ def run(args):
         if execution.ret_code < 0:
             raise ProgramExecutionError(abs(execution.ret_code) + 128)
 
-    term_state = job_instance.lifecycle.state
+    term_state = instance.lifecycle.state
     if term_state.has_flag(Flag.FAILURE):
         raise ProgramExecutionError(1)
 
