@@ -5,7 +5,7 @@ from tarotools.cli.logutil import logger_name
 from tarotools.taro import job_instance
 from tarotools.taro import util, cfg
 from tarotools.taro.jobs import warning
-from tarotools.taro.jobs.coord import ExecutionGroupLimit
+from tarotools.taro.jobs.coordination import ExecutionGroupLimit
 from tarotools.taro.jobs.execution import Flag
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import Warn
