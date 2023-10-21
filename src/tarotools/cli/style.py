@@ -1,4 +1,4 @@
-from tarotools.taro.jobs.execution import Flag,Phase
+from tarotools.taro.jobs.execution import Flag, Phase
 from tarotools.taro.theme import Theme
 from tarotools.taro.util import DateTimeFormat
 
@@ -7,6 +7,7 @@ def job_id_style(job):
     if job.state.has_flag(Flag.FAILURE):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
+
 
 def job_id_stats_style(job_stats):
     if job_stats.last_state.has_flag(Flag.FAILURE):
@@ -25,6 +26,7 @@ def general_style(job):
         return Theme.state_failure
     return ""
 
+
 def stats_style(stats):
     if stats.last_state.has_flag(Flag.FAILURE):
         return Theme.state_failure
@@ -38,12 +40,13 @@ def warn_style(_):
 def job_state_style(job):
     return state_style(job.state)
 
+
 def stats_state_style(stats):
     return state_style(stats.last_state)
 
 
 def state_style(state):
-    if state.in_phase(Phase.SCHEDULED):
+    if state.has_flag(Flag.BEFORE_EXECUTION):
         return Theme.state_before_execution
     if state.in_phase(Phase.EXECUTING):
         return Theme.state_executing
@@ -54,6 +57,7 @@ def state_style(state):
     if state.has_flag(Flag.INCOMPLETE):
         return Theme.state_incomplete
     return ""
+
 
 def stats_failed_style(stats):
     if stats.failed_count:
