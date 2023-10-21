@@ -5,7 +5,7 @@ from tarotools.cli.logutil import logger_name
 from tarotools.taro import job_instance
 from tarotools.taro import util, cfg
 from tarotools.taro.jobs import warning
-from tarotools.taro.jobs.coord import ExecutionsLimit
+from tarotools.taro.jobs.coord import ExecutionGroupLimit
 from tarotools.taro.jobs.execution import Flag
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import Warn
@@ -28,9 +28,9 @@ def run(args):
 
     job_id = args.id or " ".join([args.command] + args.arg)
     if args.serial:
-        exec_limit = ExecutionsLimit(args.execution_group or job_id, 1)
+        exec_limit = ExecutionGroupLimit(args.execution_group or job_id, 1)
     elif args.max_executions:
-        exec_limit = ExecutionsLimit(args.execution_group or job_id, args.max_executions)
+        exec_limit = ExecutionGroupLimit(args.execution_group or job_id, args.max_executions)
     else:
         exec_limit = None
 
