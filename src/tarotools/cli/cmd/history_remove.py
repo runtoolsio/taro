@@ -1,6 +1,6 @@
 from tarotools.cli import cliutil
 from tarotools.taro.jobs import persistence
-from tarotools.taro.jobs.inst import InstanceMatchCriteria
+from tarotools.taro.jobs.criteria import InstanceMatchCriteria
 from tarotools.taro.util import MatchingStrategy
 
 

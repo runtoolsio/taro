@@ -7,7 +7,7 @@ from pygments.lexers.data import JsonLexer
 from tarotools import taro
 from tarotools.cli import printer, argsutil
 from tarotools.cli.view import instance as view_inst
-from tarotools.taro.jobs.inst import JobInstances
+from tarotools.taro.jobs.instance import JobInstances
 from tarotools.taro.util import MatchingStrategy
 
 

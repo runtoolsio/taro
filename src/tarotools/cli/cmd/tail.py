@@ -2,7 +2,7 @@ import sys
 
 from tarotools.cli import argsutil
 from tarotools.cli import printer, style, cliutil
-from tarotools.taro.jobs.inst import InstanceMatchCriteria, compound_id_filter
+from tarotools.taro.jobs.criteria import compound_id_filter, InstanceMatchCriteria
 from tarotools.taro.listening import OutputReceiver, OutputEventObserver
 from tarotools.taro.theme import Theme
 from tarotools.taro.util import MatchingStrategy

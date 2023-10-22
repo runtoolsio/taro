@@ -11,7 +11,7 @@ from prompt_toolkit.output import DummyOutput
 from tarotools.cli import main
 from tarotools.taro import paths, JobInst, InstanceWarningObserver, cfg, InstanceStateObserver
 from tarotools.taro.jobs import program, runner
-from tarotools.taro.jobs.inst import WarnEventCtx
+from tarotools.taro.jobs.instance import WarnEventCtx
 
 
 # TODO consider to move to taro.test to be accessible from dependencies

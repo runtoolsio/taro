@@ -8,7 +8,7 @@ from tarotools.taro.jobs import warning
 from tarotools.taro.jobs.coordination import ExecutionGroupLimit
 from tarotools.taro.jobs.execution import Flag
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
-from tarotools.taro.jobs.inst import Warn
+from tarotools.taro.jobs.instance import Warn
 from tarotools.taro.jobs.program import ProgramExecution
 from tarotools.taro.jobs.track import MutableTrackedTask, Fields, OutputTracker
 from tarotools.taro.test.execution import TestExecution
