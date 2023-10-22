@@ -1,7 +1,7 @@
 import datetime
 import re
 
-from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase
+from tarotools.taro.jobs.instance import InstancePhase
 
 
 class AllFilter:
@@ -27,22 +27,22 @@ def create_id_filter(text):
 
 
 def finished_filter(job_info):
-    return job_info.state.in_phase(ExecutionPhase.TERMINAL)
+    return job_info.phase.in_phase(InstancePhase.TERMINAL)
 
 
 def today_filter(job_info):
-    return job_info.lifecycle.changed_at(ExecutionState.CREATED).astimezone().date() == \
+    return job_info.lifecycle.changed_at(InstancePhase.CREATED).astimezone().date() == \
            datetime.datetime.today().date()
 
 
 def yesterday_filter(job_info):
-    return job_info.lifecycle.changed_at(ExecutionState.CREATED).astimezone().date() == \
+    return job_info.lifecycle.changed_at(InstancePhase.CREATED).astimezone().date() == \
            (datetime.datetime.today().date() - datetime.timedelta(days=1))
 
 
 def create_since_filter(since):
     def do_filter(job_info):
-        return job_info.lifecycle.changed_at(ExecutionState.CREATED).astimezone().replace(tzinfo=None) >= since
+        return job_info.lifecycle.changed_at(InstancePhase.CREATED).astimezone().replace(tzinfo=None) >= since
 
     return do_filter
 

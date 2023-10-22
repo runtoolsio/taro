@@ -73,7 +73,7 @@ def run(args):
         if execution.ret_code < 0:
             raise ProgramExecutionError(abs(execution.ret_code) + 128)
 
-    term_state = instance.lifecycle.state
+    term_state = instance.lifecycle.phase
     if term_state.has_flag(Flag.FAILURE):
         raise ProgramExecutionError(1)
 

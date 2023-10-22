@@ -4,8 +4,8 @@ Command: stop
 """
 import pytest
 
-from tarotools.taro.jobs.execution import ExecutionState
 from taro_test_util import run_app
+from tarotools.taro.jobs.execution import TerminationStatus
 from test.taro_test_util import run_app_as_process_and_wait
 
 
@@ -15,8 +15,8 @@ def test_stop_must_specify_job():
 
 
 def test_stop():
-    p1 = run_app_as_process_and_wait('exec -mc --id to_stop sleep 5', wait_for=ExecutionState.RUNNING, daemon=True)
-    p2 = run_app_as_process_and_wait('exec -mc --id to_keep sleep 5', wait_for=ExecutionState.RUNNING, daemon=True)
+    p1 = run_app_as_process_and_wait('exec -mc --id to_stop sleep 5', wait_for=TerminationStatus.RUNNING, daemon=True)
+    p2 = run_app_as_process_and_wait('exec -mc --id to_keep sleep 5', wait_for=TerminationStatus.RUNNING, daemon=True)
 
     run_app('stop to_stop --force')
 
@@ -27,8 +27,8 @@ def test_stop():
 
 @pytest.mark.skip(reason="find out how to simulate 'N' key press")
 def test_more_jobs_require_all_flag(capsys):
-    p1 = run_app_as_process_and_wait('exec -mc --id j1 sleep 5', wait_for=ExecutionState.RUNNING, daemon=True)
-    p2 = run_app_as_process_and_wait('exec -mc --id j1 sleep 5', wait_for=ExecutionState.RUNNING, daemon=True)
+    p1 = run_app_as_process_and_wait('exec -mc --id j1 sleep 5', wait_for=TerminationStatus.RUNNING, daemon=True)
+    p2 = run_app_as_process_and_wait('exec -mc --id j1 sleep 5', wait_for=TerminationStatus.RUNNING, daemon=True)
 
     run_app('stop j1')
 

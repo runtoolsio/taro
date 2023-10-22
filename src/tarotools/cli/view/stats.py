@@ -1,8 +1,8 @@
-from tarotools.taro import util
-from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.util import format_dt_local_tz
 from tarotools.cli.printer import Column
 from tarotools.cli.style import stats_style, job_id_stats_style, stats_state_style, stats_failed_style, stats_warn_style
+from tarotools.taro import util
+from tarotools.taro.jobs.execution import TerminationStatus
+from tarotools.taro.util import format_dt_local_tz
 
 JOB_ID = Column('JOB ID', 30, lambda s: s.job_id, job_id_stats_style)
 ENDED = Column('ENDED', 10, lambda s: str(s.count), stats_style)
@@ -12,7 +12,7 @@ FASTEST = Column('FASTEST', 18, lambda s: util.format_timedelta(s.fastest_time, 
 AVERAGE = Column('AVERAGE', 18, lambda s: util.format_timedelta(s.average_time, show_ms=False), stats_style)
 SLOWEST = Column('SLOWEST', 18, lambda s: util.format_timedelta(s.slowest_time, show_ms=False), stats_style)
 LAST_TIME = Column('LAST', 18, lambda s: util.format_timedelta(s.last_time, show_ms=False), stats_style)
-STATE = Column('LAST STATE', max(len(s.name) for s in ExecutionState) + 2, lambda s: s.last_state.name, stats_state_style)
+STATE = Column('LAST STATE', max(len(s.name) for s in TerminationStatus) + 2, lambda s: s.last_state.name, stats_state_style)
 FAILED = Column('FAILED', 10, lambda s: str(s.failed_count), stats_failed_style)
 WARN = Column('WARNINGS', 10, lambda s: str(s.warning_count), stats_warn_style)
 

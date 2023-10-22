@@ -9,7 +9,7 @@ import tomli_w
 from prompt_toolkit.output import DummyOutput
 
 from tarotools.cli import main
-from tarotools.taro import paths, JobInst, InstanceWarningObserver, cfg, InstanceStateObserver
+from tarotools.taro import paths, JobInst, InstanceWarningObserver, cfg, InstancePhaseObserver
 from tarotools.taro.jobs import program, runner
 from tarotools.taro.jobs.instance import WarnEventCtx
 
@@ -48,7 +48,7 @@ def run_app(command, shell=False, state_queue=None):
     prompt_toolkit.output.defaults.create_output = NoFormattingOutput
     observer = None
     if state_queue:
-        observer = PutStateToQueueObserver(state_queue)
+        observer = PutPhaseToQueueObserver(state_queue)
         runner.register_state_observer(observer)
 
     try:
@@ -137,7 +137,7 @@ class StateWaiter:
                 return
 
 
-class PutStateToQueueObserver(InstanceStateObserver):
+class PutPhaseToQueueObserver(InstancePhaseObserver):
     """
     This observer puts execution states into the provided queue. With multiprocessing queue this can be used for sending
     execution states into the parent process.
@@ -148,8 +148,8 @@ class PutStateToQueueObserver(InstanceStateObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
-        self.queue.put_nowait(new_state)
+    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
+        self.queue.put_nowait(new_phase)
 
 
 class TestWarningObserver(InstanceWarningObserver):

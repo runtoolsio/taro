@@ -4,7 +4,7 @@ from typing import List, Callable, Set
 from tarotools.taro import JobInstanceID
 from tarotools.taro.jobs.criteria import IDMatchCriteria, compound_id_filter, IntervalCriteria, StateCriteria, \
     InstanceMatchCriteria
-from tarotools.taro.jobs.execution import Flag, ExecutionStateFlag
+from tarotools.taro.jobs.execution import Flag, TerminationStatusFlag
 from tarotools.taro.jobs.instance import LifecycleEvent
 from tarotools.taro.util import DateTimeFormat
 
@@ -52,7 +52,7 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
 
 
 def instance_state_criteria(args):
-    flag_groups: List[Set[ExecutionStateFlag]] = []
+    flag_groups: List[Set[TerminationStatusFlag]] = []
     if getattr(args, 'success', False):
         flag_groups.append({Flag.SUCCESS})
     if getattr(args, 'nonsuccess', False):

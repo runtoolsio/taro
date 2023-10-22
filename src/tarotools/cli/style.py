@@ -4,7 +4,7 @@ from tarotools.taro.util import DateTimeFormat
 
 
 def job_id_style(job):
-    if job.state.has_flag(Flag.FAILURE):
+    if job.phase.has_flag(Flag.FAILURE):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
@@ -16,13 +16,13 @@ def job_id_stats_style(job_stats):
 
 
 def instance_style(job):
-    if job.state.has_flag(Flag.FAILURE):
+    if job.phase.has_flag(Flag.FAILURE):
         return Theme.state_failure
     return Theme.instance
 
 
 def general_style(job):
-    if job.state.has_flag(Flag.FAILURE):
+    if job.phase.has_flag(Flag.FAILURE):
         return Theme.state_failure
     return ""
 
@@ -38,7 +38,7 @@ def warn_style(_):
 
 
 def job_state_style(job):
-    return state_style(job.state)
+    return state_style(job.phase)
 
 
 def stats_state_style(stats):
@@ -89,7 +89,7 @@ def job_instance_id_styled(job_instance_id):
 
 def job_status_line_styled(job_instance, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
     return job_instance_id_status_line_styled(
-        job_instance.id, job_instance.state, job_instance.lifecycle.last_changed_at, ts_prefix_format=ts_prefix_format)
+        job_instance.id, job_instance.phase, job_instance.lifecycle.last_changed_at, ts_prefix_format=ts_prefix_format)
 
 
 def job_instance_id_status_line_styled(

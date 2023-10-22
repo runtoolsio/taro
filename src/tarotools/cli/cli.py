@@ -3,11 +3,11 @@ import re
 import textwrap
 from argparse import RawTextHelpFormatter
 
-from tarotools.taro import util
-from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.cli import version
 from tarotools.cli.argsutil import TimestampFormat
+from tarotools.taro import util
+from tarotools.taro.jobs.execution import TerminationStatus
+from tarotools.taro.jobs.persistence import SortCriteria
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
@@ -157,7 +157,7 @@ def _init_exec_parser(common, subparsers):
                              help='Mapping of output keys to common fields.')
     exec_parser.add_argument('-p', '--grok-pattern', type=str, action='append', default=[],
                              help='Grok pattern for extracting fields from output used for task tracking.')
-    exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
+    exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=TerminationStatus.COMPLETED,
                              help='The job will be started without actual execution of its command. The final state '
                                   'of the job is specified by the value of this option. Default state is COMPLETED. '
                                   'This option can be used for testing some of the functionality like custom plugins.')
@@ -419,10 +419,10 @@ def _init_hostinfo_parser(common, subparsers):
 # TODO Consider: change to str (like SortCriteria case) and remove this function
 def _str2state(v):
     try:
-        return ExecutionState[v.upper()]
+        return TerminationStatus[v.upper()]
     except KeyError:
         raise argparse.ArgumentTypeError('Arguments can be only valid execution states: '
-                                         + ", ".join([e.name.lower() for e in ExecutionState]))
+                                         + ", ".join([e.name.lower() for e in TerminationStatus]))
 
 
 def _warn_time_type(arg_value):

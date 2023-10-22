@@ -1,6 +1,6 @@
 from tarotools import taro
 from tarotools.cli import argsutil
-from tarotools.taro import ExecutionState
+from tarotools.taro import TerminationStatus
 from tarotools.taro.client import ReleaseResult
 from tarotools.taro.util import MatchingStrategy
 
@@ -12,7 +12,7 @@ def run(args):
     elif args.queued:
         if not instance_match:
             raise ValueError("Instance must be specified when releasing queued")
-        responses, _ = taro.client.release_waiting_instances(ExecutionState.QUEUED, instance_match)
+        responses, _ = taro.client.release_waiting_instances(TerminationStatus.QUEUED, instance_match)
     else:
         assert False, "Missing release option"
 
