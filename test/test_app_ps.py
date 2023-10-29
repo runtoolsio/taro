@@ -5,7 +5,7 @@ Command: ps
 import tarotools.cli.view.instance as view_inst
 from taro_test_util import run_app, run_app_as_process_and_wait
 from tarotools.cli import printer
-from tarotools.taro.jobs.execution import TerminationStatus
+from tarotools.taro import TerminationStatus
 
 
 def test_job_running(capsys):

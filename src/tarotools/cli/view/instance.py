@@ -1,7 +1,6 @@
 from tarotools.cli.printer import Column
 from tarotools.cli.style import general_style, job_id_style, instance_style, warn_style, job_state_style
-from tarotools.taro import util
-from tarotools.taro.jobs.execution import TerminationStatus
+from tarotools.taro import util, TerminationStatus
 from tarotools.taro.util import format_dt_local_tz
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
