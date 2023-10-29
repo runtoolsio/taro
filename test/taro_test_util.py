@@ -7,10 +7,10 @@ from typing import Dict, Tuple
 import prompt_toolkit
 import tomli_w
 from prompt_toolkit.output import DummyOutput
-
 from tarotools.cli import main
-from tarotools.taro import paths, JobInst, InstanceWarningObserver, cfg, InstancePhaseObserver
-from tarotools.taro.jobs import program, runner
+
+from tarotools.taro import paths, JobInst, InstanceWarningObserver, cfg, InstancePhaseObserver, program
+from tarotools.taro.jobs import runner
 from tarotools.taro.jobs.instance import WarnEventCtx
 
 

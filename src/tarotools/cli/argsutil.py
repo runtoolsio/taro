@@ -2,11 +2,11 @@ from enum import Enum
 from typing import List, Callable, Set
 
 from tarotools.taro import JobInstanceID
+from tarotools.taro.execution import Flag
 from tarotools.taro.jobs.criteria import IDMatchCriteria, compound_id_filter, IntervalCriteria, StateCriteria, \
     InstanceMatchCriteria
-from tarotools.taro.jobs.execution import Flag
 from tarotools.taro.jobs.instance import LifecycleEvent
-from tarotools.taro.jobs.lifecycle import TerminationStatusFlag
+from tarotools.taro.run import TerminationStatusFlag
 from tarotools.taro.util import DateTimeFormat
 
 

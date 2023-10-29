@@ -1,4 +1,4 @@
-from tarotools.taro.jobs.execution import Flag, Phase
+from tarotools.taro.execution import Flag, Phase
 from tarotools.taro.theme import Theme
 from tarotools.taro.util import DateTimeFormat
 
