@@ -49,7 +49,7 @@ def run(args):
         task = MutableTrackedTask(max_events=1)
         execution.tracking = task
         tracker = OutputTracker(task, output_parsers)
-        execution.add_output_observer(tracker)
+        execution.add_output_callback(tracker)
 
     instance = job_instance(
         job_id,
