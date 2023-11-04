@@ -21,7 +21,7 @@ def create_id_filter(text):
     pattern = re.compile(text)
 
     def do_filter(job_info):
-        return pattern.search(job_info.job_id) or pattern.search(job_info.instance_id)
+        return pattern.search(job_info.job_id) or pattern.search(job_info.run_id)
 
     return do_filter
 

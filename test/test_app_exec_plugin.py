@@ -25,9 +25,9 @@ def setup():
 @pytest.fixture
 def observer():
     observer = TestPhaseObserver()
-    runner.register_state_observer(observer)
+    runner.register_transition_callback(observer)
     yield observer
-    runner.deregister_state_observer(observer)
+    runner.deregister_transition_callback(observer)
 
 
 def test_plugin_executed():

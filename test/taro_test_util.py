@@ -9,7 +9,7 @@ import tomli_w
 from prompt_toolkit.output import DummyOutput
 from tarotools.cli import main
 
-from tarotools.taro import paths, JobInst, InstanceWarningObserver, cfg, InstanceTransitionObserver, program
+from tarotools.taro import paths, JobRun, InstanceWarningObserver, cfg, InstanceTransitionObserver, program
 from tarotools.taro.jobs import runner
 from tarotools.taro.jobs.instance import WarnEventCtx
 
@@ -49,7 +49,7 @@ def run_app(command, shell=False, state_queue=None):
     observer = None
     if state_queue:
         observer = PutPhaseToQueueObserver(state_queue)
-        runner.register_state_observer(observer)
+        runner.register_transition_callback(observer)
 
     try:
         main(command.split())
@@ -57,7 +57,7 @@ def run_app(command, shell=False, state_queue=None):
         prompt_toolkit.output.defaults.create_output = None
         program.USE_SHELL = False
         if observer:
-            runner.deregister_state_observer(observer)
+            runner.deregister_transition_callback(observer)
 
 
 def run_app_as_process_and_wait(command, *, wait_for, timeout=2, daemon=False, shell=False) -> Process:
@@ -148,14 +148,14 @@ class PutPhaseToQueueObserver(InstanceTransitionObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_inst: JobRun, previous_phase, new_phase, changed):
         self.queue.put_nowait(new_phase)
 
 
 class TestWarningObserver(InstanceWarningObserver):
 
     def __init__(self):
-        self.warnings: Dict[str, Tuple[JobInst, WarnEventCtx]] = {}
+        self.warnings: Dict[str, Tuple[JobRun, WarnEventCtx]] = {}
 
-    def new_instance_warning(self, job_inst: JobInst, warning_ctx):
+    def new_instance_warning(self, job_inst: JobRun, warning_ctx):
         self.warnings[warning_ctx.warning.name] = (job_inst, warning_ctx)

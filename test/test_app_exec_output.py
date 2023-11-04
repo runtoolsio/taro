@@ -13,9 +13,9 @@ from tarotools.taro.test.observer import GenericObserver
 @pytest.fixture()
 def observer():
     observer = GenericObserver()
-    runner.register_output_observer(observer)
+    runner.register_status_observer(observer)
     yield observer
-    runner.deregister_output_observer(observer)
+    runner.deregister_status_observer(observer)
 
 
 def test_output_observer(observer: GenericObserver):

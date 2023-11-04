@@ -75,7 +75,7 @@ def job_instance_styled(job_instance):
     return [
         (job_id_style(job_instance), job_instance.job_id),
         (Theme.id_separator, "@"),
-        (instance_style(job_instance), job_instance.instance_id)
+        (instance_style(job_instance), job_instance.run_id)
     ]
 
 
@@ -83,7 +83,7 @@ def job_instance_id_styled(job_instance_id):
     return [
         (Theme.job, job_instance_id.job_id),
         (Theme.id_separator, "@"),
-        (Theme.instance, job_instance_id.instance_id)
+        (Theme.instance, job_instance_id.run_id)
     ]
 
 

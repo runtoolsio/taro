@@ -5,7 +5,7 @@ from tarotools.taro import util, TerminationStatus
 from tarotools.taro.util import format_dt_local_tz
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
-INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id, instance_style)
+INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.run_id, instance_style)
 PARAMETERS = Column('PARAMETERS', 23,
                     lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
 CREATED = Column('CREATED', 25, lambda j: format_dt_local_tz(j.lifecycle.created_at), general_style)

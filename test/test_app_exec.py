@@ -5,9 +5,9 @@ Command: exec
 import os
 
 import pytest
+from tarotools.cli.cmd.exec import ProgramExecutionError
 
 from taro_test_util import run_app, TestWarningObserver
-from tarotools.cli.cmd.exec import ProgramExecutionError
 from tarotools.taro import util, TerminationStatus
 from tarotools.taro.jobs import runner
 from tarotools.taro.test.observer import TestPhaseObserver
@@ -18,9 +18,9 @@ from .taro_test_util import run_app_as_process_and_wait
 @pytest.fixture(autouse=True)
 def observer():
     observer = TestPhaseObserver()
-    runner.register_state_observer(observer)
+    runner.register_transition_callback(observer)
     yield observer
-    runner.deregister_state_observer(observer)
+    runner.deregister_transition_callback(observer)
 
 
 def test_successful(observer: TestPhaseObserver):
