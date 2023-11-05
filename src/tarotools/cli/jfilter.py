@@ -31,18 +31,18 @@ def finished_filter(job_info):
 
 
 def today_filter(job_info):
-    return job_info.lifecycle.transitioned_at(InstancePhase.CREATED).astimezone().date() == \
+    return job_info.lifecycle.started_at(InstancePhase.CREATED).astimezone().date() == \
            datetime.datetime.today().date()
 
 
 def yesterday_filter(job_info):
-    return job_info.lifecycle.transitioned_at(InstancePhase.CREATED).astimezone().date() == \
+    return job_info.lifecycle.started_at(InstancePhase.CREATED).astimezone().date() == \
            (datetime.datetime.today().date() - datetime.timedelta(days=1))
 
 
 def create_since_filter(since):
     def do_filter(job_info):
-        return job_info.lifecycle.transitioned_at(InstancePhase.CREATED).astimezone().replace(tzinfo=None) >= since
+        return job_info.lifecycle.started_at(InstancePhase.CREATED).astimezone().replace(tzinfo=None) >= since
 
     return do_filter
 
