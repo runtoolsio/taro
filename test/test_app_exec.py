@@ -68,7 +68,7 @@ def test_no_overlap(observer: TestPhaseObserver):
     run_app_as_process_and_wait('exec -mc --id j1 sleep 2', wait_for=TerminationStatus.RUNNING, daemon=True)
 
     run_app('exec -mc --no-overlap --id j1 echo I love JAVA!')
-    assert observer.last_state('j1') == TerminationStatus.SKIPPED
+    assert observer.last_state('j1') == TerminationStatus.INVALID_OVERLAP
 
 
 def test_skipped_when_dependency_not_running(observer: TestPhaseObserver):
