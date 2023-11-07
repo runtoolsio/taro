@@ -9,7 +9,7 @@ import tomli_w
 from prompt_toolkit.output import DummyOutput
 from tarotools.cli import main
 
-from tarotools.taro import paths, JobRun, InstanceWarningObserver, cfg, InstanceTransitionObserver, program
+from tarotools.taro import paths, JobRun, InstanceWarningObserver, cfg, PhaseTransitionObserver, program
 from tarotools.taro.jobs import runner
 from tarotools.taro.jobs.instance import WarnEventCtx
 
@@ -137,7 +137,7 @@ class StateWaiter:
                 return
 
 
-class PutPhaseToQueueObserver(InstanceTransitionObserver):
+class PutPhaseToQueueObserver(PhaseTransitionObserver):
     """
     This observer puts execution states into the provided queue. With multiprocessing queue this can be used for sending
     execution states into the parent process.
@@ -148,7 +148,7 @@ class PutPhaseToQueueObserver(InstanceTransitionObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def new_transition(self, job_inst: JobRun, previous_phase, new_phase, changed):
+    def new_phase(self, job_inst: JobRun, previous_phase, new_phase, changed):
         self.queue.put_nowait(new_phase)
 
 

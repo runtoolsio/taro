@@ -13,7 +13,7 @@ from tarotools.taro.util import MatchingStrategy
 
 def run(args):
     instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
-    job_instances = taro.client.read_runs(instance_match).responses
+    job_instances = taro.client.read_instances(instance_match).responses
     instances = JobRuns(job_instances)
 
     if args.format == 'table': 

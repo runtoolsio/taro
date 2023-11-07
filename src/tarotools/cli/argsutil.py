@@ -1,28 +1,28 @@
 from enum import Enum
 from typing import List, Callable, Set
 
-from tarotools.taro import JobInstanceID
+from tarotools.taro import JobRunId
 from tarotools.taro.execution import Flag
-from tarotools.taro.jobs.criteria import IDMatchCriteria, compound_id_filter, IntervalCriteria, StateCriteria, \
-    InstanceMatchCriteria
+from tarotools.taro.jobs.criteria import JobRunIdCriterion, compound_id_filter, IntervalCriterion, StateCriteria, \
+    InstanceCriteria
 from tarotools.taro.jobs.instance import LifecycleEvent
 from tarotools.taro.run import TerminationStatusFlag
 from tarotools.taro.util import DateTimeFormat
 
 
-def id_matching_criteria(args, def_id_match_strategy) -> List[IDMatchCriteria]:
+def id_matching_criteria(args, def_id_match_strategy) -> List[JobRunIdCriterion]:
     """
     :param args: cli args
     :param def_id_match_strategy: id match strategy used when not overridden by args TODO
     :return: list of ID match criteria or empty when args has no criteria
     """
     if args.instances:
-        return [IDMatchCriteria.parse_pattern(i, def_id_match_strategy) for i in args.instances]
+        return [JobRunIdCriterion.parse_pattern(i, def_id_match_strategy) for i in args.instances]
     else:
         return []
 
 
-def id_match(args, def_id_match_strategy) -> Callable[[JobInstanceID], bool]:
+def id_match(args, def_id_match_strategy) -> Callable[[JobRunId], bool]:
     return compound_id_filter(id_matching_criteria(args, def_id_match_strategy))
 
 
@@ -32,22 +32,22 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
     from_ = getattr(args, 'from', None)
     to = getattr(args, 'to', None)
     if from_ or to:
-        criteria.append(IntervalCriteria.to_utc(interval_event, from_, to))
+        criteria.append(IntervalCriterion.to_utc(interval_event, from_, to))
 
     if getattr(args, 'today', None):
-        criteria.append(IntervalCriteria.today(interval_event, to_utc=True))
+        criteria.append(IntervalCriterion.today(interval_event, to_utc=True))
 
     if getattr(args, 'yesterday', None):
-        criteria.append(IntervalCriteria.yesterday(interval_event, to_utc=True))
+        criteria.append(IntervalCriterion.yesterday(interval_event, to_utc=True))
 
     if getattr(args, 'week', None):
-        criteria.append(IntervalCriteria.week_back(interval_event, to_utc=True))
+        criteria.append(IntervalCriterion.week_back(interval_event, to_utc=True))
 
     if getattr(args, 'fortnight', None):
-        criteria.append(IntervalCriteria.days_interval(interval_event, -14, to_utc=True))
+        criteria.append(IntervalCriterion.days_interval(interval_event, -14, to_utc=True))
 
     if getattr(args, 'month', None):
-        criteria.append(IntervalCriteria.days_interval(interval_event, -31, to_utc=True))
+        criteria.append(IntervalCriterion.days_interval(interval_event, -31, to_utc=True))
 
     return criteria
 
@@ -72,8 +72,8 @@ def instance_state_criteria(args):
 
 
 def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \
-        InstanceMatchCriteria:
-    return InstanceMatchCriteria(
+        InstanceCriteria:
+    return InstanceCriteria(
         id_matching_criteria(args, def_id_match_strategy),
         interval_criteria_converted_utc(args, interval_event),
         instance_state_criteria(args))
