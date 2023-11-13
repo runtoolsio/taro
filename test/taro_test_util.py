@@ -9,7 +9,7 @@ import tomli_w
 from prompt_toolkit.output import DummyOutput
 from tarotools.cli import main
 
-from tarotools.taro import paths, JobRun, InstanceWarningObserver, cfg, PhaseTransitionObserver, program
+from tarotools.taro import paths, JobInstanceDetail, InstanceWarningObserver, cfg, PhaseTransitionObserver, program
 from tarotools.taro.jobs import runner
 from tarotools.taro.jobs.instance import WarnEventCtx
 
@@ -148,14 +148,14 @@ class PutPhaseToQueueObserver(PhaseTransitionObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def new_phase(self, job_inst: JobRun, previous_phase, new_phase, changed):
+    def new_phase(self, job_inst: JobInstanceDetail, previous_phase, new_phase, changed):
         self.queue.put_nowait(new_phase)
 
 
 class TestWarningObserver(InstanceWarningObserver):
 
     def __init__(self):
-        self.warnings: Dict[str, Tuple[JobRun, WarnEventCtx]] = {}
+        self.warnings: Dict[str, Tuple[JobInstanceDetail, WarnEventCtx]] = {}
 
-    def new_instance_warning(self, job_inst: JobRun, warning_ctx):
+    def new_instance_warning(self, job_inst: JobInstanceDetail, warning_ctx):
         self.warnings[warning_ctx.warning.name] = (job_inst, warning_ctx)

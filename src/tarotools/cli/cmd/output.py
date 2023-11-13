@@ -2,7 +2,7 @@ import itertools
 from tarotools.cli import printer, argsutil
 from tarotools.cli.view.instance import JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE
 
-from tarotools.taro import client, JobRun
+from tarotools.taro import client, JobInstanceDetail
 from tarotools.taro.jobs import persistence
 from tarotools.taro.theme import Theme
 from tarotools.taro.util import MatchingStrategy
@@ -20,7 +20,7 @@ def run(args):
         return
 
     columns = [JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE]
-    instance = sorted(instances, key=JobRun.created_at, reverse=True)[0]
+    instance = sorted(instances, key=JobInstanceDetail.created_at, reverse=True)[0]
     footer_gen = itertools.chain(
         (('', ''), (Theme.warning, 'Error output:')),
         (['', err] for err in instance.error_output)

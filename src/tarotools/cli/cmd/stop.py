@@ -1,6 +1,7 @@
 from tarotools.cli import printer, style, argsutil, cliutil
 from tarotools.cli.printer import print_styled
 from tarotools.cli.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
+
 from tarotools.taro.client import APIClient
 from tarotools.taro.util import MatchingStrategy
 
@@ -21,4 +22,4 @@ def run(args):
                 return
 
         for stop_resp in client.stop_instances(instance_match).responses:
-            print_styled(*style.job_instance_id_styled(stop_resp.instance_metadata.id) + [('', ' -> '), ('', stop_resp.stop_result)])
+            print_styled(*style.job_instance_id_styled(stop_resp.instance_metadata.job_run_id) + [('', ' -> '), ('', stop_resp.stop_result)])
