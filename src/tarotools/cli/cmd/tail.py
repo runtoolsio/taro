@@ -2,7 +2,7 @@ import sys
 from tarotools.cli import argsutil
 from tarotools.cli import printer, style, cliutil
 
-from tarotools.taro.jobs.criteria import compound_id_filter, InstanceCriteria
+from tarotools.taro.jobs.criteria import compound_id_filter, JobInstanceAggregatedCriteria
 from tarotools.taro.listening import OutputReceiver, OutputEventObserver
 from tarotools.taro.theme import Theme
 from tarotools.taro.util import MatchingStrategy
@@ -19,7 +19,7 @@ def run(args):
         cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
         receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message
     else:
-        for tail_resp in taro.client.read_tail(InstanceCriteria(id_criteria)).responses:
+        for tail_resp in taro.client.read_tail(JobInstanceAggregatedCriteria(id_criteria)).responses:
             printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(tail_resp.instance_metadata.id))
             for line, is_error in tail_resp.tail:
                 print(line, file=sys.stderr if is_error else sys.stdout)

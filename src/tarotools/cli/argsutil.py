@@ -3,8 +3,8 @@ from typing import List, Callable, Set
 
 from tarotools.taro import JobRunId
 from tarotools.taro.execution import Flag
-from tarotools.taro.jobs.criteria import JobRunIdCriterion, compound_id_filter, IntervalCriterion, StateCriteria, \
-    InstanceCriteria
+from tarotools.taro.jobs.criteria import JobRunIdCriterion, compound_id_filter, IntervalCriterion, TerminationCriterion, \
+    JobInstanceAggregatedCriteria
 from tarotools.taro.jobs.instance import LifecycleEvent
 from tarotools.taro.run import TerminationStatusFlag
 from tarotools.taro.util import DateTimeFormat
@@ -68,12 +68,12 @@ def instance_state_criteria(args):
         flag_groups.append({Flag.FAILURE})
     warning = getattr(args, 'warning', None)
 
-    return StateCriteria(flag_groups=flag_groups, warning=warning)
+    return TerminationCriterion(flag_groups=flag_groups, warning=warning)
 
 
 def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \
-        InstanceCriteria:
-    return InstanceCriteria(
+        JobInstanceAggregatedCriteria:
+    return JobInstanceAggregatedCriteria(
         id_matching_criteria(args, def_id_match_strategy),
         interval_criteria_converted_utc(args, interval_event),
         instance_state_criteria(args))
