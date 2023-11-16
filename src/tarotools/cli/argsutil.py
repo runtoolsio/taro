@@ -68,7 +68,7 @@ def instance_state_criteria(args):
         flag_groups.append({Flag.FAILURE})
     warning = getattr(args, 'warning', None)
 
-    return TerminationCriterion(flag_groups=flag_groups, warning=warning)
+    return TerminationCriterion(status_flag_groups=flag_groups, warning=warning)
 
 
 def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \
