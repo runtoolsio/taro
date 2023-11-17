@@ -75,7 +75,7 @@ def run(args):
             raise ProgramExecutionError(abs(execution.ret_code) + 128)
 
     term_state = instance.lifecycle.phase
-    if term_state.has_flag(Flag.FAILURE):
+    if term_state.has_flag(Flag.FAULT):
         raise ProgramExecutionError(1)
 
 

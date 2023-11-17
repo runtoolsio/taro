@@ -4,31 +4,31 @@ from tarotools.taro.util import DateTimeFormat
 
 
 def job_id_style(job):
-    if job.phase.has_flag(Flag.FAILURE):
+    if job.phase.has_flag(Flag.FAULT):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
 
 def job_id_stats_style(job_stats):
-    if job_stats.last_state.has_flag(Flag.FAILURE):
+    if job_stats.last_state.has_flag(Flag.FAULT):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
 
 def instance_style(job):
-    if job.phase.has_flag(Flag.FAILURE):
+    if job.phase.has_flag(Flag.FAULT):
         return Theme.state_failure
     return Theme.instance
 
 
 def general_style(job):
-    if job.phase.has_flag(Flag.FAILURE):
+    if job.phase.has_flag(Flag.FAULT):
         return Theme.state_failure
     return ""
 
 
 def stats_style(stats):
-    if stats.last_state.has_flag(Flag.FAILURE):
+    if stats.last_state.has_flag(Flag.FAULT):
         return Theme.state_failure
     return ""
 
@@ -52,7 +52,7 @@ def state_style(state):
         return Theme.state_executing
     if state.has_flag(Flag.DISCARDED):
         return Theme.state_discarded
-    if state.has_flag(Flag.FAILURE):
+    if state.has_flag(Flag.FAULT):
         return Theme.state_failure
     if state.has_flag(Flag.INCOMPLETE):
         return Theme.state_incomplete

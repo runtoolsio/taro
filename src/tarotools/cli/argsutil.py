@@ -6,7 +6,7 @@ from tarotools.taro.execution import Flag
 from tarotools.taro.jobs.criteria import JobRunIdCriterion, compound_id_filter, IntervalCriterion, TerminationCriterion, \
     JobRunAggregatedCriteria
 from tarotools.taro.jobs.instance import LifecycleEvent
-from tarotools.taro.run import TerminationStatusFlag
+from tarotools.taro.run import Outcome
 from tarotools.taro.util import DateTimeFormat
 
 
@@ -53,19 +53,19 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
 
 
 def instance_state_criteria(args):
-    flag_groups: List[Set[TerminationStatusFlag]] = []
+    flag_groups: List[Set[Outcome]] = []
     if getattr(args, 'success', False):
         flag_groups.append({Flag.SUCCESS})
     if getattr(args, 'nonsuccess', False):
         flag_groups.append({Flag.NONSUCCESS})
     if getattr(args, 'aborted', False):
-        flag_groups.append({Flag.ABORTED})
+        flag_groups.append({Flag.ABORT})
     if getattr(args, 'incomplete', False):
         flag_groups.append({Flag.INCOMPLETE})
     if getattr(args, 'discarded', False):
         flag_groups.append({Flag.DISCARDED})
     if getattr(args, 'failed', False):
-        flag_groups.append({Flag.FAILURE})
+        flag_groups.append({Flag.FAULT})
     warning = getattr(args, 'warning', None)
 
     return TerminationCriterion(status_flag_groups=flag_groups, warning=warning)
