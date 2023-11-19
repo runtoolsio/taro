@@ -64,7 +64,7 @@ def run(args):
     _set_signal_handlers(instance, args.timeout)
 
     plugins = cfg.plugins_load if cfg.plugins_enabled else None
-    with FeaturedContextBuilder().standard_features(plugins=plugins).build() as ctx:
+    with FeaturedContextBuilder().standard_features(plugins=plugins).build_as_run() as ctx:
         ctx.add(instance)
         instance.run()
 
