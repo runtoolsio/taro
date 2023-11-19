@@ -1,7 +1,8 @@
-from tarotools import taro
 from tarotools.cli import argsutil
+
+from tarotools import taro
 from tarotools.taro import TerminationStatus
-from tarotools.taro.client import ReleaseResult
+from tarotools.taro.client import ApprovalResult
 from tarotools.taro.util import MatchingStrategy
 
 
@@ -19,5 +20,5 @@ def run(args):
     if responses:
         print('Released:')
         for released_resp in responses:
-            if released_resp.release_result == ReleaseResult.RELEASED:
+            if released_resp.release_result == ApprovalResult.APPROVED:
                 print(released_resp.instance_metadata.id)
