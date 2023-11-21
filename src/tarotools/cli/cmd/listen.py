@@ -1,20 +1,20 @@
 import sys
-
 from tarotools.cli import argsutil
 from tarotools.cli import printer, style, cliutil
-from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
+
+from tarotools.taro.listening import InstanceTransitionReceiver, TransitionEventObserver
 from tarotools.taro.util import MatchingStrategy, DateTimeFormat
 
 
 def run(args):
-    receiver = PhaseReceiver(argsutil.id_match(args, MatchingStrategy.PARTIAL))
+    receiver = InstanceTransitionReceiver(argsutil.id_match(args, MatchingStrategy.PARTIAL))
     receiver.listeners.append(EventPrint(receiver, args.timestamp.value))
     receiver.start()
     cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
     receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message
 
 
-class EventPrint(InstancePhaseEventObserver):
+class EventPrint(TransitionEventObserver):
 
     def __init__(self, receiver, ts_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
         self._receiver = receiver

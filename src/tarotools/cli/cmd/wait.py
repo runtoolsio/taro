@@ -4,20 +4,21 @@ TODO: Create option where the command will terminates if the specified state is 
 """
 from tarotools.cli import argsutil
 from tarotools.cli import printer, style, cliutil
-from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
+
+from tarotools.taro.listening import InstanceTransitionReceiver, TransitionEventObserver
 from tarotools.taro.util import MatchingStrategy, DateTimeFormat
 
 
 def run(args):
     id_match = argsutil.id_match(args, MatchingStrategy.PARTIAL)
-    receiver = PhaseReceiver(id_match, args.phases)
+    receiver = InstanceTransitionReceiver(id_match, args.phases)
     receiver.listeners.append(EventHandler(receiver, args.count, args.timestamp.value))
     receiver.start()
     cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
     receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message, remove when fixed
 
 
-class EventHandler(InstancePhaseEventObserver):
+class EventHandler(TransitionEventObserver):
 
     def __init__(self, receiver, count=1, ts_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
         self._receiver = receiver

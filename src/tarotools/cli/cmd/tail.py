@@ -3,7 +3,7 @@ from tarotools.cli import argsutil
 from tarotools.cli import printer, style, cliutil
 
 from tarotools.taro.jobs.criteria import compound_id_filter, JobRunAggregatedCriteria
-from tarotools.taro.listening import OutputReceiver, OutputEventObserver
+from tarotools.taro.listening import InstanceOutputReceiver, OutputEventObserver
 from tarotools.taro.theme import Theme
 from tarotools.taro.util import MatchingStrategy
 
@@ -13,7 +13,7 @@ HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
 def run(args):
     id_criteria = argsutil.id_matching_criteria(args, MatchingStrategy.PARTIAL)
     if args.follow:
-        receiver = OutputReceiver(compound_id_filter(id_criteria))
+        receiver = InstanceOutputReceiver(compound_id_filter(id_criteria))
         receiver.listeners.append(TailPrint(receiver))
         receiver.start()
         cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
