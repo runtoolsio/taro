@@ -10,7 +10,7 @@ from taro_test_util import run_app, remove_test_config, create_test_config
 from tarotools import taro
 from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import runner
-from tarotools.taro.test.observer import TestPhaseObserver
+from tarotools.taro.test.observer import TestTransitionObserver
 
 
 @pytest.fixture(autouse=True)
@@ -24,7 +24,7 @@ def setup():
 
 @pytest.fixture
 def observer():
-    observer = TestPhaseObserver()
+    observer = TestTransitionObserver()
     runner.register_transition_callback(observer)
     yield observer
     runner.deregister_transition_callback(observer)
@@ -37,7 +37,7 @@ def test_plugin_executed():
     assert test_plugin.TestPlugin.instance_ref().job_instances[-1].job_id == 'run_with_test_plugin'
 
 
-def test_invalid_plugin_ignored(observer: TestPhaseObserver):
+def test_invalid_plugin_ignored(observer: TestTransitionObserver):
     test_plugin.TestPlugin.error_on_new_job_instance = BaseException('Must be captured')
     create_test_config({"plugins": ["test_plugin"]})  # Use testing plugin in package 'test_plugin'
     run_app('exec --id run_with_failing_plugin echo')

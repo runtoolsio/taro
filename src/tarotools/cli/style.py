@@ -10,7 +10,7 @@ def job_id_style(job):
 
 
 def job_id_stats_style(job_stats):
-    if job_stats.last_state.has_flag(Flag.FAULT):
+    if job_stats.last_job_state.has_flag(Flag.FAULT):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
@@ -28,7 +28,7 @@ def general_style(job):
 
 
 def stats_style(stats):
-    if stats.last_state.has_flag(Flag.FAULT):
+    if stats.last_job_state.has_flag(Flag.FAULT):
         return Theme.state_failure
     return ""
 
@@ -42,7 +42,7 @@ def job_state_style(job):
 
 
 def stats_state_style(stats):
-    return state_style(stats.last_state)
+    return state_style(stats.last_job_state)
 
 
 def state_style(state):
