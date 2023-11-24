@@ -27,7 +27,7 @@ def test_successful(observer: TestTransitionObserver):
     dir_name = util.unique_timestamp_hex()
     run_app('exec -mc mkdir ' + dir_name)
 
-    assert observer.exec_state(-1) == TerminationStatus.COMPLETED
+    assert observer.exec_states(-1) == TerminationStatus.COMPLETED
     os.rmdir(dir_name)  # Exc if not existed
 
 
@@ -36,7 +36,7 @@ def test_invalid_command(observer: TestTransitionObserver):
         run_app('exec -mc non_existing_command')
 
     assert e.value.code == 1
-    assert observer.exec_state(-1) == TerminationStatus.FAILED
+    assert observer.exec_states(-1) == TerminationStatus.FAILED
 
 
 def test_failed_command(observer: TestTransitionObserver):
@@ -44,7 +44,7 @@ def test_failed_command(observer: TestTransitionObserver):
         run_app('exec -mc ls --no-such-option')
 
     assert e.value.code > 0
-    assert observer.exec_state(-1) == TerminationStatus.FAILED
+    assert observer.exec_states(-1) == TerminationStatus.FAILED
 
 
 def test_invalid_command_print_to_stderr(capsys):
@@ -56,12 +56,12 @@ def test_invalid_command_print_to_stderr(capsys):
 
 def test_default_job_id(observer: TestTransitionObserver):
     run_app('exec -mc echo life is dukkha')
-    assert observer.last_job().job_id == 'echo life is dukkha'
+    assert observer.job_runs().job_id == 'echo life is dukkha'
 
 
 def test_explicit_job_id(observer: TestTransitionObserver):
     run_app('exec -mc --id this_is_an_id echo not an id')
-    assert observer.last_job().job_id == 'this_is_an_id'
+    assert observer.job_runs().job_id == 'this_is_an_id'
 
 
 def test_no_overlap(observer: TestTransitionObserver):

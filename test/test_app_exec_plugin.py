@@ -42,4 +42,4 @@ def test_invalid_plugin_ignored(observer: TestTransitionObserver):
     create_test_config({"plugins": ["test_plugin"]})  # Use testing plugin in package 'test_plugin'
     run_app('exec --id run_with_failing_plugin echo')
 
-    assert observer.exec_state(-1) == TerminationStatus.COMPLETED
+    assert observer.exec_states(-1) == TerminationStatus.COMPLETED
