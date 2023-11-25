@@ -1,7 +1,7 @@
 from tarotools.cli import printer
+from tarotools.theme import Theme
 
 from tarotools.taro.jobs import api, events
-from tarotools.taro.theme import Theme
 from tarotools.taro.util import socket
 
 

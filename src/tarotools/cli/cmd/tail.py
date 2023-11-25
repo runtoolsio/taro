@@ -1,10 +1,10 @@
 import sys
 from tarotools.cli import argsutil
 from tarotools.cli import printer, style, cliutil
+from tarotools.theme import Theme
 
 from tarotools.taro.jobs.criteria import compound_id_filter, JobRunAggregatedCriteria
 from tarotools.taro.listening import InstanceOutputReceiver, OutputEventObserver
-from tarotools.taro.theme import Theme
 from tarotools.taro.util import MatchingStrategy
 
 HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
