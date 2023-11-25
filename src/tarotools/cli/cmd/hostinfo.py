@@ -1,6 +1,3 @@
-import tarotools.taro.hostinfo
-
-
 def run(args):
     # Use `show` argument: taro hostinfo show
     host_info = taro.hostinfo.read_hostinfo()
