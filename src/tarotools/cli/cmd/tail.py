@@ -1,9 +1,9 @@
 import sys
-from tarotools.cli import argsutil
-from tarotools.cli import printer, style, cliutil
 from tarotools.theme import Theme
 
-from tarotools.taro.jobs.criteria import compound_id_filter, JobRunAggregatedCriteria
+from tarotools.cli import argsutil
+from tarotools.cli import printer, style, cliutil
+from tarotools.taro.criteria import compound_id_filter, JobRunAggregatedCriteria
 from tarotools.taro.listening import InstanceOutputReceiver, OutputEventObserver
 from tarotools.taro.util import MatchingStrategy
 

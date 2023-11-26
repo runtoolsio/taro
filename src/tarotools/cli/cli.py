@@ -6,7 +6,7 @@ from argparse import RawTextHelpFormatter
 from tarotools.cli import version
 from tarotools.cli.argsutil import TimestampFormat
 from tarotools.taro import util, TerminationStatus
-from tarotools.taro.jobs.persistence import SortCriteria
+from tarotools.taro.persistence import SortCriteria
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'

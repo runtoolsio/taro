@@ -3,11 +3,11 @@ import json
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.data import JsonLexer
-from tarotools.cli import printer, argsutil
-from tarotools.cli.view import instance as view_inst
 
 from tarotools import taro
-from tarotools.taro.jobs.instance import JobRuns
+from tarotools.cli import printer, argsutil
+from tarotools.cli.view import instance as view_inst
+from tarotools.taro.job import JobRuns
 from tarotools.taro.util import MatchingStrategy
 
 

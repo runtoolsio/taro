@@ -4,9 +4,9 @@ Command: exec
 """
 
 import pytest
+from tarotools.job import runner
 
 from taro_test_util import run_app
-from tarotools.taro.jobs import runner
 from tarotools.taro.test.observer import GenericObserver
 
 

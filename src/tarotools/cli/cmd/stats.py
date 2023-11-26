@@ -1,7 +1,7 @@
-from tarotools.taro.jobs import persistence
-from tarotools.taro.util import MatchingStrategy
 from tarotools.cli import argsutil, printer
 from tarotools.cli.view import stats
+from tarotools.taro import persistence
+from tarotools.taro.util import MatchingStrategy
 
 
 def run(args):

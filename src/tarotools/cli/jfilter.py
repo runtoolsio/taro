@@ -1,7 +1,7 @@
 import datetime
 import re
 
-from tarotools.taro.jobs.instance import InstancePhase
+from tarotools.taro.instance import InstancePhase
 
 
 class AllFilter:

@@ -1,11 +1,12 @@
 from enum import Enum
 from typing import List, Callable, Set
 
-from tarotools.taro import JobRunId
 from tarotools.taro.execution import Flag
-from tarotools.taro.jobs.criteria import JobRunIdCriterion, compound_id_filter, IntervalCriterion, TerminationCriterion, \
+
+from tarotools.taro import JobRunId
+from tarotools.taro.criteria import JobRunIdCriterion, compound_id_filter, IntervalCriterion, TerminationCriterion, \
     JobRunAggregatedCriteria
-from tarotools.taro.jobs.instance import LifecycleEvent
+from tarotools.taro.instance import LifecycleEvent
 from tarotools.taro.run import Outcome
 from tarotools.taro.util import DateTimeFormat
 

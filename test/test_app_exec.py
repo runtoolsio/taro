@@ -5,11 +5,11 @@ Command: exec
 import os
 
 import pytest
-from tarotools.cli.cmd.exec import ProgramExecutionError
+from tarotools.job import runner
 
 from taro_test_util import run_app, TestWarningObserver
+from tarotools.cli.cmd.exec import ProgramExecutionError
 from tarotools.taro import util, TerminationStatus
-from tarotools.taro.jobs import runner
 from tarotools.taro.test.observer import TestTransitionObserver
 from tarotools.taro.test.persistence import test_sqlite_cfg_vars, create_test_sqlite, remove_test_db
 from .taro_test_util import run_app_as_process_and_wait

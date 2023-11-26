@@ -1,7 +1,7 @@
 from tarotools.cli import cliutil
 
-from tarotools.taro.jobs import persistence
-from tarotools.taro.jobs.criteria import JobRunAggregatedCriteria
+from tarotools.taro import persistence
+from tarotools.taro.criteria import JobRunAggregatedCriteria
 from tarotools.taro.util import MatchingStrategy
 
 

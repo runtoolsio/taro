@@ -1,10 +1,9 @@
 import itertools
-from tarotools.cli import printer, argsutil
-from tarotools.cli.view.instance import JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE
 from tarotools.theme import Theme
 
-from tarotools.taro import client, JobRun
-from tarotools.taro.jobs import persistence
+from tarotools.cli import printer, argsutil
+from tarotools.cli.view.instance import JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE
+from tarotools.taro import client, JobRun, persistence
 from tarotools.taro.util import MatchingStrategy
 
 

@@ -1,8 +1,8 @@
-from tarotools.taro.jobs import persistence
-from tarotools.taro.jobs.persistence import SortCriteria
-from tarotools.taro.util import MatchingStrategy
 from tarotools.cli import printer, argsutil, cliutil
 from tarotools.cli.view import instance as view_inst
+from tarotools.taro import persistence
+from tarotools.taro.persistence import SortCriteria
+from tarotools.taro.util import MatchingStrategy
 
 
 def run(args):
