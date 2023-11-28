@@ -1,10 +1,10 @@
-import itertools
 import os
 import re
-import sys
 from collections import namedtuple
 from typing import List, Dict, Tuple
 
+import itertools
+import sys
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText
 from pypager.pager import Pager
@@ -38,7 +38,7 @@ def print_table(items, columns: List[Column], *, show_header: bool, pager: bool,
     if pager and sys.stdout.isatty():
         p = Pager()
         p.add_source(GeneratorSource(line + [('', '\n')] for line in gen))
-        p.run()
+        p.run(run_ctx)
     else:
         while True:
             print_styled(*next(gen))
