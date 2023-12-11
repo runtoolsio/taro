@@ -10,8 +10,7 @@ from tarotools.taro.execution import Flag
 from tarotools.cli.logutil import logger_name
 from tarotools.taro import job_instance, warning
 from tarotools.taro import util, cfg
-from tarotools.taro.instance import Warn
-from tarotools.taro.track import MutableTrackedTask, Fields, TaskOutputParser
+from tarotools.taro.track import MutableTrackedTask, Fields, TaskOutputParser, Warn
 from tarotools.taro.util import KVParser, iso_date_time_parser
 
 log = logging.getLogger(logger_name(__name__))
