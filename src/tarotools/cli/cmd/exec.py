@@ -45,7 +45,7 @@ def run(args):
 
     if output_parsers:
         task = MutableTrackedTask(max_events=1)
-        execution.tracking = task
+        execution.task_tracker = task
         tracker = TaskOutputParser(task, output_parsers)
         execution.add_callback_output(tracker)
 
