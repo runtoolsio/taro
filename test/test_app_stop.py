@@ -3,9 +3,9 @@ Tests :mod:`app` module
 Command: stop
 """
 import pytest
+from runtoolsio.taro.jobs.execution import TerminationStatus
 
 from taro_test_util import run_app
-from tarotools.taro.jobs.execution import TerminationStatus
 from test.taro_test_util import run_app_as_process_and_wait
 
 

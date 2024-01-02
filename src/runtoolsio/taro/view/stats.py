@@ -1,8 +1,10 @@
-from tarotools.cli.printer import Column
-from tarotools.cli.style import stats_style, job_id_stats_style, stats_state_style, stats_failed_style, stats_warn_style
-from tarotools.taro import util
-from tarotools.taro.jobs.execution import TerminationStatus
-from tarotools.taro.util import format_dt_local_tz
+from runtoolsio.taro.jobs.execution import TerminationStatus
+from runtoolsio.taro.util import format_dt_local_tz
+
+from runtoolsio.taro import util
+from runtoolsio.taro.printer import Column
+from runtoolsio.taro.style import stats_style, job_id_stats_style, stats_state_style, stats_failed_style, \
+    stats_warn_style
 
 JOB_ID = Column('JOB ID', 30, lambda s: s.job_id, job_id_stats_style)
 ENDED = Column('ENDED', 10, lambda s: str(s.count), stats_style)

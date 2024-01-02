@@ -2,10 +2,11 @@
 Tests :mod:`app` module
 Command: ps
 """
-import tarotools.cli.view.instance as view_inst
+from runtoolsio.taro.jobs.execution import TerminationStatus
+
+import runtoolsio.taro.view.instance as view_inst
+from runtoolsio.taro import printer
 from taro_test_util import run_app, run_app_as_process_and_wait
-from tarotools.cli import printer
-from tarotools.taro.jobs.execution import TerminationStatus
 
 
 def test_job_running(capsys):

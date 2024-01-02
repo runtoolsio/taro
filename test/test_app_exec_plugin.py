@@ -4,13 +4,13 @@ Command: exec
 """
 
 import pytest
+from runtoolsio.taro.jobs import runner
+from runtoolsio.taro.jobs.execution import TerminationStatus
+from runtoolsio.taro.test.observer import TestPhaseObserver
 
 import test_plugin
+from runtoolsio import taro
 from taro_test_util import run_app, remove_test_config, create_test_config
-from tarotools import taro
-from tarotools.taro.jobs import runner
-from tarotools.taro.jobs.execution import TerminationStatus
-from tarotools.taro.test.observer import TestPhaseObserver
 
 
 @pytest.fixture(autouse=True)

@@ -3,8 +3,9 @@ Tests :mod:`app` module
 Command: exec
 Description: Tests of execution related to the config file
 """
-from tarotools.taro import cfg
-from tarotools.taro.cfg import LogMode
+from runtoolsio.taro.cfg import LogMode
+
+from runtoolsio.taro import cfg
 from taro_test_util import run_app, create_test_config, remove_test_config
 
 

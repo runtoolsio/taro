@@ -3,12 +3,12 @@ import json
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.data import JsonLexer
+from runtoolsio.runcore.job import JobInstances
+from runtoolsio.taro.util import MatchingStrategy
 
-from tarotools import taro
-from tarotools.cli import printer, argsutil
-from tarotools.cli.view import instance as view_inst
-from tarotools.taro.jobs.instance import JobInstances
-from tarotools.taro.util import MatchingStrategy
+from runtoolsio import taro
+from runtoolsio.taro import printer, argsutil
+from runtoolsio.taro.view import instance as view_inst
 
 
 def run(args):

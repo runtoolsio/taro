@@ -1,16 +1,15 @@
-import itertools
 import os
 import re
-import sys
 from collections import namedtuple
 from typing import List, Dict, Tuple
 
+import itertools
+import sys
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText
 from pypager.pager import Pager
 from pypager.source import GeneratorSource
-
-from tarotools.taro.util import iterates
+from runtoolsio.taro.util import iterates
 
 Column = namedtuple('Column', 'name max_width value_fnc colour_fnc')
 

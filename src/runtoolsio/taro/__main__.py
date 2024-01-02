@@ -1,4 +1,4 @@
-from tarotools.cli import main_cli
+from runtoolsio.taro import main_cli
 
 if __name__ == '__main__':
     main_cli()

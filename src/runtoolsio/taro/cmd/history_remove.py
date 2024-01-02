@@ -1,13 +1,14 @@
-from tarotools.cli import cliutil
-from tarotools.taro.jobs import persistence
-from tarotools.taro.jobs.criteria import InstanceMatchCriteria
-from tarotools.taro.util import MatchingStrategy
+from runtoolsio.runcore import persistence
+from runtoolsio.runcore.criteria import JobRunAggregatedCriteria
+from runtoolsio.runcore.util import MatchingStrategy
+
+from runtoolsio.taro import cliutil
 
 
 def run(args):
     total = 0
     for instance in args.instances:
-        instance_match = InstanceMatchCriteria.parse_pattern(instance, MatchingStrategy.FN_MATCH)
+        instance_match = JobRunAggregatedCriteria.parse_pattern(instance, MatchingStrategy.FN_MATCH)
         count = persistence.count_instances(instance_match=instance_match)
         print(str(count) + " records found for " + instance)
         total += count
@@ -17,5 +18,5 @@ def run(args):
         return
 
     for instance in args.instances:
-        instance_match = InstanceMatchCriteria.parse_pattern(instance, MatchingStrategy.FN_MATCH)
+        instance_match = JobRunAggregatedCriteria.parse_pattern(instance, MatchingStrategy.FN_MATCH)
         persistence.remove_instances(instance_match)

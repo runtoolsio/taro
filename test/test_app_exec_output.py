@@ -4,10 +4,10 @@ Command: exec
 """
 
 import pytest
+from runtoolsio.taro.jobs import runner
+from runtoolsio.taro.test.observer import GenericObserver
 
 from taro_test_util import run_app
-from tarotools.taro.jobs import runner
-from tarotools.taro.test.observer import GenericObserver
 
 
 @pytest.fixture()

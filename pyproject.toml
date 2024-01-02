@@ -3,15 +3,15 @@ requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
 [project]
-name = "taro-cli"
+name = "runtoolsio-taro"
 authors = [{name = "Stan Svec", email = "dev@stansvec.com"}]
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dynamic = ["version", "description"]
 dependencies = [
-    "taro-core @ git+ssh://git@github.com/tarotools/taro-core",
+#    "runtoolsio-runcore @ git+ssh://git@github.com/runtoolsio/runcore",
     "pypager >=3.0.0",
 ]
 
@@ -19,7 +19,7 @@ dependencies = [
 test = ["pytest"]
 
 [tool.flit.module]
-name = "tarotools.cli"
+name = "runtoolsio.taro"
 
 [tool.pytest.ini_options]
 addopts = [
@@ -28,4 +28,4 @@ addopts = [
 pythonpath = "src"
 
 [project.urls]
-Home = "https://github.com/tarotools/taro-cli"
+Home = "https://github.com/runtoolsio/taro"

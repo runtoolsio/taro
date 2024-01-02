@@ -1,13 +1,14 @@
-from tarotools.cli import printer
-from tarotools.taro import socket
-from tarotools.taro.jobs import api, events
-from tarotools.taro.theme import Theme
+from runtoolsio.runcore.util import socket
+
+from runtoolsio.runjob import api, events
+from runtoolsio.taro import printer
+from runtoolsio.taro.theme import Theme
 
 
 def run(args):
     # TODO Disable socket log messages
     clean_socket(api.API_FILE_EXTENSION, "API")
-    clean_socket(events.PHASE_LISTENER_FILE_EXTENSION, "state listeners")
+    clean_socket(events.TRANSITION_LISTENER_FILE_EXTENSION, "transition listeners")
     clean_socket(events.OUTPUT_LISTENER_FILE_EXTENSION, "output listeners")
 
 

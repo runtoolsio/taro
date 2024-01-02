@@ -1,8 +1,9 @@
-from tarotools.cli import printer, style, argsutil, cliutil
-from tarotools.cli.printer import print_styled
-from tarotools.cli.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
-from tarotools.taro.client import APIClient
-from tarotools.taro.util import MatchingStrategy
+from runtoolsio.taro.client import APIClient
+from runtoolsio.taro.util import MatchingStrategy
+
+from runtoolsio.taro import printer, style, argsutil, cliutil
+from runtoolsio.taro.printer import print_styled
+from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 
 def run(args):

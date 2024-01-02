@@ -1,14 +1,18 @@
+"""
+This is a command line interface for the `runcore` library.
+"""
+
 import os
 
 import sys
+from runtoolsio.taro.err import TaroException, ConfigFileNotFoundError
 
-from tarotools import taro
-from tarotools.cli import cmd, cli
-from tarotools.cli.cli import ACTION_SETUP
-from tarotools.cli.printer import print_styled
-from tarotools.taro import util, paths, cfg
-from tarotools.taro.err import TaroException, ConfigFileNotFoundError
-from tarotools.taro.theme import Theme
+from runtoolsio import taro
+from runtoolsio.taro import cmd, cli
+from runtoolsio.taro import util, paths, cfg
+from runtoolsio.taro.cli import ACTION_SETUP
+from runtoolsio.taro.printer import print_styled
+from runtoolsio.taro.theme import Theme
 
 __version__ = "0.1.0"
 

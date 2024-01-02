@@ -7,11 +7,11 @@ from typing import Dict, Tuple
 import prompt_toolkit
 import tomli_w
 from prompt_toolkit.output import DummyOutput
+from runtoolsio.taro.jobs import program, runner
+from runtoolsio.taro.jobs.instance import WarnEventCtx
 
-from tarotools.cli import main
-from tarotools.taro import paths, JobInst, InstanceWarningObserver, cfg, InstancePhaseObserver
-from tarotools.taro.jobs import program, runner
-from tarotools.taro.jobs.instance import WarnEventCtx
+from runtoolsio.taro import main
+from runtoolsio.taro import paths, JobInst, InstanceWarningObserver, cfg, InstancePhaseObserver
 
 
 # TODO consider to move to taro.test to be accessible from dependencies

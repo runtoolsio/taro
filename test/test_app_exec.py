@@ -5,14 +5,14 @@ Command: exec
 import os
 
 import pytest
+from runtoolsio.taro.jobs import runner
+from runtoolsio.taro.jobs.execution import TerminationStatus
+from runtoolsio.taro.test.observer import TestPhaseObserver
+from runtoolsio.taro.test.persistence import test_sqlite_cfg_vars, create_test_sqlite, remove_test_db
 
+from runtoolsio.taro import util
+from runtoolsio.taro.cmd.exec import ProgramExecutionError
 from taro_test_util import run_app, TestWarningObserver
-from tarotools.cli.cmd.exec import ProgramExecutionError
-from tarotools.taro import util
-from tarotools.taro.jobs import runner
-from tarotools.taro.jobs.execution import TerminationStatus
-from tarotools.taro.test.observer import TestPhaseObserver
-from tarotools.taro.test.persistence import test_sqlite_cfg_vars, create_test_sqlite, remove_test_db
 from .taro_test_util import run_app_as_process_and_wait
 
 
