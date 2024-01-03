@@ -1,7 +1,6 @@
 import itertools
 from runtoolsio.runcore import client
 from runtoolsio.runcore import persistence
-from runtoolsio.runcore.job import JobInst
 from runtoolsio.runcore.util import MatchingStrategy
 
 from runtoolsio.taro import printer, argsutil
@@ -11,7 +10,7 @@ from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, ENDED, S
 
 def run(args):
     instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
-    instances, _ = client.read_job_instances(instance_match)
+    instances, _ = client.get_active_runs(instance_match)
 
     if not instances:
         instances = persistence.read_instances(instance_match)
@@ -21,7 +20,7 @@ def run(args):
         return
 
     columns = [JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE]
-    instance = sorted(instances, key=JobInst.created_at, reverse=True)[0]
+    instance = sorted(instances, key=lambda r: r.created_at, reverse=True)[0]
     footer_gen = itertools.chain(
         (('', ''), (Theme.warning, 'Error output:')),
         (['', err] for err in instance.error_output)

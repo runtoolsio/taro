@@ -1,5 +1,5 @@
 from runtoolsio.runcore import persistence
-from runtoolsio.taro.util import MatchingStrategy
+from runtoolsio.runcore.util import MatchingStrategy
 
 from runtoolsio.taro import argsutil, printer
 from runtoolsio.taro.view import stats

@@ -3,18 +3,18 @@ import json
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.data import JsonLexer
-from runtoolsio.runcore.job import JobInstances
-from runtoolsio.taro.util import MatchingStrategy
+from runtoolsio.runcore import client
+from runtoolsio.runcore.job import JobRuns
+from runtoolsio.runcore.util import MatchingStrategy
 
-from runtoolsio import taro
 from runtoolsio.taro import printer, argsutil
 from runtoolsio.taro.view import instance as view_inst
 
 
 def run(args):
     instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
-    job_instances = taro.client.read_instances(instance_match).responses
-    instances = JobInstances(job_instances)
+    job_instances = client.get_active_runs(instance_match).responses
+    instances = JobRuns(job_instances)
 
     if args.format == 'table': 
         columns = view_inst.DEFAULT_COLUMNS

@@ -5,11 +5,11 @@ This is a command line interface for the `runcore` library.
 import os
 
 import sys
-from runtoolsio.taro.err import TaroException, ConfigFileNotFoundError
+from runtoolsio.runcore import util, paths, cfg
+from runtoolsio.runcore.common import TaroException, ConfigFileNotFoundError
 
-from runtoolsio import taro
+from runtoolsio import runcore
 from runtoolsio.taro import cmd, cli
-from runtoolsio.taro import util, paths, cfg
 from runtoolsio.taro.cli import ACTION_SETUP
 from runtoolsio.taro.printer import print_styled
 from runtoolsio.taro.theme import Theme
@@ -80,11 +80,11 @@ def init_taro(args):
     config_vars = util.split_params(args.set)  # Config variables and override values
 
     if getattr(args, 'config', None):
-        taro.load_config(args.config, **config_vars)
+        runcore.load_config(args.config, **config_vars)
     elif getattr(args, 'def_config', False):
-        taro.load_defaults(**config_vars) # TODO
+        runcore.load_defaults(**config_vars) # TODO
     elif getattr(args, 'min_config', False):
-        taro.configure(**config_vars)
+        runcore.configure(**config_vars)
     else:
         # taro.load_config(**config_vars)
         pass
@@ -94,4 +94,4 @@ def run_command(args_ns):
     try:
         cmd.run(args_ns)
     finally:
-        taro.close()
+        runcore.close()

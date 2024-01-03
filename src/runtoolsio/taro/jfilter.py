@@ -1,7 +1,7 @@
 import datetime
 import re
 
-from runtoolsio.taro.jobs.instance import InstancePhase
+from runtoolsio.runcore.run import RunState
 
 
 class AllFilter:
@@ -27,22 +27,22 @@ def create_id_filter(text):
 
 
 def finished_filter(job_info):
-    return job_info.phase.in_phase(InstancePhase.TERMINAL)
+    return job_info.phase.in_phase(RunState.ENDED)
 
 
 def today_filter(job_info):
-    return job_info.lifecycle.changed_at(InstancePhase.CREATED).astimezone().date() == \
+    return job_info.lifecycle.changed_at(RunState.CREATED).astimezone().date() == \
            datetime.datetime.today().date()
 
 
 def yesterday_filter(job_info):
-    return job_info.lifecycle.changed_at(InstancePhase.CREATED).astimezone().date() == \
+    return job_info.lifecycle.changed_at(RunState.CREATED).astimezone().date() == \
            (datetime.datetime.today().date() - datetime.timedelta(days=1))
 
 
 def create_since_filter(since):
     def do_filter(job_info):
-        return job_info.lifecycle.changed_at(InstancePhase.CREATED).astimezone().replace(tzinfo=None) >= since
+        return job_info.lifecycle.changed_at(RunState.CREATED).astimezone().replace(tzinfo=None) >= since
 
     return do_filter
 

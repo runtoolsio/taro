@@ -3,8 +3,8 @@ import re
 import textwrap
 from argparse import RawTextHelpFormatter
 
-from runtoolsio.taro.jobs.execution import TerminationStatus
-from runtoolsio.taro.jobs.persistence import SortCriteria
+from runtoolsio.runcore.persistence import SortCriteria
+from runtoolsio.runcore.run import TerminationStatus
 
 from runtoolsio.taro import util
 from runtoolsio.taro import version
