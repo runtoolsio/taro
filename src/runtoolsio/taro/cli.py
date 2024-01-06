@@ -235,14 +235,13 @@ def init_filter_group(filter_group):
                               help='Show only successfully completed jobs')
     filter_group.add_argument('-N', '--nonsuccess', action='store_true', default=None,
                               help='Show only jobs without successful completion')
-    filter_group.add_argument('-F', '--failed', action='store_true', default=None, help='Show only failed jobs')
+    filter_group.add_argument('-F', '--fault', action='store_true', default=None, help='Show only failed jobs')
     filter_group.add_argument('-A', '--aborted', action='store_true', default=None,
                               help='Show only jobs which were aborted by user in any phase')
-    filter_group.add_argument('-I', '--incomplete', action='store_true', default=None,
-                              help='Show only jobs which were executed but did not finish successfully')
-    filter_group.add_argument('-D', '--discarded', action='store_true', default=None,
-                              help='Show only terminated jobs which never executed')
+    filter_group.add_argument('-D', '--rejected', action='store_true', default=None,
+                              help='Show only jobs rejected at some phase')
     filter_group.add_argument('-W', '--warning', action='store_true', default=None, help='Show only jobs with warnings')
+    # TODO ^^
 
 
 def _init_history_remove_parser(common, subparsers):
