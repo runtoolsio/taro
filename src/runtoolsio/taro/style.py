@@ -1,6 +1,6 @@
-from runtoolsio.runcore.util import DateTimeFormat
 from runtoolsio.taro.jobs.execution import Flag, Phase
 
+from runtoolsio.runcore.util import DateTimeFormat
 from runtoolsio.taro.theme import Theme
 
 
@@ -74,7 +74,7 @@ def stats_warn_style(stats):
 
 def job_instance_styled(job_instance):
     return [
-        (job_id_style(job_instance), job_instance.job_id),
+        (job_id_style(job_instance), job_instance.entity_id),
         (Theme.id_separator, "@"),
         (instance_style(job_instance), job_instance.instance_id)
     ]
@@ -82,15 +82,15 @@ def job_instance_styled(job_instance):
 
 def job_instance_id_styled(job_instance_id):
     return [
-        (Theme.job, job_instance_id.job_id),
+        (Theme.job, job_instance_id.entity_id),
         (Theme.id_separator, "@"),
         (Theme.instance, job_instance_id.instance_id)
     ]
 
 
-def job_status_line_styled(job_instance, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
+def job_status_line_styled(job_run, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
     return job_instance_id_status_line_styled(
-        job_instance.id, job_instance.phase, job_instance.lifecycle.last_changed_at, ts_prefix_format=ts_prefix_format)
+        job_run.metadata.id, job_run.run.lifecycle.run_state, job_run.run.lifecycle.last_changed_at, ts_prefix_format=ts_prefix_format)
 
 
 def job_instance_id_status_line_styled(

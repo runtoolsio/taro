@@ -7,14 +7,14 @@ from runtoolsio.taro.view import instance as view_inst
 
 
 def run(args):
-    instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
+    run_match = argsutil.run_matching_criteria(args, MatchingStrategy.PARTIAL)
     if args.slowest:
         args.last = True
         args.sort = SortCriteria.TIME.name
         args.asc = False
 
     sort = SortCriteria[args.sort.upper()]
-    jobs = persistence.read_instances(instance_match, sort, asc=args.asc, limit=args.lines, offset=args.offset, last=args.last)
+    runs = persistence.read_runs(run_match, sort, asc=args.asc, limit=args.lines, offset=args.offset, last=args.last)
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                view_inst.STATE, view_inst.WARNINGS, view_inst.RESULT]
@@ -22,6 +22,6 @@ def run(args):
         columns.insert(2, view_inst.PARAMETERS)
 
     try:
-        printer.print_table(jobs, columns, show_header=True, pager=not args.no_pager)
+        printer.print_table(runs, columns, show_header=True, pager=not args.no_pager)
     except BrokenPipeError:
         cliutil.handle_broken_pipe(exit_code=1)

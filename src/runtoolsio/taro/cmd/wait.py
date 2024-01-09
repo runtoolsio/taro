@@ -2,7 +2,9 @@
 TODO: Create option where the command will terminates if the specified state is found in the previous or current state
       of an existing instance.
 """
+from runtoolsio.runcore.job import JobRun
 from runtoolsio.runcore.listening import InstanceTransitionReceiver, InstanceTransitionObserver
+from runtoolsio.runcore.run import PhaseRun
 from runtoolsio.runcore.util import MatchingStrategy, DateTimeFormat
 
 from runtoolsio.taro import argsutil
@@ -25,7 +27,7 @@ class EventHandler(InstanceTransitionObserver):
         self.count = count
         self.ts_format = ts_format
 
-    def state_update(self, instance_meta, previous_phase, new_phase, changed):
+    def new_instance_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         try:
             printer.print_styled(*style.job_instance_id_status_line_styled(
                 instance_meta.id, new_phase, changed, ts_prefix_format=self.ts_format))

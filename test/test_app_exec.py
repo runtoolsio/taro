@@ -89,7 +89,7 @@ def test_job_persisted():
 
     try:
         run_app(f'exec --id persisted_job {test_sqlite_cfg_vars()} echo')
-        assert next(iter(create_test_sqlite().read_instances(asc=True))).job_id == 'persisted_job'
+        assert next(iter(create_test_sqlite().read_runs(asc=True))).job_id == 'persisted_job'
     finally:
         remove_test_db()
 

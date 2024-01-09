@@ -8,8 +8,8 @@ from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 def run(args):
     with APIClient() as client:
-        instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.FN_MATCH)
-        stop_jobs, _ = client.read_job_instances(instance_match)
+        run_match = argsutil.run_matching_criteria(args, MatchingStrategy.FN_MATCH)
+        stop_jobs, _ = client.get_active_runs(run_match)
 
         if not stop_jobs:
             print('No instances to stop: ' + " ".join(args.instances))
@@ -21,5 +21,5 @@ def run(args):
             if not cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True):
                 return
 
-        for stop_resp in client.stop_instances(instance_match).responses:
+        for stop_resp in client.stop_instances(run_match).responses:
             print_styled(*style.job_instance_id_styled(stop_resp.instance_metadata.id) + [('', ' -> '), ('', stop_resp.stop_result)])

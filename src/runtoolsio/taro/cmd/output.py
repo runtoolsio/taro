@@ -9,11 +9,11 @@ from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, ENDED, S
 
 
 def run(args):
-    instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
-    instances, _ = client.get_active_runs(instance_match)
+    run_match = argsutil.run_matching_criteria(args, MatchingStrategy.PARTIAL)
+    instances, _ = client.get_active_runs(run_match)
 
     if not instances:
-        instances = persistence.read_instances(instance_match)
+        instances = persistence.read_runs(run_match)
 
     if not instances:
         print('No matching instance found')
