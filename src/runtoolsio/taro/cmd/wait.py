@@ -30,7 +30,7 @@ class EventHandler(InstanceTransitionObserver):
     def new_instance_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         try:
             printer.print_styled(*style.job_instance_id_status_line_styled(
-                instance_meta.id, new_phase, changed, ts_prefix_format=self.ts_format))
+                job_run.metadata, new_phase, new_phase.started_at, ts_prefix_format=self.ts_format))
         except BrokenPipeError:
             self._receiver.close_and_wait()
             cliutil.handle_broken_pipe(exit_code=1)

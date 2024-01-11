@@ -80,23 +80,23 @@ def job_instance_styled(job_instance):
     ]
 
 
-def job_instance_id_styled(job_instance_id):
+def job_instance_id_styled(metadata):
     return [
-        (Theme.job, job_instance_id.entity_id),
+        (Theme.job, metadata.entity_id),
         (Theme.id_separator, "@"),
-        (Theme.instance, job_instance_id.instance_id)
+        (Theme.instance, metadata.run_id)
     ]
 
 
 def job_status_line_styled(job_run, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
     return job_instance_id_status_line_styled(
-        job_run.metadata.id, job_run.run.lifecycle.run_state, job_run.run.lifecycle.last_changed_at, ts_prefix_format=ts_prefix_format)
+        job_run.metadata, job_run.run.lifecycle.run_state, job_run.run.lifecycle.last_changed_at, ts_prefix_format=ts_prefix_format)
 
 
 def job_instance_id_status_line_styled(
-        job_instance_id, current_state, ts=None, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
+        metadata, current_state, ts=None, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
     style_text_tuples = \
-        job_instance_id_styled(job_instance_id) + [("", " -> "), (state_style(current_state), current_state.name)]
+        job_instance_id_styled(metadata) + [("", " -> "), (state_style(current_state), current_state.name)]
     ts_prefix_formatted = ts_prefix_format(ts) if ts else None
     if ts_prefix_formatted:
         return [("", ts_prefix_formatted + " ")] + style_text_tuples

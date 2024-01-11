@@ -1,6 +1,6 @@
 import sys
 from runtoolsio.runcore import client
-from runtoolsio.runcore.criteria import compound_id_filter, EntityRunAggregatedCriteria
+from runtoolsio.runcore.criteria import compound_metadata_filter, EntityRunAggregatedCriteria
 from runtoolsio.runcore.listening import InstanceOutputReceiver, InstanceOutputObserver
 from runtoolsio.runcore.run import PhaseMetadata, InstanceMetadata
 from runtoolsio.runcore.util import MatchingStrategy
@@ -13,15 +13,15 @@ HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
 
 
 def run(args):
-    id_criteria = argsutil.id_matching_criteria(args, MatchingStrategy.PARTIAL)
+    metadata_criteria = argsutil.metadata_match(args, MatchingStrategy.PARTIAL)
     if args.follow:
-        receiver = InstanceOutputReceiver(compound_id_filter(id_criteria))
+        receiver = InstanceOutputReceiver(compound_metadata_filter(metadata_criteria))
         receiver.add_observer_output(TailPrint(receiver))
         receiver.start()
         cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
         receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message
     else:
-        for tail_resp in client.fetch_output(EntityRunAggregatedCriteria(job_run_id_criteria=id_criteria)).responses:
+        for tail_resp in client.fetch_output(EntityRunAggregatedCriteria(metadata_criteria=metadata_criteria)).responses:
             printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(tail_resp.instance_metadata.id))
             for line, is_error in tail_resp.tail:
                 print(line, file=sys.stderr if is_error else sys.stdout)
@@ -37,9 +37,9 @@ class TailPrint(InstanceOutputObserver):
     def new_instance_output(self, instance_meta: InstanceMetadata, phase: PhaseMetadata, output: str, is_err: bool):
         # TODO It seems that this needs locking
         try:
-            if self.last_printed_job_instance != instance_meta.id:
-                printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(instance_meta.id))
-            self.last_printed_job_instance = instance_meta.id
+            if self.last_printed_job_instance != instance_meta:
+                printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(instance_meta))
+            self.last_printed_job_instance = instance_meta
             print(output, flush=True, file=sys.stderr if is_err else sys.stdout)
         except BrokenPipeError:
             self._receiver.close_and_wait()

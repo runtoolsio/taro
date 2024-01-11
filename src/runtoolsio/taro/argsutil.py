@@ -3,26 +3,26 @@ from typing import List, Set
 
 from runtoolsio.taro.jobs.instance import LifecycleEvent
 
-from runtoolsio.runcore.criteria import EntityRunIdCriterion, IntervalCriterion, TerminationCriterion, \
+from runtoolsio.runcore.criteria import InstanceMetadataCriterion, IntervalCriterion, TerminationCriterion, \
     EntityRunAggregatedCriteria
 from runtoolsio.runcore.run import Outcome
 from runtoolsio.runcore.util import DateTimeFormat
 
 
-def id_matching_criteria(args, def_id_match_strategy) -> List[EntityRunIdCriterion]:
+def metadata_match(args, def_id_match_strategy) -> List[InstanceMetadataCriterion]:
     """
     :param args: cli args
     :param def_id_match_strategy: id match strategy used when not overridden by args TODO
     :return: list of ID match criteria or empty when args has no criteria
     """
     if args.instances:
-        return [EntityRunIdCriterion.parse_pattern(i, def_id_match_strategy) for i in args.instances]
+        return [InstanceMetadataCriterion.parse_pattern(i, def_id_match_strategy) for i in args.instances]
     else:
         return []
 
 
 def id_match(args, def_id_match_strategy) -> EntityRunAggregatedCriteria:
-    return EntityRunAggregatedCriteria(job_run_id_criteria=id_matching_criteria(args, def_id_match_strategy))
+    return EntityRunAggregatedCriteria(metadata_criteria=metadata_match(args, def_id_match_strategy))
 
 
 def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED):
@@ -70,7 +70,7 @@ def termination_criteria(args):
 def run_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \
         EntityRunAggregatedCriteria:
     return EntityRunAggregatedCriteria(
-        job_run_id_criteria=id_matching_criteria(args, def_id_match_strategy),
+        metadata_criteria=metadata_match(args, def_id_match_strategy),
         interval_criteria=interval_criteria_converted_utc(args, interval_event),
         termination_criteria=termination_criteria(args))
 
