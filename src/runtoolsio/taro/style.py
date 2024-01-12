@@ -80,7 +80,7 @@ def job_instance_styled(job_instance):
     ]
 
 
-def job_instance_id_styled(metadata):
+def entity_instance_id_styled(metadata):
     return [
         (Theme.job, metadata.entity_id),
         (Theme.id_separator, "@"),
@@ -96,7 +96,7 @@ def job_status_line_styled(job_run, *, ts_prefix_format=DateTimeFormat.DATE_TIME
 def job_instance_id_status_line_styled(
         metadata, current_state, ts=None, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
     style_text_tuples = \
-        job_instance_id_styled(metadata) + [("", " -> "), (state_style(current_state), current_state.name)]
+        entity_instance_id_styled(metadata) + [("", " -> "), (state_style(current_state), current_state.name)]
     ts_prefix_formatted = ts_prefix_format(ts) if ts else None
     if ts_prefix_formatted:
         return [("", ts_prefix_formatted + " ")] + style_text_tuples
