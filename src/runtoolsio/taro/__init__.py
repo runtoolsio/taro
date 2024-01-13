@@ -5,10 +5,10 @@ This is a command line interface for the `runcore` library.
 import os
 
 import sys
+
+from runtoolsio import runjob
 from runtoolsio.runcore import util, paths, cfg
 from runtoolsio.runcore.common import TaroException, ConfigFileNotFoundError
-
-from runtoolsio import runcore
 from runtoolsio.taro import cmd, cli
 from runtoolsio.taro.cli import ACTION_SETUP
 from runtoolsio.taro.printer import print_styled
@@ -80,11 +80,11 @@ def init_taro(args):
     config_vars = util.split_params(args.set)  # Config variables and override values
 
     if getattr(args, 'config', None):
-        runcore.load_config(args.config, **config_vars)
+        runjob.load_config(args.config, **config_vars)
     elif getattr(args, 'def_config', False):
-        runcore.load_defaults(**config_vars) # TODO
+        runjob.load_defaults(**config_vars) # TODO
     elif getattr(args, 'min_config', False):
-        runcore.configure(**config_vars)
+        runjob.configure(**config_vars)
     else:
         # taro.load_config(**config_vars)
         pass
@@ -94,4 +94,4 @@ def run_command(args_ns):
     try:
         cmd.run(args_ns)
     finally:
-        runcore.close()
+        runjob.close()

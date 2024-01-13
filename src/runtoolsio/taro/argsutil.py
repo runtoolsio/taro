@@ -1,11 +1,9 @@
 from enum import Enum
 from typing import List, Set
 
-from runtoolsio.taro.jobs.instance import LifecycleEvent
-
 from runtoolsio.runcore.criteria import InstanceMetadataCriterion, LifecycleCriterion, TerminationCriterion, \
     EntityRunCriteria
-from runtoolsio.runcore.run import Outcome
+from runtoolsio.runcore.run import Outcome, RunState
 from runtoolsio.runcore.util import DateTimeFormat
 
 
@@ -25,28 +23,28 @@ def id_match(args, def_id_match_strategy) -> EntityRunCriteria:
     return EntityRunCriteria(metadata_criteria=metadata_match(args, def_id_match_strategy))
 
 
-def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED):
+def interval_criteria_converted_utc(args, interval_state=RunState.CREATED):
     criteria = []
 
     from_ = getattr(args, 'from', None)
     to = getattr(args, 'to', None)
     if from_ or to:
-        criteria.append(LifecycleCriterion.to_utc(interval_event, from_, to))
+        criteria.append(LifecycleCriterion.to_utc(interval_state, from_, to))
 
     if getattr(args, 'today', None):
-        criteria.append(LifecycleCriterion.today(interval_event, to_utc=True))
+        criteria.append(LifecycleCriterion.today(interval_state, to_utc=True))
 
     if getattr(args, 'yesterday', None):
-        criteria.append(LifecycleCriterion.yesterday(interval_event, to_utc=True))
+        criteria.append(LifecycleCriterion.yesterday(interval_state, to_utc=True))
 
     if getattr(args, 'week', None):
-        criteria.append(LifecycleCriterion.week_back(interval_event, to_utc=True))
+        criteria.append(LifecycleCriterion.week_back(interval_state, to_utc=True))
 
     if getattr(args, 'fortnight', None):
-        criteria.append(LifecycleCriterion.days_interval(interval_event, -14, to_utc=True))
+        criteria.append(LifecycleCriterion.days_interval(interval_state, -14, to_utc=True))
 
     if getattr(args, 'month', None):
-        criteria.append(LifecycleCriterion.days_interval(interval_event, -31, to_utc=True))
+        criteria.append(LifecycleCriterion.days_interval(interval_state, -31, to_utc=True))
 
     return criteria
 
@@ -67,11 +65,11 @@ def termination_criteria(args):
     return TerminationCriterion(outcomes)
 
 
-def run_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \
+def run_matching_criteria(args, def_id_match_strategy, interval_state=RunState.CREATED) -> \
         EntityRunCriteria:
     return EntityRunCriteria(
         metadata_criteria=metadata_match(args, def_id_match_strategy),
-        interval_criteria=interval_criteria_converted_utc(args, interval_event),
+        interval_criteria=interval_criteria_converted_utc(args, interval_state),
         termination_criteria=termination_criteria(args))
 
 

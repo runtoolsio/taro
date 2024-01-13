@@ -1,35 +1,34 @@
-from runtoolsio.taro.jobs.execution import Flag, Phase
-
+from runtoolsio.runcore.run import Outcome
 from runtoolsio.runcore.util import DateTimeFormat
 from runtoolsio.taro.theme import Theme
 
 
 def job_id_style(job):
-    if job.phase.has_flag(Flag.FAILURE):
+    if job.run.termination and job.run.termination.status.is_outcome(Outcome.FAULT):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
 
 def job_id_stats_style(job_stats):
-    if job_stats.last_state.has_flag(Flag.FAILURE):
+    if job_stats.termination_status.is_outcome(Outcome.FAULT):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
 
 def instance_style(job):
-    if job.phase.has_flag(Flag.FAILURE):
+    if job.run.termination and job.run.termination.status.is_outcome(Outcome.FAULT):
         return Theme.state_failure
     return Theme.instance
 
 
 def general_style(job):
-    if job.phase.has_flag(Flag.FAILURE):
+    if job.run.termination and job.run.termination.status.is_outcome(Outcome.FAULT):
         return Theme.state_failure
     return ""
 
 
 def stats_style(stats):
-    if stats.last_state.has_flag(Flag.FAILURE):
+    if stats.termination_status.is_outcome(Outcome.FAULT):
         return Theme.state_failure
     return ""
 
