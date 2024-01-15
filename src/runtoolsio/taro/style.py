@@ -1,4 +1,4 @@
-from runtoolsio.runcore.run import Outcome
+from runtoolsio.runcore.run import Outcome, RunState
 from runtoolsio.runcore.util import DateTimeFormat
 from runtoolsio.taro.theme import Theme
 
@@ -38,7 +38,7 @@ def warn_style(_):
 
 
 def job_state_style(job):
-    return state_style(job.phase)
+    return state_style(job.run.lifecycle.run_state)
 
 
 def stats_state_style(stats):
@@ -46,17 +46,12 @@ def stats_state_style(stats):
 
 
 def state_style(state):
-    if state.has_flag(Flag.BEFORE_EXECUTION):
-        return Theme.state_before_execution
-    if state.in_phase(Phase.EXECUTING):
+    if state == RunState.ENDED:
+        return ""
+    if state == RunState.EXECUTING:
         return Theme.state_executing
-    if state.has_flag(Flag.DISCARDED):
-        return Theme.state_discarded
-    if state.has_flag(Flag.FAILURE):
-        return Theme.state_failure
-    if state.has_flag(Flag.INCOMPLETE):
-        return Theme.state_incomplete
-    return ""
+
+    return Theme.state_before_execution
 
 
 def stats_failed_style(stats):

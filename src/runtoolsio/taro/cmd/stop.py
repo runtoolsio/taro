@@ -3,7 +3,7 @@ from runtoolsio.runcore.util import MatchingStrategy
 
 from runtoolsio.taro import printer, style, argsutil, cliutil
 from runtoolsio.taro.printer import print_styled
-from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
+from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE, RUN_ID
 
 
 def run(args):
@@ -17,9 +17,9 @@ def run(args):
 
         if not args.force:
             print('Instances to stop:')
-            printer.print_table(stop_jobs, [JOB_ID, INSTANCE_ID, CREATED, STATE], show_header=True, pager=False)
+            printer.print_table(stop_jobs, [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, STATE], show_header=True, pager=False)
             if not cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True):
                 return
 
         for stop_resp in client.stop_instances(run_match).responses:
-            print_styled(*style.entity_instance_id_styled(stop_resp.instance_metadata.id) + [('', ' -> '), ('', stop_resp.stop_result)])
+            print_styled(*style.entity_instance_id_styled(stop_resp.instance_metadata) + [('', ' -> '), ('', stop_resp.stop_result.name)])
