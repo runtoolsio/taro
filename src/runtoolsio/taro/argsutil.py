@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Set
+from typing import List
 
 from runtoolsio.runcore.criteria import InstanceMetadataCriterion, LifecycleCriterion, TerminationCriterion, \
     EntityRunCriteria
@@ -50,19 +50,19 @@ def interval_criteria_converted_utc(args, interval_state=RunState.CREATED):
 
 
 def termination_criteria(args):
-    outcomes: Set[Outcome] = set()
+    criteria = []
     if getattr(args, 'success', False):
-        outcomes.add(Outcome.SUCCESS)
+        criteria.append(TerminationCriterion(Outcome.SUCCESS))
     if getattr(args, 'nonsuccess', False):
-        outcomes.add(Outcome.NON_SUCCESS)
+        criteria.append(TerminationCriterion(Outcome.NON_SUCCESS))
     if getattr(args, 'aborted', False):
-        outcomes.add(Outcome.ABORTED)
+        criteria.append(TerminationCriterion(Outcome.ABORTED))
     if getattr(args, 'rejected', False):
-        outcomes.add(Outcome.REJECTED)
+        criteria.append(TerminationCriterion(Outcome.REJECTED))
     if getattr(args, 'fault', False):
-        outcomes.add(Outcome.FAULT)
+        criteria.append(TerminationCriterion(Outcome.FAULT))
 
-    return TerminationCriterion(outcomes)
+    return criteria
 
 
 def run_matching_criteria(args, def_id_match_strategy, interval_state=RunState.CREATED) -> \

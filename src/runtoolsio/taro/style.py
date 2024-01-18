@@ -41,6 +41,18 @@ def job_state_style(job):
     return state_style(job.run.lifecycle.run_state)
 
 
+def job_term_style(job):
+    is_outcome = job.run.termination.status.is_outcome
+    if is_outcome(Outcome.FAULT):
+        return Theme.state_failure
+    if is_outcome(Outcome.ABORTED):
+        return Theme.state_incomplete
+    if is_outcome(Outcome.REJECTED):
+        return Theme.state_discarded
+
+    return ""
+
+
 def stats_state_style(stats):
     return state_style(stats.last_state)
 

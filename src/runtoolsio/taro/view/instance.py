@@ -1,9 +1,10 @@
 from runtoolsio.runcore import util
-from runtoolsio.runcore.run import TerminationStatus
+from runtoolsio.runcore.run import TerminationStatus, RunState
 from runtoolsio.runcore.util import format_dt_local_tz
 
 from runtoolsio.taro.printer import Column
-from runtoolsio.taro.style import general_style, job_id_style, instance_style, warn_style, job_state_style
+from runtoolsio.taro.style import general_style, job_id_style, instance_style, warn_style, job_state_style, \
+    job_term_style
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
 RUN_ID = Column('RUN ID', 30, lambda j: j.run_id, job_id_style)
@@ -13,11 +14,12 @@ PARAMETERS = Column('PARAMETERS', 23,
 CREATED = Column('CREATED', 25, lambda j: format_dt_local_tz(j.run.lifecycle.created_at, include_ms=False), general_style)
 EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_local_tz(j.run.lifecycle.executed_at, include_ms=False, null='N/A'), general_style)
 ENDED = Column('ENDED', 25, lambda j: format_dt_local_tz(j.run.lifecycle.ended_at, include_ms=False, null='N/A'), general_style)
-EXEC_TIME = Column('TIME', 18, lambda j: util.format_timedelta(j.run.lifecycle.execution_time, show_ms=False, null='N/A'),
+EXEC_TIME = Column('TIME', 18, lambda j: util.format_timedelta(j.run.lifecycle.run_time_in_state(RunState.EXECUTING), show_ms=False, null='N/A'),
                    general_style)
-STATE = Column('RUN STATE', max(len(s.name) for s in TerminationStatus) + 2, lambda j: j.run.lifecycle.run_state.name, job_state_style)
-WARNINGS = Column('WARNINGS', 40, lambda j: ', '.join("{}: {}".format(k, v) for k, v in j.warnings.items()), warn_style)
-STATUS = Column('STATUS', 50, lambda j: j.status or '', general_style)
-RESULT = Column('RESULT', 50, lambda j: j.status or '', general_style)
+STATE = Column('RUN STATE', max(len(s.name) for s in RunState) + 2, lambda j: j.run.lifecycle.run_state.name, job_state_style)
+WARNINGS = Column('WARN', 40, lambda j: ', '.join("{}: {}".format(k, v) for k, v in j.task.warnings), warn_style)
+TERM_STATUS = Column('TERM STATUS', max(len(s.name) for s in TerminationStatus) + 2, lambda j: j.run.termination.status.name, job_term_style)
+STATUS = Column('STATUS', 50, lambda j: str(j.task) or '', general_style)
+RESULT = Column('RESULT', 50, lambda j: str(j.task) or '', general_style)
 
 DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, WARNINGS, STATUS]
