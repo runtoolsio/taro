@@ -4,7 +4,6 @@ from runtoolsio.runcore.job import InstanceTransitionObserver, JobRun
 from runtoolsio.runcore.listening import InstanceTransitionReceiver
 from runtoolsio.runcore.run import PhaseRun
 from runtoolsio.runcore.util import MatchingStrategy, DateTimeFormat
-
 from runtoolsio.taro import argsutil
 from runtoolsio.taro import printer, style, cliutil
 
@@ -26,7 +25,7 @@ class EventPrint(InstanceTransitionObserver):
     def new_instance_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         try:
             printer.print_styled(*style.job_instance_id_status_line_styled(
-                job_run.metadata.entity_id, new_phase, new_phase.started_at, ts_prefix_format=self.ts_format))
+                job_run.metadata, new_phase.run_state, new_phase.started_at, ts_prefix_format=self.ts_format))
             sys.stdout.flush()
         except BrokenPipeError:
             self._receiver.close_and_wait()
