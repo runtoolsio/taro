@@ -3,7 +3,7 @@ from typing import List
 
 from runtoolsio.runcore.criteria import InstanceMetadataCriterion, LifecycleCriterion, TerminationCriterion, \
     EntityRunCriteria
-from runtoolsio.runcore.run import Outcome, RunState
+from runtoolsio.runcore.run import Outcome
 from runtoolsio.runcore.util import DateTimeFormat
 
 
@@ -23,28 +23,28 @@ def id_match(args, def_id_match_strategy) -> EntityRunCriteria:
     return EntityRunCriteria(metadata_criteria=metadata_match(args, def_id_match_strategy))
 
 
-def interval_criteria_converted_utc(args, interval_state=RunState.CREATED):
+def interval_criteria_converted_utc(args):
     criteria = []
 
     from_ = getattr(args, 'from', None)
     to = getattr(args, 'to', None)
     if from_ or to:
-        criteria.append(LifecycleCriterion.to_utc(interval_state, from_, to))
+        criteria.append(LifecycleCriterion.to_utc(from_, to))
 
     if getattr(args, 'today', None):
-        criteria.append(LifecycleCriterion.today(interval_state, to_utc=True))
+        criteria.append(LifecycleCriterion.today(to_utc=True))
 
     if getattr(args, 'yesterday', None):
-        criteria.append(LifecycleCriterion.yesterday(interval_state, to_utc=True))
+        criteria.append(LifecycleCriterion.yesterday(to_utc=True))
 
     if getattr(args, 'week', None):
-        criteria.append(LifecycleCriterion.week_back(interval_state, to_utc=True))
+        criteria.append(LifecycleCriterion.week_back(to_utc=True))
 
     if getattr(args, 'fortnight', None):
-        criteria.append(LifecycleCriterion.days_interval(interval_state, -14, to_utc=True))
+        criteria.append(LifecycleCriterion.days_interval(-14, to_utc=True))
 
     if getattr(args, 'month', None):
-        criteria.append(LifecycleCriterion.days_interval(interval_state, -31, to_utc=True))
+        criteria.append(LifecycleCriterion.days_interval(-31, to_utc=True))
 
     return criteria
 
@@ -65,11 +65,11 @@ def termination_criteria(args):
     return criteria
 
 
-def run_matching_criteria(args, def_id_match_strategy, interval_state=RunState.CREATED) -> \
+def run_matching_criteria(args, def_id_match_strategy) -> \
         EntityRunCriteria:
     return EntityRunCriteria(
         metadata_criteria=metadata_match(args, def_id_match_strategy),
-        interval_criteria=interval_criteria_converted_utc(args, interval_state),
+        interval_criteria=interval_criteria_converted_utc(args),
         termination_criteria=termination_criteria(args))
 
 
