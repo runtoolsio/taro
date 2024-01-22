@@ -1,5 +1,6 @@
 import sys
 
+from runtoolsio.runcore.criteria import compound_metadata_filter
 from runtoolsio.runcore.job import InstanceTransitionObserver, JobRun
 from runtoolsio.runcore.listening import InstanceTransitionReceiver
 from runtoolsio.runcore.run import PhaseRun
@@ -9,7 +10,8 @@ from runtoolsio.taro import printer, style, cliutil
 
 
 def run(args):
-    receiver = InstanceTransitionReceiver(argsutil.id_match(args, MatchingStrategy.PARTIAL))
+    metadata_match = compound_metadata_filter(argsutil.metadata_criteria(args, MatchingStrategy.PARTIAL))
+    receiver = InstanceTransitionReceiver(metadata_match)
     receiver.add_observer_transition(EventPrint(receiver, args.timestamp.value))
     receiver.start()
     cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])

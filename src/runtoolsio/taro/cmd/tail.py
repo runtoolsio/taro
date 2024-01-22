@@ -13,7 +13,7 @@ HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
 
 
 def run(args):
-    metadata_criteria = argsutil.metadata_match(args, MatchingStrategy.PARTIAL)
+    metadata_criteria = argsutil.metadata_criteria(args, MatchingStrategy.PARTIAL)
     if args.follow:
         receiver = InstanceOutputReceiver(compound_metadata_filter(metadata_criteria))
         receiver.add_observer_output(TailPrint(receiver))

@@ -7,23 +7,19 @@ from runtoolsio.runcore.run import Outcome
 from runtoolsio.runcore.util import DateTimeFormat
 
 
-def metadata_match(args, def_id_match_strategy) -> List[InstanceMetadataCriterion]:
+def metadata_criteria(args, id_match_strategy) -> List[InstanceMetadataCriterion]:
     """
     :param args: cli args
-    :param def_id_match_strategy: id match strategy used when not overridden by args TODO
+    :param id_match_strategy: id match strategy used when not overridden by args TODO
     :return: list of ID match criteria or empty when args has no criteria
     """
     if args.instances:
-        return [InstanceMetadataCriterion.parse_pattern(i, def_id_match_strategy) for i in args.instances]
+        return [InstanceMetadataCriterion.parse_pattern(i, id_match_strategy) for i in args.instances]
     else:
         return []
 
 
-def id_match(args, def_id_match_strategy) -> EntityRunCriteria:
-    return EntityRunCriteria(metadata_criteria=metadata_match(args, def_id_match_strategy))
-
-
-def interval_criteria_converted_utc(args):
+def lifecycle_criteria(args):
     criteria = []
 
     from_ = getattr(args, 'from', None)
@@ -65,11 +61,11 @@ def termination_criteria(args):
     return criteria
 
 
-def run_criteria(args, def_id_match_strategy) -> \
+def run_criteria(args, id_match_strategy) -> \
         EntityRunCriteria:
     return EntityRunCriteria(
-        metadata_criteria=metadata_match(args, def_id_match_strategy),
-        interval_criteria=interval_criteria_converted_utc(args),
+        metadata_criteria=metadata_criteria(args, id_match_strategy),
+        interval_criteria=lifecycle_criteria(args),
         termination_criteria=termination_criteria(args))
 
 
