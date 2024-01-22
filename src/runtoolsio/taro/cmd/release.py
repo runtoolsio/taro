@@ -7,7 +7,7 @@ from runtoolsio.taro import argsutil
 
 
 def run(args):
-    instance_match = argsutil.run_matching_criteria(args, MatchingStrategy.FN_MATCH)
+    instance_match = argsutil.run_criteria(args, MatchingStrategy.FN_MATCH)
     if args.pending:
         responses, _ = client.release_pending_instances(args.pending, instance_match)
     elif args.queued:

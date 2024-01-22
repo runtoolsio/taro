@@ -1,15 +1,15 @@
 import itertools
+
 from runtoolsio.runcore import client
 from runtoolsio.runcore import persistence
 from runtoolsio.runcore.util import MatchingStrategy
-
 from runtoolsio.taro import printer, argsutil
 from runtoolsio.taro.theme import Theme
 from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE
 
 
 def run(args):
-    run_match = argsutil.run_matching_criteria(args, MatchingStrategy.PARTIAL)
+    run_match = argsutil.run_criteria(args, MatchingStrategy.PARTIAL)
     instances, _ = client.get_active_runs(run_match)
 
     if not instances:

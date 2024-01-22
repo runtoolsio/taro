@@ -65,7 +65,7 @@ def termination_criteria(args):
     return criteria
 
 
-def run_matching_criteria(args, def_id_match_strategy) -> \
+def run_criteria(args, def_id_match_strategy) -> \
         EntityRunCriteria:
     return EntityRunCriteria(
         metadata_criteria=metadata_match(args, def_id_match_strategy),

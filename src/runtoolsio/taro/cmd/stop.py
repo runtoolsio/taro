@@ -8,7 +8,7 @@ from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE, R
 
 def run(args):
     with APIClient() as client:
-        run_match = argsutil.run_matching_criteria(args, MatchingStrategy.FN_MATCH)
+        run_match = argsutil.run_criteria(args, MatchingStrategy.FN_MATCH)
         stop_jobs, _ = client.get_active_runs(run_match)
 
         if not stop_jobs:

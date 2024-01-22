@@ -3,16 +3,16 @@ import json
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.data import JsonLexer
+
 from runtoolsio.runcore import client
 from runtoolsio.runcore.job import JobRuns
 from runtoolsio.runcore.util import MatchingStrategy
-
 from runtoolsio.taro import printer, argsutil
 from runtoolsio.taro.view import instance as view_inst
 
 
 def run(args):
-    run_match = argsutil.run_matching_criteria(args, MatchingStrategy.PARTIAL)
+    run_match = argsutil.run_criteria(args, MatchingStrategy.PARTIAL)
     active_runs = client.get_active_runs(run_match).responses
     runs = JobRuns(active_runs)
 
