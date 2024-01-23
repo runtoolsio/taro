@@ -1,7 +1,7 @@
 import sys
 
 from runtoolsio.runcore import client
-from runtoolsio.runcore.criteria import compound_metadata_filter, EntityRunCriteria
+from runtoolsio.runcore.criteria import compound_instance_filter, EntityRunCriteria
 from runtoolsio.runcore.listening import InstanceOutputReceiver, InstanceOutputObserver
 from runtoolsio.runcore.run import PhaseMetadata, InstanceMetadata
 from runtoolsio.runcore.util import MatchingStrategy
@@ -13,9 +13,9 @@ HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
 
 
 def run(args):
-    metadata_criteria = argsutil.metadata_criteria(args, MatchingStrategy.PARTIAL)
+    metadata_criteria = argsutil.instance_criteria(args, MatchingStrategy.PARTIAL)
     if args.follow:
-        receiver = InstanceOutputReceiver(compound_metadata_filter(metadata_criteria))
+        receiver = InstanceOutputReceiver(compound_instance_filter(metadata_criteria))
         receiver.add_observer_output(TailPrint(receiver))
         receiver.start()
         cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])

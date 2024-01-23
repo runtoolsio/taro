@@ -2,7 +2,7 @@
 TODO: Create option where the command will terminates if the specified state is found in the previous or current state
       of an existing instance.
 """
-from runtoolsio.runcore.criteria import compound_metadata_filter
+from runtoolsio.runcore.criteria import compound_instance_filter
 from runtoolsio.runcore.job import JobRun
 from runtoolsio.runcore.listening import InstanceTransitionReceiver, InstanceTransitionObserver
 from runtoolsio.runcore.run import PhaseRun
@@ -13,8 +13,8 @@ from runtoolsio.taro import printer, style, cliutil
 
 
 def run(args):
-    metadata_match = compound_metadata_filter(argsutil.metadata_criteria(args, MatchingStrategy.PARTIAL))
-    receiver = InstanceTransitionReceiver(metadata_match, args.phases)
+    instance_match = compound_instance_filter(argsutil.instance_criteria(args, MatchingStrategy.PARTIAL))
+    receiver = InstanceTransitionReceiver(instance_match, args.phases)
     receiver.add_observer_transition(EventHandler(receiver, args.count, args.timestamp.value))
     receiver.start()
     cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
