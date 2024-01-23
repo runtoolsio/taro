@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 from runtoolsio.runcore.run import Outcome, RunState
 from runtoolsio.runcore.util import DateTimeFormat
 from runtoolsio.taro.theme import Theme
@@ -41,8 +43,8 @@ def job_state_style(job):
     return state_style(job.run.lifecycle.run_state)
 
 
-def job_term_style(job):
-    is_outcome = job.run.termination.status.is_outcome
+def run_term_style(entity_run) -> str:
+    is_outcome = entity_run.run.termination.status.is_outcome
     if is_outcome(Outcome.FAULT):
         return Theme.state_failure
     if is_outcome(Outcome.ABORTED):
@@ -94,17 +96,15 @@ def entity_instance_id_styled(metadata):
     ]
 
 
-def job_status_line_styled(job_run, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
-    return job_instance_id_status_line_styled(
-        job_run.metadata, job_run.run.lifecycle.run_state, job_run.run.lifecycle.last_changed_at, ts_prefix_format=ts_prefix_format)
-
-
-def job_instance_id_status_line_styled(
-        metadata, current_state, ts=None, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
-    style_text_tuples = \
-        entity_instance_id_styled(metadata) + [("", " -> "), (state_style(current_state), current_state.name)]
+def run_status_line(entity_run, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE) -> List[Tuple[str, str]]:
+    if entity_run.run.termination:
+        status = (run_term_style(entity_run), entity_run.run.termination.status.name)
+    else:
+        status = (state_style(entity_run.run.lifecycle.run_state), entity_run.run.lifecycle.run_state.name)
+    styled_texts = entity_instance_id_styled(entity_run.metadata) + [("", " -> "), status]
+    ts = entity_run.run.lifecycle.last_transition_at
     ts_prefix_formatted = ts_prefix_format(ts) if ts else None
     if ts_prefix_formatted:
-        return [("", ts_prefix_formatted + " ")] + style_text_tuples
+        return [("", ts_prefix_formatted + " ")] + styled_texts
     else:
-        return style_text_tuples
+        return styled_texts
