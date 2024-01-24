@@ -61,8 +61,7 @@ def termination_criteria(args):
     return criteria
 
 
-def run_criteria(args, id_match_strategy) -> \
-        EntityRunCriteria:
+def run_criteria(args, id_match_strategy) -> EntityRunCriteria:
     return EntityRunCriteria(
         metadata_criteria=instance_criteria(args, id_match_strategy),
         interval_criteria=lifecycle_criteria(args),

@@ -14,7 +14,7 @@ from runtoolsio.taro import printer, style, cliutil
 
 def run(args):
     instance_match = compound_instance_filter(argsutil.instance_criteria(args, MatchingStrategy.PARTIAL))
-    receiver = InstanceTransitionReceiver(instance_match, args.phases)
+    receiver = InstanceTransitionReceiver(instance_match, run_states=args.states)
     receiver.add_observer_transition(EventHandler(receiver, args.count, args.timestamp.value))
     receiver.start()
     cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])

@@ -4,8 +4,7 @@ import textwrap
 from argparse import RawTextHelpFormatter
 
 from runtoolsio.runcore.persistence import SortCriteria
-from runtoolsio.runcore.run import TerminationStatus
-
+from runtoolsio.runcore.run import TerminationStatus, RunState
 from runtoolsio.taro import util
 from runtoolsio.taro import version
 from runtoolsio.taro.argsutil import TimestampFormat
@@ -158,7 +157,7 @@ def _init_exec_parser(common, subparsers):
                              help='Mapping of output keys to common fields.')
     exec_parser.add_argument('-p', '--grok-pattern', type=str, action='append', default=[],
                              help='Grok pattern for extracting fields from output used for task tracking.')
-    exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=TerminationStatus.COMPLETED,
+    exec_parser.add_argument('--dry-run', type=_str2_term_status, nargs='?', const=TerminationStatus.COMPLETED,
                              help='The job will be started without actual execution of its command. The final state '
                                   'of the job is specified by the value of this option. Default state is COMPLETED. '
                                   'This option can be used for testing some of the functionality like custom plugins.')
@@ -320,7 +319,7 @@ def _init_wait_parser(common, subparsers):
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
     wait_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
     wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
-    wait_parser.add_argument('-s', '--states', type=_str2state, metavar='STATES', nargs=argparse.REMAINDER,
+    wait_parser.add_argument('-s', '--states', type=_str2_run_state, metavar='STATES', nargs=argparse.REMAINDER,
                              help='States for which the command waits')
     wait_parser.add_argument('-t', '--timestamp',
                              type=TimestampFormat.from_str,
@@ -417,12 +416,20 @@ def _init_hostinfo_parser(common, subparsers):
 
 
 # TODO Consider: change to str (like SortCriteria case) and remove this function
-def _str2state(v):
+def _str2_term_status(v):
     try:
         return TerminationStatus[v.upper()]
     except KeyError:
         raise argparse.ArgumentTypeError('Arguments can be only valid execution states: '
                                          + ", ".join([e.name.lower() for e in TerminationStatus]))
+
+
+def _str2_run_state(v):
+    try:
+        return RunState[v.upper()]
+    except KeyError:
+        raise argparse.ArgumentTypeError('Arguments can be only valid execution states: '
+                                         + ", ".join([e.name.lower() for e in RunState]))
 
 
 def _warn_time_type(arg_value):
