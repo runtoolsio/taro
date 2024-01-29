@@ -8,7 +8,7 @@ import sys
 
 from runtoolsio import runjob
 from runtoolsio.runcore import util, paths, cfg
-from runtoolsio.runcore.common import TaroException, ConfigFileNotFoundError
+from runtoolsio.runcore.common import RuntoolsException, ConfigFileNotFoundError
 from runtoolsio.taro import cmd, cli
 from runtoolsio.taro.cli import ACTION_SETUP
 from runtoolsio.taro.printer import print_styled
@@ -38,7 +38,7 @@ def main(args):
             print_styled(('', "Run `setup config create` command to create the configuration file "
                               "or see `-dc` and `-mc` options to execute without config file"), file=sys.stderr)
         exit(1)
-    except TaroException as e:
+    except RuntoolsException as e:
         print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)
         exit(1)
 

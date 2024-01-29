@@ -3,7 +3,7 @@ import re
 import textwrap
 from argparse import RawTextHelpFormatter
 
-from runtoolsio.runcore.persistence import SortCriteria
+from runtoolsio.runcore.db import SortCriteria
 from runtoolsio.runcore.run import TerminationStatus, RunState
 from runtoolsio.taro import util
 from runtoolsio.taro import version

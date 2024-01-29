@@ -1,5 +1,5 @@
 from runtoolsio.runcore import persistence
-from runtoolsio.runcore.persistence import SortCriteria
+from runtoolsio.runcore.db import SortCriteria
 from runtoolsio.runcore.util import MatchingStrategy
 
 from runtoolsio.taro import printer, argsutil, cliutil
