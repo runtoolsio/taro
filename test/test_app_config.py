@@ -4,7 +4,7 @@ Command: config
 """
 import pytest
 
-from runtoolsio.taro import paths
+from runtools.taro import paths
 from taro_test_util import run_app
 
 

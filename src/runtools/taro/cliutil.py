@@ -3,7 +3,8 @@ import signal
 from typing import Callable, Sequence
 
 import sys
-from runtoolsio.runcore.util import TRUE_OPTIONS
+
+from runtools.runcore.util import TRUE_OPTIONS
 
 
 def handle_broken_pipe(*, exit_code):

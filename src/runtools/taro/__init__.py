@@ -6,14 +6,14 @@ import os
 
 import sys
 
-from runtoolsio import runcore
-from runtoolsio.runcore import util, paths
-from runtoolsio.runcore.common import RuntoolsException, ConfigFileNotFoundError
-from runtoolsio.runcore.util import update_nested_dict
-from runtoolsio.taro import cmd, cli, config
-from runtoolsio.taro.cli import ACTION_SETUP
-from runtoolsio.taro.printer import print_styled
-from runtoolsio.taro.theme import Theme
+from runtools import runcore
+from runtools.runcore import util, paths
+from runtools.runcore.common import RuntoolsException, ConfigFileNotFoundError
+from runtools.runcore.util import update_nested_dict
+from runtools.taro import cmd, cli, config
+from runtools.taro.cli import ACTION_SETUP
+from runtools.taro.printer import print_styled
+from runtools.taro.theme import Theme
 
 __version__ = "0.1.0"
 

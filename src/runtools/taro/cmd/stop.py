@@ -1,9 +1,9 @@
-from runtoolsio.runcore.client import APIClient
-from runtoolsio.runcore.util import MatchingStrategy
+from runtools.runcore.client import APIClient
+from runtools.runcore.util import MatchingStrategy
 
-from runtoolsio.taro import printer, style, argsutil, cliutil
-from runtoolsio.taro.printer import print_styled
-from runtoolsio.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE, RUN_ID
+from runtools.taro import printer, style, argsutil, cliutil
+from runtools.taro.printer import print_styled
+from runtools.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE, RUN_ID
 
 
 def run(args):

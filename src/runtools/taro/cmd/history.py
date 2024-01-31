@@ -1,9 +1,9 @@
-from runtoolsio import runcore
-from runtoolsio.runcore.db import SortCriteria
-from runtoolsio.runcore.util import MatchingStrategy
+from runtools import runcore
+from runtools.runcore.db import SortCriteria
+from runtools.runcore.util import MatchingStrategy
 
-from runtoolsio.taro import printer, argsutil, cliutil
-from runtoolsio.taro.view import instance as view_inst
+from runtools.taro import printer, argsutil, cliutil
+from runtools.taro.view import instance as view_inst
 
 
 def run(args):

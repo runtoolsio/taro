@@ -4,8 +4,8 @@ Command: exec
 """
 
 import pytest
-from runtoolsio.taro.jobs import runner
-from runtoolsio.taro.test.observer import GenericObserver
+from runtools.taro.jobs import runner
+from runtools.taro.test.observer import GenericObserver
 
 from taro_test_util import run_app
 

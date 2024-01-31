@@ -1,8 +1,8 @@
-from runtoolsio import runcore
-from runtoolsio.runcore.util import MatchingStrategy
+from runtools import runcore
+from runtools.runcore.util import MatchingStrategy
 
-from runtoolsio.taro import argsutil, printer
-from runtoolsio.taro.view import stats
+from runtools.taro import argsutil, printer
+from runtools.taro.view import stats
 
 
 def run(args):

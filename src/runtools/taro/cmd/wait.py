@@ -2,14 +2,14 @@
 TODO: Create option where the command will terminates if the specified state is found in the previous or current state
       of an existing instance.
 """
-from runtoolsio.runcore.criteria import compound_instance_filter
-from runtoolsio.runcore.job import JobRun
-from runtoolsio.runcore.listening import InstanceTransitionReceiver, InstanceTransitionObserver
-from runtoolsio.runcore.run import PhaseRun
-from runtoolsio.runcore.util import MatchingStrategy, DateTimeFormat
+from runtools.runcore.criteria import compound_instance_filter
+from runtools.runcore.job import JobRun
+from runtools.runcore.listening import InstanceTransitionReceiver, InstanceTransitionObserver
+from runtools.runcore.run import PhaseRun
+from runtools.runcore.util import MatchingStrategy, DateTimeFormat
 
-from runtoolsio.taro import argsutil
-from runtoolsio.taro import printer, style, cliutil
+from runtools.taro import argsutil
+from runtools.taro import printer, style, cliutil
 
 
 def run(args):

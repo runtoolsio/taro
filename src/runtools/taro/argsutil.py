@@ -1,10 +1,10 @@
 from enum import Enum
 from typing import List
 
-from runtoolsio.runcore.criteria import InstanceMetadataCriterion, LifecycleCriterion, TerminationCriterion, \
+from runtools.runcore.criteria import InstanceMetadataCriterion, LifecycleCriterion, TerminationCriterion, \
     EntityRunCriteria
-from runtoolsio.runcore.run import Outcome
-from runtoolsio.runcore.util import DateTimeFormat
+from runtools.runcore.run import Outcome
+from runtools.runcore.util import DateTimeFormat
 
 
 def instance_criteria(args, id_match_strategy) -> List[InstanceMetadataCriterion]:

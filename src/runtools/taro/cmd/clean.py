@@ -1,8 +1,8 @@
-from runtoolsio.runcore.util import socket
+from runtools.runcore.util import socket
 
-from runtoolsio.runjob import api, events
-from runtoolsio.taro import printer
-from runtoolsio.taro.theme import Theme
+from runtools.runjob import api, events
+from runtools.taro import printer
+from runtools.taro.theme import Theme
 
 
 def run(args):

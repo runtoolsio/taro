@@ -2,10 +2,10 @@
 Tests :mod:`app` module
 Command: ps
 """
-from runtoolsio.taro.jobs.execution import TerminationStatus
+from runtools.taro.jobs.execution import TerminationStatus
 
-import runtoolsio.taro.view.instance as view_inst
-from runtoolsio.taro import printer
+import runtools.taro.view.instance as view_inst
+from runtools.taro import printer
 from taro_test_util import run_app, run_app_as_process_and_wait
 
 

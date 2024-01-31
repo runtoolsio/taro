@@ -1,9 +1,9 @@
-from runtoolsio.runcore import util
-from runtoolsio.runcore.run import TerminationStatus
-from runtoolsio.runcore.util import format_dt_local_tz
+from runtools.runcore import util
+from runtools.runcore.run import TerminationStatus
+from runtools.runcore.util import format_dt_local_tz
 
-from runtoolsio.taro.printer import Column
-from runtoolsio.taro.style import stats_style, job_id_stats_style, stats_state_style, stats_failed_style, \
+from runtools.taro.printer import Column
+from runtools.taro.style import stats_style, job_id_stats_style, stats_state_style, stats_failed_style, \
     stats_warn_style
 
 JOB_ID = Column('JOB ID', 30, lambda s: s.job_id, job_id_stats_style)

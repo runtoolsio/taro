@@ -1,8 +1,8 @@
-from runtoolsio.runcore import persistence
-from runtoolsio.runcore.criteria import EntityRunCriteria
-from runtoolsio.runcore.util import MatchingStrategy
+from runtools.runcore import persistence
+from runtools.runcore.criteria import EntityRunCriteria
+from runtools.runcore.util import MatchingStrategy
 
-from runtoolsio.taro import cliutil
+from runtools.taro import cliutil
 
 
 def run(args):

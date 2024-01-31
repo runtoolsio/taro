@@ -1,7 +1,7 @@
 import datetime
 import re
 
-from runtoolsio.runcore.run import RunState
+from runtools.runcore.run import RunState
 
 
 class AllFilter:
