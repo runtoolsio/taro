@@ -9,7 +9,8 @@ import sys
 from runtoolsio import runcore
 from runtoolsio.runcore import util, paths
 from runtoolsio.runcore.common import RuntoolsException, ConfigFileNotFoundError
-from runtoolsio.taro import cmd, cli
+from runtoolsio.runcore.util import update_nested_dict
+from runtoolsio.taro import cmd, cli, config
 from runtoolsio.taro.cli import ACTION_SETUP
 from runtoolsio.taro.printer import print_styled
 from runtoolsio.taro.theme import Theme
@@ -70,22 +71,21 @@ def configure_runcore(args):
 
     :param args: CLI arguments
     """
-    configuration = {}
-
     if getattr(args, 'config', None):
         config_path = util.expand_user(args.config)
         try:
-            configuration.update(util.read_toml_file_flatten(config_path))
+            configuration = util.read_toml_file(config_path)
         except FileNotFoundError:
             raise ConfigFileNotFoundError(args.config)
     else:
         try:
             config_path = paths.lookup_file_in_config_path(CONFIG_FILE)
-            configuration.update(util.read_toml_file_flatten(config_path))
+            configuration = util.read_toml_file(config_path)
         except ConfigFileNotFoundError:
-            pass  # Ignore
+            # Use default package config if none config is found in config search path
+            configuration = util.read_toml_file(paths.package_config_path(config.__package__, CONFIG_FILE))
 
-    configuration.update(util.split_params(args.set))  # Config variables and override values
+    update_nested_dict(configuration, util.split_params(args.set))  # Override config by `set` args
     runcore.configure(**configuration)
 
 
