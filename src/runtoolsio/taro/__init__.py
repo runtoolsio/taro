@@ -6,8 +6,8 @@ import os
 
 import sys
 
-from runtoolsio import runjob
-from runtoolsio.runcore import util, paths, cfg
+from runtoolsio import runcore
+from runtoolsio.runcore import util, paths
 from runtoolsio.runcore.common import RuntoolsException, ConfigFileNotFoundError
 from runtoolsio.taro import cmd, cli
 from runtoolsio.taro.cli import ACTION_SETUP
@@ -15,6 +15,8 @@ from runtoolsio.taro.printer import print_styled
 from runtoolsio.taro.theme import Theme
 
 __version__ = "0.1.0"
+
+CONFIG_FILE = 'taro.toml'
 
 
 def main_cli():
@@ -32,13 +34,7 @@ def main(args):
     """
     try:
         run_app(args)
-    except ConfigFileNotFoundError as e:
-        print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)
-        if e.search_path:
-            print_styled(('', "Run `setup config create` command to create the configuration file "
-                              "or see `-dc` and `-mc` options to execute without config file"), file=sys.stderr)
-        exit(1)
-    except RuntoolsException as e:
+    except (ConfigFileNotFoundError, RuntoolsException) as e:
         print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)
         exit(1)
 
@@ -52,46 +48,46 @@ def run_app(args):
     if args_parsed.action == ACTION_SETUP:
         run_setup(args_parsed)
     else:
-        init_taro(args_parsed)
+        configure_runcore(args_parsed)
         run_command(args_parsed)
 
 
 def run_setup(args):
     if args.setup_action == cli.ACTION_SETUP_CONFIG:
-        run_config(args)
+        run_setup_config(args)
 
 
-def run_config(args):
+def run_setup_config(args):
     if args.config_action == cli.ACTION_CONFIG_PRINT:
-        if getattr(args, 'def_config', False):
-            util.print_file(paths.default_config_file_path())
-        else:
-            util.print_file(paths.lookup_config_file())
+        util.print_file(paths.lookup_config_file())
     elif args.config_action == cli.ACTION_CONFIG_CREATE:
-        created_file = cfg.copy_default_config_to_search_path(args.overwrite)
+        created_file = paths.copy_default_config_to_search_path(CONFIG_FILE, args.overwrite)
         print_styled((Theme.success, "Created "), ('', str(created_file)))
 
 
-def init_taro(args):
+def configure_runcore(args):
     """Initialize taro according to provided CLI arguments
 
     :param args: CLI arguments
     """
-    config_vars = util.split_params(args.set)  # Config variables and override values
+    configuration = {}
 
     if getattr(args, 'config', None):
-        runjob.load_config(args.config, **config_vars)
-    elif getattr(args, 'def_config', False):
-        runjob.load_defaults(**config_vars) # TODO
-    elif getattr(args, 'min_config', False):
-        runjob.configure(**config_vars)
+        config_path = util.expand_user(args.config)
+        try:
+            configuration.update(util.read_toml_file_flatten(config_path))
+        except FileNotFoundError:
+            raise ConfigFileNotFoundError(args.config)
     else:
-        # taro.load_config(**config_vars)
-        pass
+        try:
+            config_path = paths.lookup_file_in_config_path(CONFIG_FILE)
+            configuration.update(util.read_toml_file_flatten(config_path))
+        except ConfigFileNotFoundError:
+            pass  # Ignore
+
+    configuration.update(util.split_params(args.set))  # Config variables and override values
+    runcore.configure(**configuration)
 
 
 def run_command(args_ns):
-    try:
-        cmd.run(args_ns)
-    finally:
-        runjob.close()
+    cmd.run(args_ns)
