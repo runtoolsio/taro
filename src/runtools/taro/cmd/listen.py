@@ -1,8 +1,8 @@
 import sys
 
+from runtools import runcore
 from runtools.runcore.criteria import compound_instance_filter
 from runtools.runcore.job import InstanceTransitionObserver, JobRun
-from runtools.runcore.listening import InstanceTransitionReceiver
 from runtools.runcore.run import PhaseRun
 from runtools.runcore.util import MatchingStrategy, DateTimeFormat
 from runtools.taro import argsutil
@@ -11,7 +11,7 @@ from runtools.taro import printer, style, cliutil
 
 def run(args):
     instance_match = compound_instance_filter(argsutil.instance_criteria(args, MatchingStrategy.PARTIAL))
-    receiver = InstanceTransitionReceiver(instance_match)
+    receiver = runcore.instance_transition_receiver(instance_match)
     receiver.add_observer_transition(TransitionPrint(receiver, args.timestamp.value))
     receiver.start()
     cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
