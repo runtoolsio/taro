@@ -7,6 +7,7 @@ from runtools.taro.theme import Theme
 
 def run(args):
     # TODO Disable socket log messages
+    # TODO Move to `runcli`
     clean_socket(api.API_FILE_EXTENSION, "API")
     clean_socket(events.TRANSITION_LISTENER_FILE_EXTENSION, "transition listeners")
     clean_socket(events.OUTPUT_LISTENER_FILE_EXTENSION, "output listeners")

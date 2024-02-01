@@ -24,33 +24,33 @@ def main_cli():
     main(None)
 
 
-def main(args):
+def main(args_raw):
     """Taro CLI app main function.
 
     Note: Configuration is set up before execution of all commands although not all commands require it.
           This practice increases safety (in regards with future extensions) and consistency.
           Performance impact is expected to be negligible.
 
-    :param args: CLI arguments
+    :param args_raw: CLI arguments
     """
     try:
-        run_app(args)
-    except (ConfigFileNotFoundError, RuntoolsException) as e:
+        run_app(args_raw)
+    except RuntoolsException as e:
         print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)
         exit(1)
 
 
-def run_app(args):
-    args_parsed = cli.parse_args(args)
+def run_app(args_raw):
+    args = cli.parse_args(args_raw)
 
-    if args_parsed.no_color or 'NO_COLOR' in os.environ or 'TARO_NO_COLOR' in os.environ:
+    if args.no_color or 'NO_COLOR' in os.environ or 'TARO_NO_COLOR' in os.environ:
         os.environ['PROMPT_TOOLKIT_COLOR_DEPTH'] = 'DEPTH_1_BIT'
 
-    if args_parsed.action == ACTION_SETUP:
-        run_setup(args_parsed)
+    if args.action == ACTION_SETUP:
+        run_setup(args)
     else:
-        configure_runcore(args_parsed)
-        run_command(args_parsed)
+        configure_runcore(args)
+        run_command(args)
 
 
 def run_setup(args):
