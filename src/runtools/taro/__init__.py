@@ -60,30 +60,49 @@ def run_setup(args):
 
 def run_setup_config(args):
     if args.config_action == cli.ACTION_CONFIG_PRINT:
-        util.print_file(paths.lookup_config_file())
+        util.print_file(resolve_config_path(args))
     elif args.config_action == cli.ACTION_CONFIG_CREATE:
         created_file = paths.copy_default_config_to_search_path(CONFIG_FILE, args.overwrite)
         print_styled((Theme.success, "Created "), ('', str(created_file)))
 
 
-def configure_runcore(args):
-    """Initialize taro according to provided CLI arguments
+def resolve_config_path(args):
+    """
+    Resolve path to the configuration file based on provided CLI arguments.
 
-    :param args: CLI arguments
+    Args:
+        args (Namespace): Parsed CLI arguments
+
+    Returns:
+        str: The configuration file path.
     """
     if getattr(args, 'config', None):
-        config_path = util.expand_user(args.config)
-        try:
-            configuration = util.read_toml_file(config_path)
-        except FileNotFoundError:
-            raise ConfigFileNotFoundError(args.config)
-    else:
-        try:
-            config_path = paths.lookup_file_in_config_path(CONFIG_FILE)
-            configuration = util.read_toml_file(config_path)
-        except ConfigFileNotFoundError:
-            # Use default package config if none config is found in config search path
-            configuration = util.read_toml_file(paths.package_config_path(config.__package__, CONFIG_FILE))
+        return util.expand_user(args.config)
+
+    if getattr(args, 'def_config', False):
+        return default_config_path()
+
+    try:
+        return paths.lookup_file_in_config_path(CONFIG_FILE)
+    except ConfigFileNotFoundError:
+        # Use default package config if none config is found in config search path
+        return default_config_path()
+
+
+def default_config_path():
+    return paths.package_config_path(config.__package__, CONFIG_FILE)
+
+
+def configure_runcore(args):
+    """Configure `runcore` facade by resolved configuration
+
+    Args:
+        args (Namespace): Parsed CLI arguments
+    """
+    try:
+        configuration = util.read_toml_file(resolve_config_path(args))
+    except FileNotFoundError:
+        raise ConfigFileNotFoundError(args.config)  # Could happen only when the path is explicitly specified
 
     update_nested_dict(configuration, util.split_params(args.set))  # Override config by `set` args
     runcore.configure(**configuration)
