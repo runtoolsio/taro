@@ -1,6 +1,6 @@
 import sys
 
-from runtools.runcore import client
+from runtools import runcore
 from runtools.runcore.criteria import compound_instance_filter, EntityRunCriteria
 from runtools.runcore.listening import InstanceOutputReceiver, InstanceOutputObserver
 from runtools.runcore.run import PhaseMetadata, InstanceMetadata
@@ -22,7 +22,7 @@ def run(args):
         receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message
     else:
         # TODO output parameters (mode, size, ..)
-        for output_resp in client.fetch_output(EntityRunCriteria(metadata_criteria=metadata_criteria)).responses:
+        for output_resp in runcore.fetch_output(EntityRunCriteria(metadata_criteria=metadata_criteria)).responses:
             printer.print_styled(HIGHLIGHT_TOKEN, *style.entity_run_id(output_resp.instance_metadata))
             for line, is_err in output_resp.output:
                 print(line, file=sys.stderr if is_err else sys.stdout)

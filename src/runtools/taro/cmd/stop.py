@@ -1,4 +1,4 @@
-from runtools.runcore.client import APIClient
+from runtools import runcore
 from runtools.runcore.util import MatchingStrategy
 
 from runtools.taro import printer, style, argsutil, cliutil
@@ -7,7 +7,7 @@ from runtools.taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE, RUN
 
 
 def run(args):
-    with APIClient() as client:
+    with runcore.api_client() as client:
         run_match = argsutil.run_criteria(args, MatchingStrategy.FN_MATCH)
         instances_to_stop, _ = client.get_active_runs(run_match)
 

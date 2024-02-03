@@ -4,7 +4,7 @@ from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.data import JsonLexer
 
-from runtools.runcore import client
+import runtools.runcore
 from runtools.runcore.job import JobRuns
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, argsutil
@@ -13,7 +13,7 @@ from runtools.taro.view import instance as view_inst
 
 def run(args):
     run_match = argsutil.run_criteria(args, MatchingStrategy.PARTIAL)
-    active_runs = client.get_active_runs(run_match).responses
+    active_runs = runtools.runcore.get_active_runs(run_match).responses
     runs = JobRuns(active_runs)
 
     if args.format == 'table': 

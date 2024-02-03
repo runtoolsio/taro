@@ -14,8 +14,7 @@ def run(args):
         args.asc = False
 
     sort = SortCriteria[args.sort.upper()]
-    with runcore.persistence() as db:
-        runs = db.read_job_runs(run_match, sort, asc=args.asc, limit=args.lines, offset=args.offset, last=args.last)
+    runs = runcore.read_job_runs(run_match, sort, asc=args.asc, limit=args.lines, offset=args.offset, last=args.last)
 
     columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                view_inst.TERM_STATUS, view_inst.RESULT, view_inst.WARNINGS]
