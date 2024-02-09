@@ -62,7 +62,7 @@ def run_setup_config(args):
     if args.config_action == cli.ACTION_CONFIG_PRINT:
         util.print_file(resolve_config_path(args))
     elif args.config_action == cli.ACTION_CONFIG_CREATE:
-        created_file = paths.copy_default_config_to_search_path(CONFIG_FILE, args.overwrite)
+        created_file = paths.copy_config_to_search_path(config.__package__, CONFIG_FILE, args.overwrite)
         print_styled((Theme.success, "Created "), ('', str(created_file)))
 
 
