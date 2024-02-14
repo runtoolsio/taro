@@ -20,7 +20,6 @@ ACTION_WAIT = 'wait'
 ACTION_STOP = 'stop'
 ACTION_TAIL = 'tail'
 ACTION_OUTPUT = 'output'
-ACTION_CLEAN = 'clean'
 ACTION_SETUP = 'setup'
 ACTION_SETUP_CONFIG = 'config'
 ACTION_CONFIG_PRINT = 'print'
@@ -48,7 +47,6 @@ def parse_args(args):
     _init_stop_parser(common, subparser)
     _init_tail_parser(common, subparser)
     _init_output_parser(common, subparser)
-    _init_clean_parser(common, subparser)
     _init_setup_parser(subparser)
     _init_hostinfo_parser(common, subparser)
 
@@ -366,18 +364,6 @@ def _init_output_parser(common, subparsers):
     output_parser = subparsers.add_parser(ACTION_OUTPUT, parents=[common], description='TBS', add_help=False)
     output_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
     output_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
-
-
-def _init_clean_parser(common, subparsers):
-    """
-    Creates parsers for `clean` command
-
-    :param common: parent parser
-    :param subparsers: sub-parser for clean parser to be added to
-    """
-
-    clean_parser = subparsers.add_parser(ACTION_CLEAN, parents=[common], description='Performs cleanups',
-                                         add_help=False)
 
 
 def _init_setup_parser(subparser):
