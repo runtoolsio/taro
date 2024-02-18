@@ -17,9 +17,9 @@ ENDED = Column('ENDED', 25, lambda j: format_dt_local_tz(j.run.lifecycle.ended_a
 EXEC_TIME = Column('TIME', 18, lambda j: util.format_timedelta(j.run.lifecycle.run_time_in_state(RunState.EXECUTING), show_ms=False, null='N/A'),
                    general_style)
 STATE = Column('RUN STATE', max(len(s.name) for s in RunState) + 2, lambda j: j.run.lifecycle.run_state.name, job_state_style)
-WARNINGS = Column('WARN', 40, lambda j: ', '.join("{}: {}".format(k, v) for k, v in j.task.warnings), warn_style)
 TERM_STATUS = Column('TERM STATUS', max(len(s.name) for s in TerminationStatus) + 2, lambda j: j.run.termination.status.name, run_term_style)
 STATUS = Column('STATUS', 50, lambda j: str(j.task) or '', general_style)
 RESULT = Column('RESULT', 50, lambda j: str(j.task) or '', general_style)
+WARNINGS = Column('WARN', 40, lambda j: ', '.join(("{}: {}".format(k, v) for k, v in j.task.warnings) if j.task else []), warn_style)
 
-DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, WARNINGS, STATUS]
+DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, STATUS, WARNINGS]
