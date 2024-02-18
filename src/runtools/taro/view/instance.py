@@ -22,4 +22,4 @@ STATUS = Column('STATUS', 50, lambda j: str(j.task) or '', general_style)
 RESULT = Column('RESULT', 50, lambda j: str(j.task) or '', general_style)
 WARNINGS = Column('WARN', 40, lambda j: ', '.join(("{}: {}".format(k, v) for k, v in j.task.warnings) if j.task else []), warn_style)
 
-DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, STATUS, WARNINGS]
+DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, WARNINGS, STATUS]
