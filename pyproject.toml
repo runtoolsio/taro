@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 dynamic = ["version", "description"]
 dependencies = [
 #    "runtools-runcore @ git+ssh://git@github.com/runtools/runcore",
-    "pypager >=3.0.0",
+    "pypager >=3.0.1",
 ]
 
 [project.optional-dependencies]

@@ -20,6 +20,6 @@ STATE = Column('RUN STATE', max(len(s.name) for s in RunState) + 2, lambda j: j.
 TERM_STATUS = Column('TERM STATUS', max(len(s.name) for s in TerminationStatus) + 2, lambda j: j.run.termination.status.name, run_term_style)
 STATUS = Column('STATUS', 50, lambda j: str(j.task) or '', general_style)
 RESULT = Column('RESULT', 50, lambda j: str(j.task) or '', general_style)
-WARNINGS = Column('WARN', 40, lambda j: ', '.join(w.text for w in j.task.warnings) if j.task else [], warn_style)
+WARNINGS = Column('WARN', 40, lambda j: ', '.join(dict.fromkeys((w.text for w in j.task.warnings) if j.task else []).keys()), warn_style)
 
 DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, WARNINGS, STATUS]
