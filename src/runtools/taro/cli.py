@@ -14,7 +14,7 @@ ACTION_PS = 'ps'
 ACTION_HISTORY = 'history'
 ACTION_HISTORY_REMOVE = 'history-remove'
 ACTION_STATS = 'stats'
-ACTION_RELEASE = 'release'
+ACTION_APPROVE = 'approve'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
 ACTION_STOP = 'stop'
@@ -41,7 +41,7 @@ def parse_args(args):
     _init_history_parser(common, subparser)
     _init_history_remove_parser(common, subparser)
     _init_stats_parser(common, subparser)
-    _init_release_parser(common, subparser)
+    _init_approve_parser(common, subparser)
     _init_listen_parser(common, subparser)
     _init_wait_parser(common, subparser)
     _init_stop_parser(common, subparser)
@@ -270,22 +270,20 @@ def _init_stats_parser(common, subparsers):
     init_filter_group(filter_group)
 
 
-def _init_release_parser(common, subparsers):
+def _init_approve_parser(common, subparsers):
     """
-    Creates parsers for `release` command
+    Creates parsers for `approve` command
 
     :param common: parent parser
-    :param subparsers: sub-parser for release parser to be added to
+    :param subparsers: sub-parser for `approve` parser to be added to
     """
 
-    release_parser = subparsers.add_parser(ACTION_RELEASE, parents=[common],
-                                           description='Release jobs in pending state', add_help=False)
-    opt_group = release_parser.add_mutually_exclusive_group(required=True)
-    opt_group.add_argument('-p', '--pending', type=str, default=None, metavar='GROUP',
-                           help='Release instances from pending group')
-    opt_group.add_argument('-q', '--queued', action='store_true', default=None,
-                           help='Release queued instances specified by the instance argument')
-    release_parser.add_argument('instances', nargs='*', default=None, type=str, help='Instance matching pattern')
+    approve_parser = subparsers.add_parser(ACTION_APPROVE, parents=[common],
+                                           description='Approve jobs waiting in pending state', add_help=False)
+    # opt_group = approve_parser.add_mutually_exclusive_group(required=True)
+    # opt_group.add_argument('-p', '--pending', type=str, default=None, metavar='GROUP',
+    #                        help='Release instances from pending group')
+    approve_parser.add_argument('instances', nargs='+', type=str, help='Instance matching pattern')
 
 
 def _init_listen_parser(common, subparsers):
@@ -433,9 +431,9 @@ def _build_warn_validation_regex(*warn_regex):
 def _check_conditions(parser, parsed):
     _check_config_option_conflicts(parser, parsed)
 
-    if parsed.action == ACTION_RELEASE:
-        if parsed.queued and not parsed.instances:
-            parser.error('Missing argument `instance`: Min one arg must be specified when releasing queued instances')
+    # if parsed.action == ACTION_APPROVE:
+    #     if parsed.queued and not parsed.instances:
+    #         parser.error('Missing argument `instance`: Min one arg must be specified when releasing queued instances')
 
 
 def _check_config_option_conflicts(parser, parsed):
