@@ -3,7 +3,7 @@ import sys
 from runtools import runcore
 from runtools.runcore.criteria import compound_instance_filter, EntityRunCriteria
 from runtools.runcore.listening import InstanceOutputReceiver, InstanceOutputObserver
-from runtools.runcore.run import PhaseMetadata, InstanceMetadata
+from runtools.runcore.run import PhaseInfo, InstanceMetadata
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import argsutil
 from runtools.taro import printer, style, cliutil
@@ -35,7 +35,7 @@ class TailPrint(InstanceOutputObserver):
         self._receiver = receiver
         self.last_printed_job_instance = None
 
-    def new_instance_output(self, instance_meta: InstanceMetadata, phase: PhaseMetadata, output: str, is_err: bool):
+    def new_instance_output(self, instance_meta: InstanceMetadata, phase: PhaseInfo, output: str, is_err: bool):
         # TODO It seems that this needs locking
         try:
             if self.last_printed_job_instance != instance_meta:
