@@ -23,7 +23,7 @@ def run(args):
     else:
         # TODO output parameters (mode, size, ..)
         for output_resp in runcore.fetch_output(EntityRunCriteria(metadata_criteria=metadata_criteria)).responses:
-            printer.print_styled(HIGHLIGHT_TOKEN, *style.entity_run_id(output_resp.instance_metadata))
+            printer.print_styled(HIGHLIGHT_TOKEN, *style.job_run_id(output_resp.instance_metadata))
             for line, is_err in output_resp.output:
                 print(line, file=sys.stderr if is_err else sys.stdout)
             sys.stdout.flush()
@@ -39,7 +39,7 @@ class TailPrint(InstanceOutputObserver):
         # TODO It seems that this needs locking
         try:
             if self.last_printed_job_instance != instance_meta:
-                printer.print_styled(HIGHLIGHT_TOKEN, *style.entity_run_id(instance_meta))
+                printer.print_styled(HIGHLIGHT_TOKEN, *style.job_run_id(instance_meta))
             self.last_printed_job_instance = instance_meta
             print(output, flush=True, file=sys.stderr if is_err else sys.stdout)
         except BrokenPipeError:

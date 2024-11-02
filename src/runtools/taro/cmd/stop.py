@@ -22,4 +22,4 @@ def run(args):
                 return
 
         for stop_resp in client.stop_instances(run_match).responses:
-            print_styled(*style.entity_run_id(stop_resp.instance_metadata) + [('', ' -> '), ('', stop_resp.stop_result.name)])
+            print_styled(*style.job_run_id(stop_resp.instance_metadata) + [('', ' -> '), ('', stop_resp.stop_result.name)])
