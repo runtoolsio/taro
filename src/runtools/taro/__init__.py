@@ -8,7 +8,7 @@ import sys
 
 from runtools import runcore
 from runtools.runcore import util, paths
-from runtools.runcore.common import RuntoolsException
+from runtools.runcore.err import RuntoolsException
 from runtools.runcore.paths import ConfigFileNotFoundError
 from runtools.runcore.util import update_nested_dict
 from runtools.taro import cmd, cli, config
