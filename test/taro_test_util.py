@@ -16,19 +16,6 @@ from runtools.taro import paths, JobInst, InstanceWarningObserver, cfg, Instance
 
 # TODO consider to move to taro.test to be accessible from dependencies
 
-def reset_config():
-    # TODO Automate
-    cfg.log_mode = cfg.DEF_LOG
-    cfg.log_stdout_level = cfg.DEF_LOG_STDOUT_LEVEL
-    cfg.log_file_level = cfg.DEF_LOG_FILE_LEVEL
-    cfg.log_file_path = cfg.DEF_LOG_FILE_PATH
-
-    cfg.persistence_enabled = cfg.DEF_PERSISTENCE_ENABLED
-    cfg.persistence_type = cfg.DEF_PERSISTENCE_TYPE
-    cfg.persistence_database = cfg.DEF_PERSISTENCE_DATABASE
-
-    cfg.plugins_load = cfg.DEF_PLUGINS_LOAD
-
 
 def run_app_as_process(command, daemon=False, shell=False, state_queue=None) -> Process:
     p = Process(target=run_app, args=(command, shell, state_queue), daemon=daemon)

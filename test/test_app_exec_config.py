@@ -21,6 +21,6 @@ def test_config_file_loaded():
     create_test_config({"log": {"mode": True}})
     try:
         run_app('exec echo alles gute')
-        assert cfg.log_mode == LogMode.ENABLED
+        assert cfg.log_enabled == LogMode.ENABLED
     finally:
         remove_test_config()
