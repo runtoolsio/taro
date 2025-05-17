@@ -1,4 +1,4 @@
-from runtools.taro.main import app
+from runtools.taro.main import run
 
 if __name__ == "__main__":
-    app()
+    run()

@@ -1,6 +1,9 @@
 from typing import List, Optional
 
 import typer
+from runtools.runcore import env
+from runtools.runcore.env import EnvironmentNotFoundError, DEFAULT_LOCAL_ENVIRONMENT
+from runtools.runcore.paths import ConfigFileNotFoundError
 
 app = typer.Typer(invoke_without_command=True)
 
@@ -17,11 +20,15 @@ def env_option() -> Optional[str]:
 def approve(
         phase: str = typer.Option(..., "--phase", "-p", help="Phase ID"),
         instance_ids: List[str] = typer.Argument(..., help="One or more instance IDs"),
-        env: Optional[str] = env_option(),
+        env_id: Optional[str] = env_option(),
 ):
-    typer.echo(f"Phase: {phase}")
-    typer.echo(f"Instance IDs: {', '.join(instance_ids)}")
-    print(env)
+    try:
+        env_config, _ = env.load_env_config(env_id)
+    except (ConfigFileNotFoundError, EnvironmentNotFoundError) as e:
+        if env_id == DEFAULT_LOCAL_ENVIRONMENT:
+            env_config, _ = env.load_env_default_config(env_id)
+        else:
+            raise e
 
 # def run(args):
 #     run_match = argsutil.run_criteria(args, MatchingStrategy.FN_MATCH)
