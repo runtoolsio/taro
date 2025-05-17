@@ -8,13 +8,13 @@ authors = [{name = "Stan Svec", email = "dev@stansvec.com"}]
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = ["version", "description"]
 dependencies = [
-#    "runtools-runcore @ git+ssh://git@github.com/runtools/runcore",
-    "tomli>=2.0.1",
-    "tomli-w>=1.0.0",
+    #    "runtools-runcore @ git+ssh://git@github.com/runtoolsio/runcore",
     "pypager >=3.0.1",
+    "typer>=0.15.4",
+    "rich>=14.0.0",
 ]
 
 [project.optional-dependencies]
@@ -24,9 +24,6 @@ test = ["pytest"]
 name = "runtools.taro"
 
 [tool.pytest.ini_options]
-addopts = [
-    "--import-mode=importlib",
-]
 pythonpath = "src"
 
 [project.urls]

@@ -1,20 +1,20 @@
 from enum import Enum
 from typing import List
 
-from runtools.runcore.criteria import InstanceMetadataCriterion, LifecycleCriterion, TerminationCriterion, \
-    EntityRunCriteria
+from runtools.runcore.criteria import MetadataCriterion, LifecycleCriterion, TerminationCriterion, \
+    JobRunCriteria
 from runtools.runcore.run import Outcome
 from runtools.runcore.util import DateTimeFormat
 
 
-def instance_criteria(args, id_match_strategy) -> List[InstanceMetadataCriterion]:
+def instance_criteria(args, id_match_strategy) -> List[MetadataCriterion]:
     """
     :param args: cli args
     :param id_match_strategy: id match strategy used when not overridden by args TODO
     :return: list of ID match criteria or empty when args has no criteria
     """
     if args.instances:
-        return [InstanceMetadataCriterion.parse_pattern(i, id_match_strategy) for i in args.instances]
+        return [MetadataCriterion.parse_pattern(i, id_match_strategy) for i in args.instances]
     else:
         return []
 
@@ -61,8 +61,8 @@ def termination_criteria(args):
     return criteria
 
 
-def run_criteria(args, id_match_strategy) -> EntityRunCriteria:
-    return EntityRunCriteria(
+def run_criteria(args, id_match_strategy) -> JobRunCriteria:
+    return JobRunCriteria(
         metadata_criteria=instance_criteria(args, id_match_strategy),
         interval_criteria=lifecycle_criteria(args),
         termination_criteria=termination_criteria(args))

@@ -1,4 +1,4 @@
-from runtools.taro import main_cli
+from runtools.taro.main import app
 
-if __name__ == '__main__':
-    main_cli()
+if __name__ == "__main__":
+    app()
