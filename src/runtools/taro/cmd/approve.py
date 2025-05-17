@@ -1,6 +1,7 @@
-from typing import List, Optional, Tuple
+from typing import List
 
 import typer
+
 from runtools.runcore import env
 from runtools.runcore.env import EnvironmentNotFoundError, DEFAULT_LOCAL_ENVIRONMENT
 from runtools.runcore.paths import ConfigFileNotFoundError
@@ -28,10 +29,10 @@ def resolve_env_configs(*env_ids):
     """
     env_ids_set = set(env_ids)
     if DEFAULT_LOCAL_ENVIRONMENT in env_ids_set and len(env_ids_set) > 1:
-        explicit_local = True
+        mixed_explicit_local = True
         env_ids_set.remove(DEFAULT_LOCAL_ENVIRONMENT)
     else:
-        explicit_local = False
+        mixed_explicit_local = False
 
     try:
         env_configs = env.get_env_configs(*env_ids_set)
@@ -40,7 +41,7 @@ def resolve_env_configs(*env_ids):
             raise e
         return {DEFAULT_LOCAL_ENVIRONMENT: env.get_default_config(DEFAULT_LOCAL_ENVIRONMENT)}
 
-    if (not env_ids_set or explicit_local) and DEFAULT_LOCAL_ENVIRONMENT not in env_configs:
+    if (not env_ids_set or mixed_explicit_local) and DEFAULT_LOCAL_ENVIRONMENT not in env_configs:
         env_configs[DEFAULT_LOCAL_ENVIRONMENT] = env.get_default_config(DEFAULT_LOCAL_ENVIRONMENT)
 
     return env_configs
