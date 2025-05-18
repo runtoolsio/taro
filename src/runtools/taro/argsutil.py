@@ -14,7 +14,7 @@ def instance_criteria(args, id_match_strategy) -> List[MetadataCriterion]:
     :return: list of ID match criteria or empty when args has no criteria
     """
     if args.instances:
-        return [MetadataCriterion.parse_pattern(i, id_match_strategy) for i in args.instances]
+        return [MetadataCriterion.parse(i, id_match_strategy) for i in args.instances]
     else:
         return []
 

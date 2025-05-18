@@ -1,9 +1,10 @@
-from typing import List
+from typing import List, Dict
 
 import typer
 
-from runtools.runcore import env
-from runtools.runcore.env import EnvironmentNotFoundError, DEFAULT_LOCAL_ENVIRONMENT
+from runtools.runcore import env, connector
+from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.env import EnvironmentNotFoundError, DEFAULT_LOCAL_ENVIRONMENT, EnvironmentConfigUnion
 from runtools.runcore.paths import ConfigFileNotFoundError
 
 app = typer.Typer(invoke_without_command=True)
@@ -13,7 +14,7 @@ def env_option():
     return typer.Option((), "--env", "-e", help="Target environment")
 
 
-def resolve_env_configs(*env_ids):
+def resolve_env_configs(*env_ids) -> Dict[str, EnvironmentConfigUnion]:
     """
     Load environment configurations with fallback for missing local environment.
 
@@ -49,20 +50,16 @@ def resolve_env_configs(*env_ids):
 
 @app.callback()
 def approve(
+        instance_patterns: List[str] = typer.Argument(..., help="One or more instance ID (metadata) patterns",
+                                                      metavar="PATTERN"),
         phase: str = typer.Option(..., "--phase", "-p", help="Phase ID"),
-        instance_ids: List[str] = typer.Argument(..., help="One or more instance IDs"),
         env_ids: List[str] = env_option(),
 ):
-    env_configs = resolve_env_configs(*env_ids)
-
-    print(env_configs)
-
-# def run(args):
-#     run_match = argsutil.run_criteria(args, MatchingStrategy.FN_MATCH)
-#     responses, _ = runcore.approve_pending_instances(run_match, None)
-#     approved = [r.instance_metadata for r in responses if r.release_result == ApprovalResult.APPROVED]
-#
-#     if approved:
-#         print('Approved:')
-#         for a in approved:
-#             print(a)
+    for env_config in resolve_env_configs(*env_ids).values():
+        with connector.create(env_config) as conn:
+            instances = conn.get_instances(JobRunCriteria.parse_all(instance_patterns))
+            for instance in instances:
+                pc = instance.find_phase_control_by_id(phase)
+                if not pc:
+                    continue
+                pc.approve()
