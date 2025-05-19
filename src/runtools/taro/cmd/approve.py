@@ -57,9 +57,7 @@ def approve(
         env_ids: List[str] = env_option(),
 ):
     env_configs = resolve_env_configs(*env_ids)
-    env_list = ", ".join(f"[cyan]{name}[/]" for name in env_configs)
-    console.print(f"🔌 Processing environments: {env_list}")
-
+    approved = False
     for env_name, env_conf in env_configs.items():
         with connector.create(env_conf) as conn:
             instances = conn.get_instances(JobRunCriteria.parse_all(instance_patterns))
@@ -67,5 +65,11 @@ def approve(
                 pc = inst.find_phase_control_by_id(phase)
                 if pc:
                     pc.approve()
-                    console.print(f":white_check_mark: Approved [bold]{inst.id}[/] in [green]{env_name}[/]")
-    console.print("\n[bold green]Done![/]")
+                    approved = True
+                    console.print(f"[green]\uf00c[/] Approved [bold]{inst.id}[/] ({env_name})")
+
+    env_list = ", ".join(f"[cyan]{name}[/]" for name in env_configs)
+    if approved:
+        console.print(f"\nDone in {env_list}")
+    else:
+        console.print(f"\n[yellow]\uf071[/] No instances approved in {env_list}")
