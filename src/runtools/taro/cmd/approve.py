@@ -66,9 +66,9 @@ def approve(
                 if pc:
                     pc.approve()
                     approved = True
-                    console.print(f"[green]\uf00c[/] Approved [bold]{inst.id}[/] ({env_name})")
+                    console.print(f"[green]\uf00c[/] Approved [bold]{inst.id}[/] ([cyan]{env_name}[/])")
 
-    env_list = ", ".join(f"[cyan]{name}[/]" for name in env_configs)
+    env_list = ", ".join(f"[cyan]{name}[/]" for name in sorted(env_configs))
     if approved:
         console.print(f"\nDone in {env_list}")
     else:
