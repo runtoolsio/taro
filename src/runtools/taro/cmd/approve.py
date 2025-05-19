@@ -1,6 +1,7 @@
 from typing import List, Dict
 
 import typer
+from rich.console import Console
 
 from runtools.runcore import env, connector
 from runtools.runcore.criteria import JobRunCriteria
@@ -8,7 +9,7 @@ from runtools.runcore.env import EnvironmentNotFoundError, DEFAULT_LOCAL_ENVIRON
 from runtools.runcore.paths import ConfigFileNotFoundError
 
 app = typer.Typer(invoke_without_command=True)
-
+console = Console()
 
 def env_option():
     return typer.Option((), "--env", "-e", help="Target environment")
@@ -55,11 +56,16 @@ def approve(
         phase: str = typer.Option(..., "--phase", "-p", help="Phase ID"),
         env_ids: List[str] = env_option(),
 ):
-    for env_config in resolve_env_configs(*env_ids).values():
-        with connector.create(env_config) as conn:
+    env_configs = resolve_env_configs(*env_ids)
+    env_list = ", ".join(f"[cyan]{name}[/]" for name in env_configs)
+    console.print(f"🔌 Processing environments: {env_list}")
+
+    for env_name, env_conf in env_configs.items():
+        with connector.create(env_conf) as conn:
             instances = conn.get_instances(JobRunCriteria.parse_all(instance_patterns))
-            for instance in instances:
-                pc = instance.find_phase_control_by_id(phase)
-                if not pc:
-                    continue
-                pc.approve()
+            for inst in instances:
+                pc = inst.find_phase_control_by_id(phase)
+                if pc:
+                    pc.approve()
+                    console.print(f":white_check_mark: Approved [bold]{inst.id}[/] in [green]{env_name}[/]")
+    console.print("\n[bold green]Done![/]")
