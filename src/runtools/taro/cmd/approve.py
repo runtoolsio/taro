@@ -6,12 +6,10 @@ from rich.console import Console
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.env import resolve_env_configs
+from runtools.taro import cli
 
 app = typer.Typer(invoke_without_command=True)
 console = Console()
-
-def env_option():
-    return typer.Option((), "--env", "-e", help="Target environment")
 
 
 @app.callback()
@@ -19,7 +17,7 @@ def approve(
         instance_patterns: List[str] = typer.Argument(..., help="One or more instance ID (metadata) patterns",
                                                       metavar="PATTERN"),
         phase: str = typer.Option(..., "--phase", "-p", help="Phase ID"),
-        env_ids: List[str] = env_option(),
+        env_ids: List[str] = cli.ENV_OPTION_FIELD,
 ):
     env_configs = resolve_env_configs(*env_ids)
     approved = False

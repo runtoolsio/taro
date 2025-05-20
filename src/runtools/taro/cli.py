@@ -3,11 +3,15 @@ import re
 import textwrap
 from argparse import RawTextHelpFormatter
 
+import typer
+
 from runtools.runcore.db import SortCriteria
 from runtools.runcore.run import TerminationStatus, RunState
 from runtools.taro import util
 from runtools.taro import version
 from runtools.taro.argsutil import TimestampFormat
+
+ENV_OPTION_FIELD = typer.Option((), "--env", "-e", help="Target environment")
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
