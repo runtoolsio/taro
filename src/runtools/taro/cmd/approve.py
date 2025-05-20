@@ -14,8 +14,7 @@ console = Console()
 
 @app.callback()
 def approve(
-        instance_patterns: List[str] = typer.Argument(..., help="One or more instance ID (metadata) patterns",
-                                                      metavar="PATTERN"),
+        instance_patterns: List[str] = cli.INSTANCE_PATTERNS,
         phase: str = typer.Option(..., "--phase", "-p", help="Phase ID"),
         env_ids: List[str] = cli.ENV_OPTION_FIELD,
 ):
