@@ -84,8 +84,16 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
     except OSError:
         return widths  # Failing in tests
 
-    actual_length = sum(widths) + len(widths)
-    spare_length = terminal_length - actual_length
+    # Leave a small buffer to account for any edge cases (like wide Unicode characters)
+    # or terminal quirks
+    terminal_buffer = 1
+    effective_terminal_width = terminal_length - terminal_buffer
+
+    # Calculate the actual line length
+    # Each column takes its width, plus we have (len(columns) - 1) separator spaces
+    actual_length = sum(widths) + (len(columns) - 1)
+    spare_length = effective_terminal_width - actual_length
+
     if spare_length > 0:
         if stretch_last_column:
             widths[-1] += spare_length
@@ -97,9 +105,12 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
                 widths[-1] = max_length_in_last_column
             else:
                 widths[-1] += spare_length
+    elif spare_length < 0:
+        # We need to shrink to fit
+        # Reduce the last column by the overflow amount
+        widths[-1] = max(widths[-1] + spare_length, 4)  # Keep at least 4 chars
 
     return widths
-
 
 def _limit_text(text, limit):
     if not text or len(text) <= limit:
