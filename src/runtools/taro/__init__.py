@@ -38,7 +38,7 @@ def main(args_raw):
     try:
         run_app(args_raw)
     except RuntoolsException as e:
-        print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)
+        print_styled((Theme.error, "User error: "), ('', str(e)), file=sys.stderr)
         exit(1)
 
 

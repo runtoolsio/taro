@@ -4,7 +4,7 @@ from runtools.runcore.util import format_dt_local_tz
 
 from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, instance_style, warn_style, job_state_style, \
-    run_term_style
+    run_term_style, warn_count_style
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
 RUN_ID = Column('RUN ID', 30, lambda j: j.run_id, job_id_style)
@@ -20,6 +20,6 @@ STATE = Column('RUN STATE', max(len(s.name) for s in RunState) + 2, lambda j: j.
 TERM_STATUS = Column('TERM STATUS', max(len(s.name) for s in TerminationStatus) + 2, lambda j: j.lifecycle.termination.status.name, run_term_style)
 STATUS = Column('STATUS', 50, lambda j: str(j.status) or '', general_style)
 RESULT = Column('RESULT', 50, lambda j: str(j.status) or '', general_style)
-WARNINGS = Column('WARN', 40, lambda j: ', '.join(dict.fromkeys((w.message for w in j.status.warnings) if j.status else []).keys()), warn_style)
+WARNINGS = Column('WARN', 6, lambda j: str(len(j.status.warnings)) if j.status else '0', warn_count_style)
 
 DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, WARNINGS, STATUS]
