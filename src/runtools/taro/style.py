@@ -6,7 +6,7 @@ from runtools.taro.theme import Theme
 
 
 def job_id_style(job):
-    if job.termination and job.termination.status.is_outcome(Outcome.FAULT):
+    if job.lifecycle.termination and job.lifecycle.termination.status.is_outcome(Outcome.FAULT):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
@@ -18,13 +18,13 @@ def job_id_stats_style(job_stats):
 
 
 def instance_style(job):
-    if job.termination and job.termination.status.is_outcome(Outcome.FAULT):
+    if job.lifecycle.termination and job.lifecycle.termination.status.is_outcome(Outcome.FAULT):
         return Theme.state_failure
     return Theme.instance
 
 
 def general_style(job):
-    if job.termination and job.termination.status.is_outcome(Outcome.FAULT):
+    if job.lifecycle.termination and job.lifecycle.termination.status.is_outcome(Outcome.FAULT):
         return Theme.state_failure
     return ""
 
@@ -56,7 +56,7 @@ def term_style(term_status) -> str:
 
 
 def run_term_style(job_run) -> str:
-    return term_style(job_run.termination.status)
+    return term_style(job_run.lifecycle.termination.status)
 
 
 def stats_state_style(stats):
