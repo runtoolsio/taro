@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 import typer
 from rich.console import Console
@@ -18,13 +18,12 @@ console = Console()
 @app.callback()
 def history(
         instance_patterns: List[str] = typer.Argument(default=None, help="Instance ID patterns to filter results"),
-        lines: int = typer.Option(-1, "--lines", "-n", help="Number of history entries to show"),
-        offset: int = typer.Option(0, "--offset", "-o", help="Number of history entries to skip"),
+        lines: int = typer.Option(-1, "--lines", "-n", help="Number of history runs to show"),
+        offset: int = typer.Option(0, "--offset", "-o", help="Number of history runs to skip"),
         last: bool = typer.Option(False, "--last", "-L", help="Show last execution of each job"),
-        slowest: bool = typer.Option(False, "--slowest", help="Show slowest instance from each job"),
+        slowest: bool = typer.Option(False, "--slowest", "-S", help="Show slowest run from each job"),
         ascending: bool = typer.Option(False, "--asc", "-a", help="Ascending sort"),
         sort: str = typer.Option("ended", "--sort", "-s", help="Sorting criteria (created/ended/time)"),
-        show_params: bool = typer.Option(False, "--show-params", help="Show parameters column"),
         no_pager: bool = typer.Option(False, "--no-pager", "-P", help="Do not use pager for output"),
         env: str = typer.Option(None, "--env", "-e", help="Target environment"),
 ):
@@ -48,8 +47,6 @@ def history(
 
         columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                    view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT]
-        if show_params:
-            columns.insert(2, view_inst.PARAMETERS)
         try:
             printer.print_table(runs_iter, columns, show_header=True, pager=not no_pager)
         except BrokenPipeError:
@@ -64,10 +61,9 @@ def hist(
         lines: int = typer.Option(-1, "--lines", "-n"),
         offset: int = typer.Option(0, "--offset", "-o"),
         last: bool = typer.Option(False, "--last", "-L"),
-        slowest: bool = typer.Option(False, "--slowest"),
+        slowest: bool = typer.Option(False, "--slowest", "-S"),
         ascending: bool = typer.Option(False, "--asc", "-a"),
         sort: str = typer.Option("ended", "--sort", "-s"),
-        show_params: bool = typer.Option(False, "--show-params"),
         no_pager: bool = typer.Option(False, "--no-pager", "-P"),
         env: str = typer.Option(None, "--env", "-e"),
 ):
@@ -80,7 +76,6 @@ def hist(
         slowest=slowest,
         ascending=ascending,
         sort=sort,
-        show_params=show_params,
         no_pager=no_pager,
         env=env
     )
