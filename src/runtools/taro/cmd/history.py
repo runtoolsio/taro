@@ -4,7 +4,7 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion
+from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, TemporalField
 from runtools.runcore.db import SortOption
 from runtools.runcore.env import get_env_config, get_default_env_config
 from runtools.runcore.util import MatchingStrategy, DateTimeRange
@@ -29,7 +29,13 @@ def history(
         # Filter options
         last: bool = typer.Option(False, "--last", "-L", help="Show last execution of each job"),
         slowest: bool = typer.Option(False, "--slowest", "-S", help="Show slowest run from each job"),
-        # - Date filtering
+        # - Temporal filtering
+        filter_by: TemporalField = typer.Option(
+            TemporalField.CREATED,
+            "--filter-by",
+            "-F",
+            help="Which timestamp field to use for datetime filtering (options below)"
+        ),
         from_date: Optional[str] = typer.Option(
             None,
             "--from",
@@ -56,7 +62,7 @@ def history(
     """Show job runs history"""
     run_match = JobRunCriteria.parse_all(instance_patterns,
                                          MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
-    _apply_date_filters(run_match, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back)
+    _apply_date_filters(run_match, filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back)
 
     if slowest:
         last = True
@@ -79,7 +85,7 @@ def history(
             cliutil.handle_broken_pipe(exit_code=1)
 
 
-def _apply_date_filters(run_match, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back):
+def _apply_date_filters(run_match, filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back):
     """Apply date filtering options to run_match using OR logic on created timestamp."""
     date_ranges = []
 
@@ -103,7 +109,7 @@ def _apply_date_filters(run_match, from_date, to_date, today, yesterday, week, f
         date_ranges.append(DateTimeRange.days_range(-days_back, to_utc=True))
 
     for date_range in date_ranges:
-        run_match += LifecycleCriterion(created=date_range)
+        run_match += LifecycleCriterion().set_date_range(date_range, filter_by)
 
 
 # Alias for 'hist' command
