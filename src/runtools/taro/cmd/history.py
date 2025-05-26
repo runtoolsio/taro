@@ -48,16 +48,19 @@ def history(
         yesterday: bool = typer.Option(False, "--yesterday", "-Y"),
         week: bool = typer.Option(False, "--week", "-1", "-W"),
         fortnight: bool = typer.Option(False, "--fortnight", "-2"),
-        month: bool = typer.Option(False, "--month", "-3", "-M"),
+        three_weeks: bool = typer.Option(False, "--three-weeks", "-3", help="Show only jobs created from now 3 weeks back"),
+        four_weeks: bool = typer.Option(False, "--four-weeks", "-4", help="Show only jobs created from now 4 weeks back"),
+        month: bool = typer.Option(False, "--month", "-M"),
+        days_back: Optional[int] = typer.Option(None, "--days-back", "-D", metavar="DAYS", help="Show only jobs created from now N days back"),
 ):
-    """Show jobs history"""
+    """Show job runs history"""
     run_match = JobRunCriteria.parse_all(instance_patterns,
                                          MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
-    _apply_date_filters(run_match, from_date, to_date, today, yesterday, week, fortnight, month)
+    _apply_date_filters(run_match, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back)
 
     if slowest:
         last = True
-        sort = "time"
+        sort_option = SortOption.TIME
         ascending = False
 
     env_config = get_env_config(env) if env else get_default_env_config()
@@ -76,7 +79,7 @@ def history(
             cliutil.handle_broken_pipe(exit_code=1)
 
 
-def _apply_date_filters(run_match, from_date, to_date, today, yesterday, week, fortnight, month):
+def _apply_date_filters(run_match, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back):
     """Apply date filtering options to run_match using OR logic on created timestamp."""
     date_ranges = []
 
@@ -90,8 +93,14 @@ def _apply_date_filters(run_match, from_date, to_date, today, yesterday, week, f
         date_ranges.append(DateTimeRange.week_back(to_utc=True))
     if fortnight:
         date_ranges.append(DateTimeRange.days_range(-14, to_utc=True))
+    if three_weeks:
+        date_ranges.append(DateTimeRange.days_range(-21, to_utc=True))
+    if four_weeks:
+        date_ranges.append(DateTimeRange.days_range(-28, to_utc=True))
     if month:
         date_ranges.append(DateTimeRange.days_range(-31, to_utc=True))
+    if days_back is not None:
+        date_ranges.append(DateTimeRange.days_range(-days_back, to_utc=True))
 
     for date_range in date_ranges:
         run_match += LifecycleCriterion(created=date_range)
