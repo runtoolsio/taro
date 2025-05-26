@@ -5,7 +5,7 @@ from argparse import RawTextHelpFormatter
 
 import typer
 
-from runtools.runcore.db import SortCriteria
+from runtools.runcore.db import SortOption
 from runtools.runcore.run import TerminationStatus, RunState
 from runtools.taro import util
 from runtools.taro import version
@@ -216,9 +216,9 @@ def _init_history_parser(common, subparsers):
     filter_group.add_argument('--slowest', action='store_true', help='Show slowest instance from each job')
 
     hist_parser.add_argument('-a', '--asc', '--ascending', action='store_true', help='Ascending sort')
-    hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],
-                             default=SortCriteria.ENDED.name.lower(), help='Sorting criteria')
-    hist_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
+    hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortOption],
+                             default=SortOption.ENDED.name.lower(), help='Sorting criteria')
+    hist_parser.add_argument('-p', '--no-pager', action='store_true', help='Do not use pager for output')
     hist_parser.add_argument('--show-params', action='store_true', help='')
 
 
