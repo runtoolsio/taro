@@ -11,7 +11,7 @@ from runtools.taro import util
 from runtools.taro import version
 from runtools.taro.argsutil import TimestampFormat
 
-ENV_OPTION_FIELD = typer.Option((), "--env", "-e", help="Target environment")
+ENV_OPTION_FIELD = typer.Option(None, "--env", "-e", help="Target environment")
 INSTANCE_PATTERNS  = typer.Argument(..., help="One or more instance ID (metadata) patterns", metavar="PATTERN")
 
 ACTION_EXEC = 'exec'

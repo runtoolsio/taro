@@ -9,7 +9,7 @@ from runtools.runcore.db import SortOption
 from runtools.runcore.env import get_env_config, get_default_env_config
 from runtools.runcore.run import Outcome
 from runtools.runcore.util import MatchingStrategy, DateTimeRange
-from runtools.taro import printer, cliutil
+from runtools.taro import printer, cliutil, cli
 from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(invoke_without_command=True)
@@ -18,7 +18,7 @@ console = Console()
 
 @app.callback()
 def history(
-        env: str = typer.Option(None, "--env", "-e", metavar="ENV_ID", help="Target environment"),
+        env: str = cli.ENV_OPTION_FIELD,
         instance_patterns: List[str] = typer.Argument(default=None, metavar="PATTERN",
                                                       help="Instance ID patterns to filter results"),
 
