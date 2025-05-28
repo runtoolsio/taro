@@ -6,7 +6,7 @@ from rich.console import Console
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, TemporalField, TerminationCriterion
 from runtools.runcore.db import SortOption
-from runtools.runcore.env import get_env_config, get_default_env_config
+from runtools.runcore.env import get_env_config
 from runtools.runcore.run import Outcome
 from runtools.runcore.util import MatchingStrategy, DateTimeRange
 from runtools.taro import printer, cliutil, cli
@@ -89,7 +89,7 @@ def history(
         sort_option = SortOption.TIME
         ascending = False
 
-    env_config = get_env_config(env) if env else get_default_env_config()
+    env_config = get_env_config(env)
     with connector.create(env_config) as conn:
         if not conn.persistence_enabled:
             console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{env_config.id}[/]")

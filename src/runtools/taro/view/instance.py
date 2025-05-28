@@ -3,7 +3,7 @@ from runtools.runcore.run import TerminationStatus, RunState
 from runtools.runcore.util import format_dt_local_tz
 
 from runtools.taro.printer import Column
-from runtools.taro.style import general_style, job_id_style, instance_style, warn_style, job_state_style, \
+from runtools.taro.style import general_style, job_id_style, instance_style, job_state_style, \
     run_term_style, warn_count_style
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
@@ -14,7 +14,9 @@ PARAMETERS = Column('PARAMETERS', 23,
 CREATED = Column('CREATED', 25, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), general_style)
 EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_local_tz(j.lifecycle.started_at, include_ms=False, null='N/A'), general_style)
 ENDED = Column('ENDED', 25, lambda j: format_dt_local_tz(j.lifecycle.termination.terminated_at, include_ms=False, null='N/A'), general_style)
-EXEC_TIME = Column('TIME', 18, lambda j: util.format_timedelta(j.lifecycle.total_run_time, show_ms=False, null='N/A'),
+EXEC_TIME = Column('TIME', 18,
+                   lambda j: util.format_timedelta(j.lifecycle.total_run_time or j.lifecycle.elapsed, show_ms=False,
+                                                   null='N/A'),
                    general_style)
 STATE = Column('RUN STATE', max(len(s.name) for s in RunState) + 2, lambda j: j.lifecycle.run_state.name, job_state_style)
 TERM_STATUS = Column('TERM STATUS', max(len(s.name) for s in TerminationStatus) + 2, lambda j: j.lifecycle.termination.status.name, run_term_style)
