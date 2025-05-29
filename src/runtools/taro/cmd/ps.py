@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 import typer
+from rich.console import Console
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, SortOption
@@ -10,6 +11,7 @@ from runtools.taro import printer, cli, cliutil
 from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(name="ps", invoke_without_command=True)
+console = Console()
 
 
 @app.callback()
@@ -30,6 +32,10 @@ def ps(
     env_config = get_env_config(env)
     with connector.create(env_config) as conn:
         runs = conn.get_active_runs(run_match)
+
+    if not runs:
+        console.print(f"No active instances found in [cyan]{env_config.id}[/]")
+        return
 
     columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.EXEC_TIME, view_inst.WARNINGS,
                view_inst.STATUS]
