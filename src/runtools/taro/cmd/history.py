@@ -4,8 +4,8 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, TemporalField, TerminationCriterion
-from runtools.runcore.db import SortOption
+from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, TemporalField, TerminationCriterion, \
+    SortOption
 from runtools.runcore.env import get_env_config
 from runtools.runcore.run import Outcome
 from runtools.runcore.util import MatchingStrategy, DateTimeRange
@@ -30,7 +30,7 @@ def history(
         # Sort options
         ascending: bool = typer.Option(False, "--asc", "-a", help="Ascending sort"),
         sort_option: SortOption = typer.Option(SortOption.ENDED, "--sort", "-s",
-                                               help="Sorting criteria (created/ended/time)"),
+                                               help="Sorting criteria (created/ended/time/job_id/run_id)"),
 
         # - Outcome based filtering
         success: bool = typer.Option(False, "--success", "-S", help="Show only successfully completed jobs"),

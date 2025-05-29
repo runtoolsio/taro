@@ -5,7 +5,7 @@ from argparse import RawTextHelpFormatter
 
 import typer
 
-from runtools.runcore.db import SortOption
+from runtools.runcore.criteria import SortOption
 from runtools.runcore.run import TerminationStatus, RunState
 from runtools.taro import util
 from runtools.taro import version

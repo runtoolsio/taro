@@ -3,7 +3,7 @@ from typing import List, Optional
 import typer
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.criteria import JobRunCriteria, SortOption
 from runtools.runcore.env import get_env_config
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli, cliutil
@@ -20,6 +20,9 @@ def ps(
             help="Instance ID patterns to filter results"
         ),
         env: Optional[str] = cli.ENV_OPTION_FIELD,
+        sort_option: SortOption = typer.Option(SortOption.CREATED, "--sort", "-s",
+                                               help="Sorting criteria (created/ended/time/job_id/run_id)"),
+        descending: bool = typer.Option(False, "--descending", "-d", help="Sort in descending order"),
 ):
     """Show active/running job instances"""
     run_match = JobRunCriteria.parse_all(instance_patterns,
@@ -27,9 +30,11 @@ def ps(
     env_config = get_env_config(env)
     with connector.create(env_config) as conn:
         runs = conn.get_active_runs(run_match)
+
     columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.EXEC_TIME, view_inst.WARNINGS,
                view_inst.STATUS]
+    runs_sorted = sort_option.sort_runs(runs, reverse=descending)
     try:
-        printer.print_table(runs, columns, show_header=True, pager=False)
+        printer.print_table(runs_sorted, columns, show_header=True, pager=False)
     except BrokenPipeError:
         cliutil.handle_broken_pipe(exit_code=1)
