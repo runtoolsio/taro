@@ -38,10 +38,18 @@ def stats_style(stats):
 def warn_style(_):
     return Theme.warning
 
+
 def warn_count_style(j):
     """Style function for warning count - grey for 0, orange for >0"""
     count = len(j.status.warnings) if j.status else 0
     if count > 0:
+        return Theme.warning
+    return Theme.subtle
+
+
+def stats_warn_count_style(s):
+    """Style function for warning count - grey for 0, orange for >0"""
+    if s.warning_count > 0:
         return Theme.warning
     return Theme.subtle
 

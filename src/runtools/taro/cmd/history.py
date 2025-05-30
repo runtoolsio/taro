@@ -8,8 +8,9 @@ from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, Tempor
     SortOption
 from runtools.runcore.env import get_env_config
 from runtools.runcore.run import Outcome
-from runtools.runcore.util import MatchingStrategy, DateTimeRange
+from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cliutil, cli
+from runtools.taro.argsutil import apply_date_filters
 from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(invoke_without_command=True)
@@ -81,7 +82,7 @@ def history(
     run_match = JobRunCriteria.parse_all(instance_patterns,
                                          MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
     _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault)
-    _apply_date_filters(run_match, filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
+    apply_date_filters(run_match, filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
                         four_weeks, month, days_back)
 
     if slowest:
@@ -124,34 +125,6 @@ def _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fa
         run_match += LifecycleCriterion(termination=criterion)
 
 
-def _apply_date_filters(run_match, filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
-                        four_weeks, month, days_back):
-    """Apply date filtering options to run_match using OR logic on created timestamp."""
-    date_ranges = []
-
-    if from_date or to_date:
-        date_ranges.append(DateTimeRange.parse_to_utc(from_date, to_date))
-    if today:
-        date_ranges.append(DateTimeRange.today(to_utc=True))
-    if yesterday:
-        date_ranges.append(DateTimeRange.yesterday(to_utc=True))
-    if week:
-        date_ranges.append(DateTimeRange.week_back(to_utc=True))
-    if fortnight:
-        date_ranges.append(DateTimeRange.days_range(-14, to_utc=True))
-    if three_weeks:
-        date_ranges.append(DateTimeRange.days_range(-21, to_utc=True))
-    if four_weeks:
-        date_ranges.append(DateTimeRange.days_range(-28, to_utc=True))
-    if month:
-        date_ranges.append(DateTimeRange.days_range(-31, to_utc=True))
-    if days_back is not None:
-        date_ranges.append(DateTimeRange.days_range(-days_back, to_utc=True))
-
-    for date_range in date_ranges:
-        run_match += LifecycleCriterion().set_date_range(date_range, filter_by)
-
-
 # Alias for 'hist' command
 hist_app = typer.Typer(invoke_without_command=True)
 
@@ -160,7 +133,7 @@ hist_app = typer.Typer(invoke_without_command=True)
 def h(
         env: str = typer.Option(None, "--env", "-e", metavar="ENV_ID", help="Target environment"),
         instance_patterns: List[str] = typer.Argument(default=None, metavar="PATTERN",
-                                                        help="Instance ID patterns to filter results"),
+                                                      help="Instance ID patterns to filter results"),
 
         # Pagination
         no_pager: bool = typer.Option(False, "--no-pager", "-p", help="Do not use pager for output"),
@@ -170,7 +143,7 @@ def h(
         # Sort options
         ascending: bool = typer.Option(False, "--asc", "-a", help="Ascending sort"),
         sort_option: SortOption = typer.Option(SortOption.ENDED, "--sort", "-s",
-                                                help="Sorting criteria (created/ended/time)"),
+                                               help="Sorting criteria (created/ended/time)"),
 
         # - Outcome based filtering
         success: bool = typer.Option(False, "--success", "-S", help="Show only successfully completed jobs"),
@@ -210,9 +183,9 @@ def h(
         week: bool = typer.Option(False, "--week", "-1", "-W"),
         fortnight: bool = typer.Option(False, "--fortnight", "-2"),
         three_weeks: bool = typer.Option(False, "--three-weeks", "-3",
-                                        help="Show only jobs created from now 3 weeks back"),
+                                         help="Show only jobs created from now 3 weeks back"),
         four_weeks: bool = typer.Option(False, "--four-weeks", "-4",
-                                       help="Show only jobs created from now 4 weeks back"),
+                                        help="Show only jobs created from now 4 weeks back"),
         month: bool = typer.Option(False, "--month", "-M"),
         days_back: Optional[int] = typer.Option(None, "--days-back", "-D", metavar="DAYS",
                                                 help="Show only jobs created from now N days back"),
