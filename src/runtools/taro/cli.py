@@ -6,13 +6,13 @@ from argparse import RawTextHelpFormatter
 import typer
 
 from runtools.runcore.criteria import SortOption
-from runtools.runcore.run import TerminationStatus, RunState
+from runtools.runcore.run import TerminationStatus
 from runtools.taro import util
 from runtools.taro import version
 from runtools.taro.argsutil import TimestampFormat
 
 ENV_OPTION_FIELD = typer.Option(None, "--env", "-e", help="Target environment")
-INSTANCE_PATTERNS  = typer.Argument(..., help="One or more instance ID (metadata) patterns", metavar="PATTERN")
+INSTANCE_PATTERNS = typer.Argument(..., help="One or more instance ID (metadata) patterns", metavar="PATTERN")
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
@@ -320,7 +320,7 @@ def _init_wait_parser(common, subparsers):
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
     wait_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
     wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
-    wait_parser.add_argument('-s', '--states', type=_str2_run_state, metavar='STATES', nargs=argparse.REMAINDER,
+    wait_parser.add_argument('-s', '--states', type=str, metavar='STATES', nargs=argparse.REMAINDER,
                              help='States for which the command waits')
     wait_parser.add_argument('-t', '--timestamp',
                              type=TimestampFormat.from_str,
@@ -411,14 +411,6 @@ def _str2_term_status(v):
     except KeyError:
         raise argparse.ArgumentTypeError('Arguments can be only valid execution states: '
                                          + ", ".join([e.name.lower() for e in TerminationStatus]))
-
-
-def _str2_run_state(v):
-    try:
-        return RunState[v.upper()]
-    except KeyError:
-        raise argparse.ArgumentTypeError('Arguments can be only valid execution states: '
-                                         + ", ".join([e.name.lower() for e in RunState]))
 
 
 def _warn_time_type(arg_value):

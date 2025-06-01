@@ -42,7 +42,7 @@ def ps(
             empty_envs.append(env_config.id)
             continue
 
-        console.print(Padding(Rule(f"[bold cyan]  {env_config.id}  [/]"), pad=(0, 1)))
+        console.print(Padding(Rule(f"[bold cyan]  {env_config.id}  [/]", style='dim'), pad=(0, 1)))
         columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.EXEC_TIME, view_inst.WARNINGS,
                    view_inst.STATUS]
         runs_sorted = sort_option.sort_runs(runs, reverse=descending)

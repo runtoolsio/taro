@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from runtools.runcore.run import Outcome, RunState
+from runtools.runcore.run import Outcome, Stage
 from runtools.runcore.util import DateTimeFormat
 from runtools.taro.theme import Theme
 
@@ -79,9 +79,9 @@ def stats_state_style(stats):
 
 
 def state_style(state):
-    if state == RunState.ENDED:
+    if state == Stage.ENDED:
         return ""
-    if state == RunState.EXECUTING:
+    if state == Stage.RUNNING:
         return Theme.state_executing
 
     return Theme.state_before_execution

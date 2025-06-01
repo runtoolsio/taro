@@ -1,5 +1,5 @@
 from runtools.runcore import util
-from runtools.runcore.run import TerminationStatus, RunState
+from runtools.runcore.run import TerminationStatus
 from runtools.runcore.util import format_dt_local_tz
 
 from runtools.taro.printer import Column
@@ -18,7 +18,7 @@ EXEC_TIME = Column('TIME', 18,
                    lambda j: util.format_timedelta(j.lifecycle.total_run_time or j.lifecycle.elapsed, show_ms=False,
                                                    null='N/A'),
                    general_style)
-STATE = Column('RUN STATE', max(len(s.name) for s in RunState) + 2, lambda j: j.lifecycle.run_state.name, job_state_style)
+STATE = Column('RUN STATE', 30, lambda j: j.lifecycle.run_state.name, job_state_style)
 TERM_STATUS = Column('TERM STATUS', max(len(s.name) for s in TerminationStatus) + 2, lambda j: j.lifecycle.termination.status.name, run_term_style)
 STATUS = Column('STATUS', 50, lambda j: str(j.status) or '', general_style)
 RESULT = Column('RESULT', 50, lambda j: str(j.status) or '', general_style)
