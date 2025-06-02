@@ -17,7 +17,7 @@ def test_job_running(capsys):
 
     jobs = printer.parse_table(output, view_inst.DEFAULT_COLUMNS)
     assert 'sleep 1' == jobs[0][view_inst.JOB_ID]
-    assert TerminationStatus.RUNNING.name.casefold() == jobs[0][view_inst.STATE].casefold()
+    assert TerminationStatus.RUNNING.name.casefold() == jobs[0][view_inst.PHASES].casefold()
 
 
 def test_job_waiting(capsys):
@@ -28,7 +28,7 @@ def test_job_waiting(capsys):
 
     jobs = printer.parse_table(output, view_inst.DEFAULT_COLUMNS)
     assert 'sleep 1' == jobs[0][view_inst.JOB_ID]
-    assert TerminationStatus.PENDING.name.casefold() == jobs[0][view_inst.STATE].casefold()
+    assert TerminationStatus.PENDING.name.casefold() == jobs[0][view_inst.PHASES].casefold()
 
 
 def test_job_status(capsys):
