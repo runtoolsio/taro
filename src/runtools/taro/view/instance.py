@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from runtools.runcore import util
 from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseDetail
@@ -13,15 +13,19 @@ INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, instan
 PARAMETERS = Column('PARAMETERS', 23,
                     lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
 CREATED = Column('CREATED', 25, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), general_style)
-EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_local_tz(j.lifecycle.started_at, include_ms=False, null='N/A'), general_style)
-ENDED = Column('ENDED', 25, lambda j: format_dt_local_tz(j.lifecycle.termination.terminated_at, include_ms=False, null='N/A'), general_style)
+EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_local_tz(j.lifecycle.started_at, include_ms=False, null='N/A'),
+                  general_style)
+ENDED = Column('ENDED', 25,
+               lambda j: format_dt_local_tz(j.lifecycle.termination.terminated_at, include_ms=False, null='N/A'),
+               general_style)
 EXEC_TIME = Column('TIME', 18,
                    lambda j: util.format_timedelta(j.lifecycle.total_run_time or j.lifecycle.elapsed, show_ms=False,
                                                    null='N/A'),
                    general_style)
 PHASES = Column('PHASES', 30, lambda j: j.accept_visitor(PhaseExtractor()).text,
                 lambda j: j.accept_visitor(PhaseExtractor()).style)
-TERM_STATUS = Column('TERM STATUS', max(len(s.name) for s in TerminationStatus) + 2, lambda j: j.lifecycle.termination.status.name, run_term_style)
+TERM_STATUS = Column('TERM STATUS', max(len(s.name) for s in TerminationStatus) + 2,
+                     lambda j: j.lifecycle.termination.status.name, run_term_style)
 STATUS = Column('STATUS', 50, lambda j: str(j.status) or '', general_style)
 RESULT = Column('RESULT', 50, lambda j: str(j.status) or '', general_style)
 WARNINGS = Column('WARN', 6, lambda j: str(len(j.status.warnings)) if j.status else '0', warn_count_style)
@@ -35,27 +39,34 @@ class PhaseExtractor(PhaseVisitor):
     """
 
     def __init__(self):
-        self.phases: List[PhaseDetail] = []
+        self.phase_and_style: List[Tuple[PhaseDetail, str]] = []
 
     def visit_phase(self, phase_detail: PhaseDetail, depth: int, parent_path: List[PhaseDetail]) -> None:
         if phase_detail.lifecycle.is_running and not phase_detail.children:
-            self.phases.append(phase_detail)
+            parent = parent_path[-1] if parent_path else None
+            theme = ""
+
+            if phase_detail.is_idle:
+                theme = Theme.idle
+            elif parent:
+                if parent.phase_type in ("APPROVAL", "MUTEX"):
+                    theme = Theme.success
+                if parent.phase_type in ("QUEUE",):
+                    theme = Theme.managed
+
+            self.phase_and_style.append((phase_detail, theme))
 
     @property
     def text(self) -> str:
-        if not self.phases:
+        if not self.phase_and_style:
             return ""
-        if len(self.phases) > 1:
+        if len(self.phase_and_style) > 1:
             return "<multiple>"
 
-        return self.phases[0].phase_id
+        return self.phase_and_style[0][0].phase_id
 
     @property
     def style(self):
-        if not self.phases or len(self.phases) > 1:
+        if not self.phase_and_style or len(self.phase_and_style) > 1:
             return ""
-        phase = self.phases[0]
-        if phase.is_idle:
-            return Theme.idle
-
-        return ""
+        return self.phase_and_style[0][1]

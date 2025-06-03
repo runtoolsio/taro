@@ -32,6 +32,7 @@ class Theme:
     warning = 'ansibrightyellow'
     subtle = 'ansibrightblack'
     idle = 'yellow'
+    managed = 'cyan'
     state_before_execution = 'ansigreen'
     state_executing = 'ansiblue'
     state_discarded = 'ansiyellow'
