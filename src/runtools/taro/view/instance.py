@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 from runtools.runcore import util
-from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseDetail
+from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseDetail, PhasePath
 from runtools.runcore.util import format_dt_local_tz
 from runtools.taro import Theme
 from runtools.taro.printer import Column
@@ -41,20 +41,23 @@ class PhaseExtractor(PhaseVisitor):
     def __init__(self):
         self.phase_and_style: List[Tuple[PhaseDetail, str]] = []
 
-    def visit_phase(self, phase_detail: PhaseDetail, depth: int, parent_path: List[PhaseDetail]) -> None:
-        if phase_detail.lifecycle.is_running and not phase_detail.children:
-            parent = parent_path[-1] if parent_path else None
+    def visit_phase(self, phase_detail: PhaseDetail, parent_path: PhasePath) -> None:
+        if not phase_detail.lifecycle.is_running or phase_detail.any_child_running:
+            return
+
+        if phase_detail.is_idle:
+            theme = Theme.idle
+        else:
             theme = ""
-
-            if phase_detail.is_idle:
-                theme = Theme.idle
-            elif parent:
-                if parent.phase_type in ("APPROVAL", "MUTEX"):
+            for ancestor in parent_path.iter_ancestors(reverse=True):
+                if ancestor.phase_type in ("APPROVAL", "MUTEX"):
                     theme = Theme.success
-                if parent.phase_type in ("QUEUE",):
+                    break
+                if ancestor.phase_type in ("QUEUE",):
                     theme = Theme.managed
+                    break
 
-            self.phase_and_style.append((phase_detail, theme))
+        self.phase_and_style.append((phase_detail, theme))
 
     @property
     def text(self) -> str:
