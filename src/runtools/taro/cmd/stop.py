@@ -8,7 +8,7 @@ from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.env import get_env_config
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli, cliutil
-from runtools.taro.view.instance import JOB_ID, RUN_ID, INSTANCE_ID, CREATED, PHASES
+from runtools.taro.view.instance import JOB_ID, RUN_ID, EXEC_TIME, CREATED, PHASES, STATUS
 
 app = typer.Typer(invoke_without_command=True)
 console = Console()
@@ -41,7 +41,8 @@ def stop(
 
         if not force:
             console.print('Instances to stop:')
-            printer.print_table(instances, [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, PHASES],
+            printer.print_table([i.snapshot() for i in instances],
+                                [JOB_ID, RUN_ID, CREATED, EXEC_TIME, PHASES, STATUS],
                                 show_header=True, pager=False)
             if not cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True):
                 return
