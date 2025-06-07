@@ -45,8 +45,8 @@ class SignalHandler:
             c()
 
 
-def user_confirmation(*, yes_on_empty=False, catch_interrupt=False):
-    print("Do you want to continue? [Y/n] ", end="")
+def user_confirmation(*, yes_on_empty=False, catch_interrupt=False, newline_before=False):
+    print(("\n" if newline_before else "") + "Do you want to continue? [Y/n]", end="")
     try:
         i = input()
     except KeyboardInterrupt:

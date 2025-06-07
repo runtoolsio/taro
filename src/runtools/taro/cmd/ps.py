@@ -41,7 +41,7 @@ def ps(
             empty_envs.append(env_config.id)
             continue
 
-        console.print(Padding(f"[dim][ {env_config.id} ][/]", pad=(0, 0, 1, 0)))
+        console.print(Padding(f"[dim]Live instances in [/][ {env_config.id} ]", pad=(0, 0, 0, 0)))
         columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.EXEC_TIME, view_inst.PHASES,
                    view_inst.WARNINGS,
                    view_inst.STATUS]
