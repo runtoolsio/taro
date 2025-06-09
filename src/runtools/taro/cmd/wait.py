@@ -45,9 +45,6 @@ def wait(
     This command blocks until the specified number of instances reach the
     target stage, then exits. Useful for scripting and automation.
 
-    By default, checks recent history (last 5 minutes) to avoid race conditions
-    where instances might have already transitioned before the wait command started.
-
     Examples:
         # Wait for any instance to complete
         taro wait "*"
