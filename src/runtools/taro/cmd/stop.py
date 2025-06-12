@@ -2,7 +2,6 @@ from typing import List
 
 import typer
 from rich.console import Console
-from rich.padding import Padding
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria
@@ -30,24 +29,35 @@ def stop(
         ),
 ):
     """Stop running job instances"""
-    run_match = JobRunCriteria.parse_all(instance_patterns, MatchingStrategy.FN_MATCH)
     env_config = get_env_config(env)
+    total_stopped = 0
 
     with connector.create(env_config) as conn:
-        instances = conn.get_instances(run_match)
+        for pattern in instance_patterns:
+            instances = conn.get_instances(JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH))
 
-        if not instances:
-            console.print(f'No instances to stop in [ {env_config.id} ]')
-            return
+            if not instances:
+                console.print(f"\n[yellow]⚠[/] No instances found for pattern: [white]{pattern}[/]")
+                continue
 
-        if not force:
-            console.print(Padding(f"[dim]Instances to stop in [/][ {env_config.id} ]", pad=(0, 0, 0, 0)))
-            printer.print_table([i.snapshot() for i in instances],
-                                [JOB_ID, RUN_ID, CREATED, EXEC_TIME, PHASES, STATUS],
-                                show_header=True, pager=False)
-            if not cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True, newline_before=True):
-                return
+            console.print(f"\n[dim]Pattern [/][white]{pattern}[/][dim] matches:[/]")
 
-        for instance in instances:
-            instance.stop()
-            console.print(f'Stopped {instance.id}')
+            if not force:
+                printer.print_table(
+                    [i.snapshot() for i in instances],
+                    [JOB_ID, RUN_ID, CREATED, EXEC_TIME, PHASES, STATUS],
+                    show_header=True, pager=False
+                )
+
+                if not cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True, newline_before=True):
+                    console.print("[dim]Skipped[/]")
+                    continue
+
+            for instance in instances:
+                instance.stop()
+                console.print(f"  [green]✓[/] Stopped {instance.id}")
+                total_stopped += 1
+                # console.print(f"  [red]✗[/] Failed to stop {instance.id}: {e}")
+
+        style = "bold" if total_stopped else "yellow"
+        console.print(f"\n[{style}]Total stopped: {total_stopped}[/]")

@@ -23,14 +23,12 @@ def wait(
         env: Optional[str] = cli.ENV_OPTION_FIELD,
         stage: Stage = typer.Option(
             Stage.ENDED.value,
-            "--stage",
-            "-s",
+            "-s", "--stage",
             help="Stage to wait for"
         ),
         timeout: Optional[str] = typer.Option(
             None,
-            "--timeout",
-            "-T",
+            "-t", "--timeout",
             help="Maximum time to wait before exiting (e.g., '30s', '5m', '1h'). Default: wait forever"
         ),
         history_window: Optional[str] = typer.Option(
