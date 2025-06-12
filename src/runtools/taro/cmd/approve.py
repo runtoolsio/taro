@@ -4,8 +4,9 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.criteria import JobRunCriteria, PhaseCriterion, LifecycleCriterion
 from runtools.runcore.env import get_env_config
+from runtools.runcore.run import RunLifecycle, Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli, cliutil, printer
 from runtools.taro.view.instance import JOB_ID, RUN_ID, CREATED, PHASES, STATUS
@@ -32,7 +33,10 @@ def approve(
 
     with connector.create(env_config) as conn:
         for pattern in instance_patterns:
-            instances = conn.get_instances(JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH))
+            run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
+            run_match += PhaseCriterion(phase_id=phase, lifecycle=LifecycleCriterion(stage=Stage.CREATED))
+            run_match += PhaseCriterion(phase_id=phase, idle=True)
+            instances = conn.get_instances(run_match)
 
             if not instances:
                 console.print(f"\n[yellow]⚠[/] No instances found for pattern: [white]{pattern}[/]")
