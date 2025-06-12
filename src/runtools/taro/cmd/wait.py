@@ -2,11 +2,12 @@ from typing import List, Optional
 
 import typer
 from rich.console import Console
+from runtools.runcore import connector
 
-from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion
 from runtools.runcore.env import get_env_config
 from runtools.runcore.run import Stage
-from runtools.runcore.util import MatchingStrategy
+from runtools.runcore.util import MatchingStrategy, parse_duration_to_sec
 from runtools.taro import cli
 
 app = typer.Typer(invoke_without_command=True)
@@ -21,7 +22,7 @@ def wait(
         ),
         env: Optional[str] = cli.ENV_OPTION_FIELD,
         stage: Stage = typer.Option(
-            Stage.ENDED,
+            Stage.ENDED.value,
             "--stage",
             "-s",
             help="Stage to wait for"
@@ -62,5 +63,8 @@ def wait(
         taro wait daily-backup -h 1d
     """
     run_match = JobRunCriteria.parse_all(instance_patterns, MatchingStrategy.FN_MATCH)
+    run_match += LifecycleCriterion(stage=stage)
     env_config = get_env_config(env)
-    raise NotImplementedError("Wait command logic to be implemented")
+    with connector.create(env_config) as conn:
+        watcher = conn.lifecycle_watcher(run_match)
+        watcher.wait(timeout=parse_duration_to_sec(timeout) if timeout else None)
