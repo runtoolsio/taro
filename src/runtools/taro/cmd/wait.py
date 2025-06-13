@@ -60,9 +60,12 @@ def wait(
         # Check if daily backup ran in the last 24 hours, then wait if not
         taro wait daily-backup -h 1d
     """
-    run_match = JobRunCriteria.parse_all(instance_patterns, MatchingStrategy.FN_MATCH)
-    run_match += LifecycleCriterion(stage=stage)
     env_config = get_env_config(env)
     with connector.create(env_config) as conn:
-        watcher = conn.lifecycle_watcher(run_match)
-        watcher.wait(timeout=parse_duration_to_sec(timeout) if timeout else None)
+        for pattern in instance_patterns:
+            run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
+            run_match += LifecycleCriterion(stage=stage)
+            watcher = conn.watcher(run_match)
+            completed = watcher.wait(timeout=parse_duration_to_sec(timeout) if timeout else None)
+            if completed:
+                print(watcher.matched_runs)
