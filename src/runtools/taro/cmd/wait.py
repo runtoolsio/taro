@@ -1,9 +1,10 @@
+from concurrent.futures.thread import ThreadPoolExecutor
 from typing import List, Optional
 
 import typer
 from rich.console import Console
-from runtools.runcore import connector
 
+from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion
 from runtools.runcore.env import get_env_config
 from runtools.runcore.run import Stage
@@ -60,16 +61,29 @@ def wait(
         # Check if daily backup ran in the last 24 hours, then wait if not
         taro wait daily-backup -h 1d
     """
+    executor = ThreadPoolExecutor(max_workers=len(instance_patterns))
     env_config = get_env_config(env)
+    watchers = []
     with connector.create(env_config) as conn:
         for pattern in instance_patterns:
             run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
             run_match += LifecycleCriterion(stage=stage)
             watcher = conn.watcher(run_match)
-            timeout_sec = parse_duration_to_sec(timeout) if timeout else None
-            completed = watcher.wait(timeout=timeout_sec)
-            if completed:
-                console.print(
-                    f"\n[green]✓[/] [bold]{watcher.matched_runs[0].instance_id}[/bold] reached {stage.name} stage")
-            else:
-                console.print(f"\n[yellow]⏱️  Timeout after {timeout_sec} seconds[/]")
+            watchers.append(watcher)
+            executor.submit(watch_for_run, watcher, parse_duration_to_sec(timeout) if timeout else None)
+        try:
+            executor.shutdown()
+        except KeyboardInterrupt as e:
+            for w in watchers:
+                w.cancel()
+            executor.shutdown()
+            raise e
+
+
+def watch_for_run(watcher, timeout_sec):
+    completed = watcher.wait(timeout=timeout_sec)
+    if completed:
+        console.print(
+            f"\n[green]✓[/] [bold]{watcher.matched_runs[0].instance_id}[/bold] reached awaited stage")
+    elif not watcher.is_cancelled:
+        console.print(f"\n[yellow]⏱️  Timeout after {timeout_sec} seconds[/]")
