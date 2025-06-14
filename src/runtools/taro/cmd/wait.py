@@ -66,6 +66,10 @@ def wait(
             run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
             run_match += LifecycleCriterion(stage=stage)
             watcher = conn.watcher(run_match)
-            completed = watcher.wait(timeout=parse_duration_to_sec(timeout) if timeout else None)
+            timeout_sec = parse_duration_to_sec(timeout) if timeout else None
+            completed = watcher.wait(timeout=timeout_sec)
             if completed:
-                print(watcher.matched_runs)
+                console.print(
+                    f"\n[green]✓[/] [bold]{watcher.matched_runs[0].instance_id}[/bold] reached {stage.name} stage")
+            else:
+                console.print(f"\n[yellow]⏱️  Timeout after {timeout_sec} seconds[/]")

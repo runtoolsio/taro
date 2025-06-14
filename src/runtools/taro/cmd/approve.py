@@ -6,7 +6,7 @@ from rich.console import Console
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, PhaseCriterion, LifecycleCriterion
 from runtools.runcore.env import get_env_config
-from runtools.runcore.run import RunLifecycle, Stage
+from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli, cliutil, printer
 from runtools.taro.view.instance import JOB_ID, RUN_ID, CREATED, PHASES, STATUS
