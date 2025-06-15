@@ -79,11 +79,16 @@ def wait(
             executor.shutdown()
             raise e
 
+    for watcher in watchers:
+        if watcher.is_timed_out:
+            raise typer.Exit(code=124)
+
 
 def watch_for_run(watcher, timeout_sec):
-    completed = watcher.wait(timeout=timeout_sec)
-    if completed:
+    watcher.wait(timeout=timeout_sec)
+    if watcher.matched_runs:
         console.print(
-            f"\n[green]✓[/] [bold]{watcher.matched_runs[0].instance_id}[/bold] reached awaited stage")
-    elif not watcher.is_cancelled:
-        console.print(f"\n[yellow]⏱️  Timeout after {timeout_sec} seconds[/]")
+            f"\n[green]✓[/] [bold]{watcher.matched_runs[0].instance_id}[/] reached awaited stage")
+    elif watcher.is_timed_out:
+        console.print(f"\n[yellow]⏱️  Timeout[/] for [bold]{watcher.run_match}[/] after {timeout_sec} seconds")
+
