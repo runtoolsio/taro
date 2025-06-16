@@ -4,9 +4,10 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, TemporalField
+from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.env import get_env_config
 from runtools.runcore.job import StatsSortOption
+from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli
 from runtools.taro.argsutil import apply_date_filters
@@ -28,8 +29,8 @@ def stats_cmd(
                                                     help="Sorting criteria"),
 
         # Temporal filtering
-        filter_by: TemporalField = typer.Option(
-            TemporalField.CREATED,
+        filter_by: Stage = typer.Option(
+            Stage.CREATED.value,
             "--filter-by",
             "-F",
             help="Which timestamp field to use for datetime filtering"

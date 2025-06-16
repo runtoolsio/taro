@@ -4,10 +4,10 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, TemporalField, TerminationCriterion, \
+from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, TerminationCriterion, \
     SortOption
 from runtools.runcore.env import get_env_config
-from runtools.runcore.run import Outcome
+from runtools.runcore.run import Outcome, Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cliutil, cli
 from runtools.taro.argsutil import apply_date_filters
@@ -46,8 +46,8 @@ def history(
         slowest: bool = typer.Option(False, "--slowest", "-O", help="Show slowest run from each job"),
 
         # - Temporal filtering
-        filter_by: TemporalField = typer.Option(
-            TemporalField.CREATED,
+        filter_by: Stage = typer.Option(
+            Stage.CREATED.value,
             "--filter-by",
             "-F",
             help="Which timestamp field to use for datetime filtering (options below)"
@@ -158,8 +158,8 @@ def h(
         slowest: bool = typer.Option(False, "--slowest", "-O", help="Show slowest run from each job"),
 
         # - Temporal filtering
-        filter_by: TemporalField = typer.Option(
-            TemporalField.CREATED,
+        filter_by: Stage = typer.Option(
+            Stage.CREATED.value,
             "--filter-by",
             "-F",
             help="Which timestamp field to use for datetime filtering (options below)"

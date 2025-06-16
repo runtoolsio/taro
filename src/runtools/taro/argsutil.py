@@ -2,12 +2,12 @@ from enum import Enum
 from typing import List, Optional
 
 from runtools.runcore.criteria import MetadataCriterion, LifecycleCriterion, TerminationCriterion, \
-    JobRunCriteria, TemporalField
-from runtools.runcore.run import Outcome
+    JobRunCriteria
+from runtools.runcore.run import Outcome, Stage
 from runtools.runcore.util import DateTimeFormat, DateTimeRange
 
 
-def apply_date_filters(run_match, filter_by: TemporalField, from_date: Optional[str], to_date: Optional[str],
+def apply_date_filters(run_match, for_stage: Stage, from_date: Optional[str], to_date: Optional[str],
                        today: bool, yesterday: bool, week: bool, fortnight: bool, three_weeks: bool,
                        four_weeks: bool, month: bool, days_back: Optional[int]):
     """
@@ -15,7 +15,7 @@ def apply_date_filters(run_match, filter_by: TemporalField, from_date: Optional[
 
     Args:
         run_match: JobRunCriteria object to modify
-        filter_by: Which timestamp field to filter on
+        for_stage: Which timestamp field to filter on
         from_date: Start date string
         to_date: End date string
         today: Filter for today
@@ -49,7 +49,7 @@ def apply_date_filters(run_match, filter_by: TemporalField, from_date: Optional[
         date_ranges.append(DateTimeRange.days_range(-days_back, to_utc=True))
 
     for date_range in date_ranges:
-        run_match += LifecycleCriterion().set_date_range(date_range, filter_by)
+        run_match += LifecycleCriterion().set_date_range(date_range, for_stage)
 
 
 def instance_criteria(args, id_match_strategy) -> List[MetadataCriterion]:
