@@ -1,4 +1,5 @@
 from concurrent.futures.thread import ThreadPoolExecutor
+from datetime import timedelta
 from typing import List, Optional
 
 import typer
@@ -8,7 +9,7 @@ from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion
 from runtools.runcore.env import get_env_config
 from runtools.runcore.run import Stage
-from runtools.runcore.util import MatchingStrategy, parse_duration_to_sec
+from runtools.runcore.util import MatchingStrategy, parse_duration_to_sec, utc_now, DateTimeRange
 from runtools.taro import cli
 
 app = typer.Typer(invoke_without_command=True)
@@ -32,11 +33,10 @@ def wait(
             "-t", "--timeout",
             help="Maximum time to wait before exiting (e.g., '30s', '5m', '1h'). Default: wait forever"
         ),
-        history_window: Optional[str] = typer.Option(
-            None,
-            "--history-window",
-            "-H",
-            help="Check history for specified duration before waiting (e.g., '10s', '5m', '1h', '1d'). Default: disabled"
+        future_only: bool = typer.Option(
+            False,
+            "-f", "--future-only",
+            help="Skip history search, wait for live events only"
         ),
 ):
     """
@@ -45,21 +45,21 @@ def wait(
     This command blocks until the specified number of instances reach the
     target stage, then exits. Useful for scripting and automation.
 
+    By default, the command first checks history for matching instances that already
+    reached the target stage. Use --no-history to wait only for future events.
+
     Examples:
-        # Wait for any instance to complete
-        taro wait "*"
+        # Wait only for future completions of any run, ignore past matches
+        taro wait --future-only "*"
 
-        # Wait for an instance with 'backup1' run ID to start running
-        taro wait @backup1 --stage RUNNING
+        # Wait for backup job to reach RUNNING stage (checks past and current state too)
+        taro wait --stage RUNNING @backup1
 
-        # Wait for instance with job name 'job' and run ID '123' to end with a 60 sec timeout
-        taro wait job@123 --timeout 60s
+        # Wait for specific instance to end with 60 second timeout (checks past and current state)
+        taro wait --timeout 60s job@123
 
-        # Wait with a 10 sec history window (race condition protection)
-        taro wait "batch*" -h 10s
-
-        # Check if daily backup ran in the last 24 hours, then wait if not
-        taro wait daily-backup -h 1d
+        # Wait only for new batch job to start, ignore any that already started
+        taro wait --stage RUNNING --future-only "batch*"
     """
     executor = ThreadPoolExecutor(max_workers=len(instance_patterns))
     env_config = get_env_config(env)
@@ -68,7 +68,7 @@ def wait(
         for pattern in instance_patterns:
             run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
             run_match += LifecycleCriterion(stage=stage)
-            watcher = conn.watcher(run_match)
+            watcher = conn.watcher(run_match, search_past=not future_only)
             watchers.append(watcher)
             executor.submit(watch_for_run, watcher, parse_duration_to_sec(timeout) if timeout else None)
         try:
