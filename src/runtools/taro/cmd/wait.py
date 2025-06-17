@@ -67,7 +67,7 @@ def wait(
     with connector.create(env_config) as conn:
         for pattern in instance_patterns:
             run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
-            run_match += LifecycleCriterion(stage=stage)
+            run_match += LifecycleCriterion().reached_stage(stage)
             watcher = conn.watcher(run_match, search_past=not future_only)
             watchers.append(watcher)
             executor.submit(watch_for_run, watcher, stage, parse_duration_to_sec(timeout) if timeout else None)
