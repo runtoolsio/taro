@@ -1,5 +1,4 @@
 from concurrent.futures.thread import ThreadPoolExecutor
-from datetime import timedelta
 from typing import List, Optional
 
 import typer
@@ -8,8 +7,9 @@ from rich.console import Console
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion
 from runtools.runcore.env import get_env_config
+from runtools.runcore.job import JobRun
 from runtools.runcore.run import Stage
-from runtools.runcore.util import MatchingStrategy, parse_duration_to_sec, utc_now, DateTimeRange
+from runtools.runcore.util import MatchingStrategy, parse_duration_to_sec, format_dt_local_tz
 from runtools.taro import cli
 
 app = typer.Typer(invoke_without_command=True)
@@ -70,7 +70,7 @@ def wait(
             run_match += LifecycleCriterion(stage=stage)
             watcher = conn.watcher(run_match, search_past=not future_only)
             watchers.append(watcher)
-            executor.submit(watch_for_run, watcher, parse_duration_to_sec(timeout) if timeout else None)
+            executor.submit(watch_for_run, watcher, stage, parse_duration_to_sec(timeout) if timeout else None)
         try:
             executor.shutdown()
         except KeyboardInterrupt as e:
@@ -84,11 +84,13 @@ def wait(
             raise typer.Exit(code=124)
 
 
-def watch_for_run(watcher, timeout_sec):
+def watch_for_run(watcher, watched_stage, timeout_sec):
     watcher.wait(timeout=timeout_sec)
     if watcher.matched_runs:
+        matched_run: JobRun = watcher.matched_runs[0]
+        stage_color = "blue" if watched_stage == Stage.ENDED else "green"
+        formatted_ts = format_dt_local_tz(matched_run.lifecycle.transition_at(watched_stage), include_ms=False)
         console.print(
-            f"\n[green]✓[/] [bold]{watcher.matched_runs[0].instance_id}[/] reached awaited stage")
+            f"\n[green]✓[/] [bold]{matched_run.instance_id}[/] reached [{stage_color}]{watched_stage.value}[/] stage at {formatted_ts}")
     elif watcher.is_timed_out:
         console.print(f"\n[yellow]⏱️  Timeout[/] for [bold]{watcher.run_match}[/] after {timeout_sec} seconds")
-
