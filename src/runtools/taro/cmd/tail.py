@@ -1,5 +1,6 @@
 import signal
-from threading import Lock
+from collections import defaultdict
+from threading import Lock, Event
 from typing import List, Optional
 
 import typer
@@ -48,20 +49,31 @@ def tail(
         metadata_criteria = [MetadataCriterion.parse(p, MatchingStrategy.PARTIAL) for p in instance_patterns]
     else:
         metadata_criteria = [MetadataCriterion.all_match()]
-    if follow:
-        conn = connector.create(get_env_config(env))
-        conn.add_observer_output(TailPrint(conn, metadata_criteria, show_ordinal))
+
+    instance_to_last_line = defaultdict(lambda: 0)
+    last_printed_instance = None
+
+    conn = connector.create(get_env_config(env))
+    tail_print = TailPrint(conn, metadata_criteria, show_ordinal)
+    conn.add_observer_output(tail_print)
+    try:
         conn.open()
-        global _connector
-        _connector = conn
-        signal.signal(signal.SIGINT, _close_connector)
-        signal.signal(signal.SIGTERM, _close_connector)
-    else:
-        with connector.create(get_env_config(env)) as conn:
-            for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
-                print_instance_header(inst)
-                for output_line in inst.output.tail():
-                    print_line(output_line, show_ordinal)
+        for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
+            print_instance_header(inst)
+            for output_line in inst.output.tail():
+                print_line(output_line, show_ordinal)
+                instance_to_last_line[inst.metadata] = output_line.ordinal
+                last_printed_instance = inst.metadata
+    finally:
+        if not follow:
+            conn.close()
+            return
+
+    global _connector
+    _connector = conn
+    signal.signal(signal.SIGINT, _close_connector)
+    signal.signal(signal.SIGTERM, _close_connector)
+    tail_print.release(last_printed_instance, instance_to_last_line)
 
 
 class TailPrint(InstanceOutputObserver):
@@ -72,9 +84,18 @@ class TailPrint(InstanceOutputObserver):
         self.show_ordinal = show_ordinal
         self.last_printed_instance = None
         self.print_lock = Lock()
+        self.latch = Event()
+        self.instance_to_last_line = None
+
+    def release(self, last_printed_instance, instance_to_last_line):
+        self.last_printed_instance = last_printed_instance
+        self.instance_to_last_line = instance_to_last_line
+        self.latch.set()
 
     def instance_output_update(self, event: InstanceOutputEvent):
-        if not any(1 for c in self.metadata_criteria if c(event.instance)):
+        self.latch.wait()
+        last_line = self.instance_to_last_line[event.instance]
+        if event.output_line.ordinal <= last_line or not any(1 for c in self.metadata_criteria if c(event.instance)):
             return
         try:
             with self.print_lock:
