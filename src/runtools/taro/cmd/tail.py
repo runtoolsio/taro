@@ -1,14 +1,12 @@
 import signal
 from threading import Lock
-
-import sys
 from typing import List, Optional
 
 import typer
 from rich.console import Console
+
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
-
 from runtools.runcore.criteria import JobRunCriteria, MetadataCriterion
 from runtools.runcore.env import get_env_config
 from runtools.runcore.job import InstanceOutputObserver, InstanceOutputEvent
@@ -26,10 +24,6 @@ def _close_connector(_, __):
         _connector.close()
 
 
-def print_instance_header(inst):
-    console.print(f"\n[bold cyan]{'─' * 20}[/] [bold]{inst.job_id}@{inst.run_id}[/] [bold cyan]{'─' * 20}[/]")
-
-
 @app.callback()
 def tail(
         instance_patterns: List[str] = typer.Argument(
@@ -43,6 +37,11 @@ def tail(
             "-f", "--follow",
             help="Keep printing"
         ),
+        show_ordinal: bool = typer.Option(
+            False,
+            "-o", "--ordinal",
+            help="Show line numbers (ordinals) for each output line"
+        ),
 ):
     """Print last output from job instances"""
     if instance_patterns:
@@ -51,7 +50,7 @@ def tail(
         metadata_criteria = [MetadataCriterion.all_match()]
     if follow:
         conn = connector.create(get_env_config(env))
-        conn.add_observer_output(TailPrint(conn, metadata_criteria))
+        conn.add_observer_output(TailPrint(conn, metadata_criteria, show_ordinal))
         conn.open()
         global _connector
         _connector = conn
@@ -62,17 +61,15 @@ def tail(
             for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
                 print_instance_header(inst)
                 for output_line in inst.output.tail():
-                    if output_line.is_error:
-                        console.print(f"[red]{output_line.text}[/]", highlight=False)
-                    else:
-                        console.print(output_line.text, highlight=False)
+                    print_line(output_line, show_ordinal)
 
 
 class TailPrint(InstanceOutputObserver):
 
-    def __init__(self, conn, metadata_criteria):
+    def __init__(self, conn, metadata_criteria, show_ordinal):
         self.connector = conn
         self.metadata_criteria = metadata_criteria
+        self.show_ordinal = show_ordinal
         self.last_printed_instance = None
         self.print_lock = Lock()
 
@@ -84,7 +81,20 @@ class TailPrint(InstanceOutputObserver):
                 if self.last_printed_instance != event.instance:
                     print_instance_header(event.instance)
                 self.last_printed_instance = event.instance
-                print(event.output_line.text, flush=True, file=sys.stderr if event.output_line.is_error else sys.stdout)
+                print_line(event.output_line, self.show_ordinal)
         except BrokenPipeError:
             self.connector.close()
             cliutil.handle_broken_pipe(exit_code=1)
+
+
+def print_instance_header(inst):
+    console.print(f"\n[bold cyan]{'─' * 20}[/] [bold]{inst.job_id}@{inst.run_id}[/] [bold cyan]{'─' * 20}[/]")
+
+
+def print_line(output_line, show_ordinal):
+    text = f"{output_line.ordinal}: {output_line.text}" if show_ordinal else output_line.text
+    if output_line.is_error:
+        # TODO stderr?
+        console.print(f"[red]{text}[/]", highlight=False)
+    else:
+        console.print(text, highlight=False)
