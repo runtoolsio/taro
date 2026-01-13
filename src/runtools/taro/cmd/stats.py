@@ -10,7 +10,6 @@ from runtools.runcore.job import StatsSortOption
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli
-from runtools.taro.argsutil import apply_date_filters
 from runtools.taro.view import stats
 
 app = typer.Typer(invoke_without_command=True)
@@ -65,8 +64,8 @@ def stats_cmd(
     run_match = JobRunCriteria.parse_all(instance_patterns,
                                          MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
 
-    apply_date_filters(run_match, filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
-                       four_weeks, month, days_back)
+    run_match.add_date_filters(filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
+                               four_weeks, month, days_back)
 
     env_config = get_env_config(env)
     with connector.create(env_config) as conn:
