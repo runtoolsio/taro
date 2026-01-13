@@ -3,7 +3,7 @@ from typing import List, Tuple
 from runtools.runcore import util
 from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseDetail, PhasePath
 from runtools.runcore.util import format_dt_local_tz
-from runtools.taro import Theme
+from runtools.taro.theme import Theme
 from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, instance_style, run_term_style, warn_count_style
 
