@@ -44,7 +44,7 @@ def stop(
 
             if not force:
                 printer.print_table(
-                    [i.snapshot() for i in instances],
+                    [i.to_run() for i in instances],
                     [JOB_ID, RUN_ID, CREATED, EXEC_TIME, PHASES, STATUS],
                     show_header=True, pager=False
                 )

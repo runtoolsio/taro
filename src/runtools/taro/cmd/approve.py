@@ -56,7 +56,7 @@ def approve(
 
             if not force:
                 printer.print_table(
-                    [i.snapshot() for i in approvable],
+                    [i.to_run() for i in approvable],
                     [JOB_ID, RUN_ID, CREATED, PHASES, STATUS],
                     show_header=True, pager=False
                 )
