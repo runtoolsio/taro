@@ -115,7 +115,6 @@ def print_instance_header(inst):
 def print_line(output_line, show_ordinal):
     text = f"{output_line.ordinal}: {output_line.message}" if show_ordinal else output_line.message
     if output_line.is_error:
-        # TODO stderr?
         console.print(f"[red]{text}[/]", highlight=False)
     else:
         console.print(text, highlight=False)
