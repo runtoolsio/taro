@@ -4,6 +4,7 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
+from runtools.runcore.client import TargetNotFoundError
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.env import get_env_config
 from runtools.runcore.util import MatchingStrategy
@@ -54,10 +55,12 @@ def stop(
                     continue
 
             for instance in instances:
-                instance.stop()
-                console.print(f"  [green]✓[/] Stopped {instance.id}")
-                total_stopped += 1
-                # console.print(f"  [red]✗[/] Failed to stop {instance.id}: {e}")
+                try:
+                    instance.stop()
+                    total_stopped += 1
+                    console.print(f"  [green]✓[/] Stopped {instance.id}")
+                except TargetNotFoundError:
+                    console.print(f"  [yellow]⚠[/] Instance {instance.id} no longer available (job may have already stopped)")
 
         style = "bold" if total_stopped else "yellow"
         console.print(f"\n[{style}]Total stopped: {total_stopped}[/]")
