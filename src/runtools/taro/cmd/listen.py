@@ -56,7 +56,7 @@ def listen(
 
     event_queue = Queue()
     with connector.create(env_config) as conn:
-        conn.add_observer_lifecycle(lambda e: event_queue.put(e))  # 1. Register observer first (no events missed)
+        conn.notifications.add_observer_lifecycle(lambda e: event_queue.put(e))  # 1. Register observer first (no events missed)
 
         runs = conn.get_active_runs(run_match)  # 2. Get and display current active instances
         if runs:

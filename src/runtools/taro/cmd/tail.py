@@ -55,7 +55,7 @@ def tail(
 
     conn = connector.create(get_env_config(env))
     tail_print = TailPrint(conn, metadata_criteria, show_ordinal)
-    conn.add_observer_output(tail_print)
+    conn.notifications.add_observer_output(tail_print)
     try:
         conn.open()
         for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
