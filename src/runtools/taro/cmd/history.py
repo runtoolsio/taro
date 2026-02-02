@@ -110,9 +110,9 @@ def _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fa
     outcome_criteria = []
 
     if success:
-        outcome_criteria.append(TerminationCriterion(outcome=Outcome.SUCCESS))
+        outcome_criteria.append(TerminationCriterion(success=True))
     if nonsuccess:
-        outcome_criteria.append(TerminationCriterion(outcome=Outcome.NON_SUCCESS))
+        outcome_criteria.append(TerminationCriterion(success=False))
     if aborted:
         outcome_criteria.append(TerminationCriterion(outcome=Outcome.ABORTED))
     if rejected:

@@ -6,31 +6,31 @@ from runtools.taro.theme import Theme
 
 
 def job_id_style(job):
-    if job.lifecycle.termination and job.lifecycle.termination.status.is_outcome(Outcome.FAULT):
+    if job.lifecycle.termination and job.lifecycle.termination.status.outcome == Outcome.FAULT:
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
 
 def job_id_stats_style(job_stats):
-    if job_stats.termination_status.is_outcome(Outcome.FAULT):
+    if job_stats.termination_status and job_stats.termination_status.outcome == Outcome.FAULT:
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
 
 def instance_style(job):
-    if job.lifecycle.termination and job.lifecycle.termination.status.is_outcome(Outcome.FAULT):
+    if job.lifecycle.termination and job.lifecycle.termination.status.outcome == Outcome.FAULT:
         return Theme.state_failure
     return Theme.instance
 
 
 def general_style(job):
-    if job.lifecycle.termination and job.lifecycle.termination.status.is_outcome(Outcome.FAULT):
+    if job.lifecycle.termination and job.lifecycle.termination.status.outcome == Outcome.FAULT:
         return Theme.state_failure
     return ""
 
 
 def stats_style(stats):
-    if stats.termination_status.is_outcome(Outcome.FAULT):
+    if stats.termination_status and stats.termination_status.outcome == Outcome.FAULT:
         return Theme.state_failure
     return ""
 
@@ -59,12 +59,12 @@ def job_state_style(job):
 
 
 def term_style(term_status) -> str:
-    is_outcome = term_status.is_outcome
-    if is_outcome(Outcome.FAULT):
+    outcome = term_status.outcome
+    if outcome == Outcome.FAULT:
         return Theme.state_failure
-    if is_outcome(Outcome.ABORTED):
+    if outcome == Outcome.ABORTED:
         return Theme.state_incomplete
-    if is_outcome(Outcome.REJECTED):
+    if outcome == Outcome.REJECTED:
         return Theme.state_discarded
 
     return ""
@@ -75,6 +75,8 @@ def run_term_style(job_run) -> str:
 
 
 def stats_state_style(stats):
+    if not stats.termination_status:
+        return ""
     return term_style(stats.termination_status)
 
 
