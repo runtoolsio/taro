@@ -3,9 +3,9 @@ from typing import List, Tuple
 from runtools.runcore import util
 from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseDetail, PhasePath
 from runtools.runcore.util import format_dt_local_tz
-from runtools.taro.theme import Theme
 from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, instance_style, run_term_style, warn_count_style
+from runtools.taro.theme import Theme
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
 RUN_ID = Column('RUN ID', 30, lambda j: j.run_id, job_id_style)
@@ -50,7 +50,7 @@ class PhaseExtractor(PhaseVisitor):
         else:
             theme = ""
             for ancestor in parent_path.iter_ancestors(reverse=True):
-                if ancestor.phase_type in ("APPROVAL", "MUTEX"):
+                if ancestor.phase_type in ("APPROVAL", "MUTEX", "CHECKPOINT"):
                     theme = Theme.success
                     break
                 if ancestor.phase_type in ("QUEUE",):
