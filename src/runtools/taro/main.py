@@ -3,13 +3,14 @@ from rich.console import Console
 from rich.text import Text
 
 from runtools.runcore.err import RuntoolsException
-from runtools.taro.cmd import approve, history, listen, of, ps, resume, stats, stop, tail, wait
+from runtools.taro.cmd import approve, env, history, listen, of, ps, resume, stats, stop, tail, wait
 
 console = Console(stderr=True)
 
 app = typer.Typer()
 
 app.add_typer(approve.app, name="approve")
+app.add_typer(env.app, name="env")
 app.add_typer(history.hist_app, name="h")  # Alias for history
 app.add_typer(history.app, name="history")
 app.add_typer(listen.app, name="listen")
