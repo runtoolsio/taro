@@ -5,7 +5,6 @@ from rich.console import Console
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria
-from runtools.runcore.env import get_env_config
 from runtools.runcore.job import StatsSortOption
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
@@ -67,10 +66,9 @@ def stats_cmd(
     run_match.add_date_filters(filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
                                four_weeks, month, days_back)
 
-    env_config = get_env_config(env)
-    with connector.create(env_config) as conn:
+    with connector.connect(env) as conn:
         if not conn.persistence_enabled:
-            console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{env_config.id}[/]")
+            console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
             return
 
         job_stats_list = conn.read_history_stats(run_match)

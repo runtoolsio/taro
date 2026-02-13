@@ -5,7 +5,6 @@ from rich.console import Console
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria
-from runtools.runcore.env import get_env_config
 from runtools.runcore.job import JobRun
 from runtools.taro import cli
 
@@ -38,8 +37,7 @@ def of(
     except ValueError as e:
         console.print(f"[red]Error:[/] Invalid instance ID format: {e}")
         raise typer.Exit(1)
-    env_config = get_env_config(env)
-    with connector.create(env_config) as conn:
+    with connector.connect(env) as conn:
         runs: List[JobRun] = conn.read_history_runs(run_match)
         if not runs:
             console.print(f"[red]Error:[/] Instance not found: {instance_id}")

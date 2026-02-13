@@ -6,7 +6,6 @@ from rich.console import Console
 from runtools.runcore import connector
 from runtools.runcore.client import TargetNotFoundError
 from runtools.runcore.criteria import JobRunCriteria
-from runtools.runcore.env import get_env_config
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli, cliutil
 from runtools.taro.view.instance import JOB_ID, RUN_ID, EXEC_TIME, CREATED, PHASES, STATUS
@@ -30,10 +29,9 @@ def stop(
         ),
 ):
     """Stop running job instances"""
-    env_config = get_env_config(env)
     total_stopped = 0
 
-    with connector.create(env_config) as conn:
+    with connector.connect(env) as conn:
         for pattern in instance_patterns:
             instances = conn.get_instances(JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH))
 

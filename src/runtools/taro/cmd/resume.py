@@ -5,7 +5,6 @@ from rich.console import Console
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, PhaseCriterion, LifecycleCriterion
-from runtools.runcore.env import get_env_config
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli, cliutil, printer
@@ -28,10 +27,9 @@ def resume(
         ),
 ):
     """Resume jobs waiting at checkpoint"""
-    env_config = get_env_config(env)
     total_resumed = 0
 
-    with connector.create(env_config) as conn:
+    with connector.connect(env) as conn:
         for pattern in instance_patterns:
             run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
             run_match += PhaseCriterion(phase_id=phase, lifecycle=LifecycleCriterion(stage=Stage.CREATED))

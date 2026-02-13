@@ -6,7 +6,6 @@ from rich.console import Console
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion
-from runtools.runcore.env import get_env_config
 from runtools.runcore.job import JobRun
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy, parse_duration_to_sec, format_dt_local_tz
@@ -62,9 +61,8 @@ def wait(
         taro wait --stage RUNNING --future-only "batch*"
     """
     executor = ThreadPoolExecutor(max_workers=len(instance_patterns))
-    env_config = get_env_config(env)
     watchers = []
-    with connector.create(env_config) as conn:
+    with connector.connect(env) as conn:
         for pattern in instance_patterns:
             run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
             run_match += LifecycleCriterion().reached_stage(stage)

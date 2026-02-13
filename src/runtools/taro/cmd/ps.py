@@ -6,7 +6,7 @@ from rich.padding import Padding
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, SortOption
-from runtools.runcore.env import get_env_config, get_env_configs
+from runtools.runcore.env import get_env_configs
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli, cliutil
 from runtools.taro.view import instance as view_inst
@@ -31,17 +31,23 @@ def ps(
     """Show active/running job instances"""
     run_match = JobRunCriteria.parse_all(instance_patterns,
                                          MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
-    env_configs = get_env_configs().values() if all_envs else [get_env_config(env)]
+    if all_envs:
+        env_configs = get_env_configs().values()
+        connectors = [(env_config.id, connector.create(env_config)) for env_config in env_configs]
+    else:
+        conn = connector.connect(env)
+        connectors = [(conn.env_id, conn)]
+
     empty_envs = []
-    for env_config in env_configs:
-        with connector.create(env_config) as conn:
+    for env_id, conn in connectors:
+        with conn:
             runs = conn.get_active_runs(run_match)
 
         if not runs:
-            empty_envs.append(env_config.id)
+            empty_envs.append(env_id)
             continue
 
-        console.print(Padding(f"[dim]Active instances in [/][ {env_config.id} ]", pad=(0, 0, 0, 0)))
+        console.print(Padding(f"[dim]Active instances in [/][ {env_id} ]", pad=(0, 0, 0, 0)))
         columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.EXEC_TIME, view_inst.PHASES,
                    view_inst.WARNINGS,
                    view_inst.STATUS]

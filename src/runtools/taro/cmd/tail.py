@@ -9,7 +9,6 @@ from rich.console import Console
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria, MetadataCriterion
-from runtools.runcore.env import get_env_config
 from runtools.runcore.job import InstanceOutputObserver, InstanceOutputEvent
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli, cliutil
@@ -53,11 +52,11 @@ def tail(
     instance_to_last_line = defaultdict(lambda: 0)
     last_printed_instance = None
 
-    conn = connector.create(get_env_config(env))
+    conn = connector.connect(env)
     tail_print = TailPrint(conn, metadata_criteria, show_ordinal)
     conn.notifications.add_observer_output(tail_print)
+    conn.open()
     try:
-        conn.open()
         for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
             print_instance_header(inst)
             for output_line in inst.output.tail():
@@ -67,7 +66,9 @@ def tail(
     finally:
         if not follow:
             conn.close()
-            return
+
+    if not follow:
+        return
 
     global _connector
     _connector = conn

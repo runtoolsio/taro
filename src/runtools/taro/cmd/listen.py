@@ -6,7 +6,6 @@ from rich.console import Console
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria
-from runtools.runcore.env import get_env_config
 from runtools.runcore.job import InstanceLifecycleEvent
 from runtools.runcore.util import MatchingStrategy, format_dt_local_tz
 from runtools.taro import cli, printer
@@ -52,15 +51,13 @@ def listen(
         taro listen --env production
     """
     run_match = JobRunCriteria.parse_all(instance_patterns, MatchingStrategy.PARTIAL) if instance_patterns else None
-    env_config = get_env_config(env)
-
     event_queue = Queue()
-    with connector.create(env_config) as conn:
+    with connector.connect(env) as conn:
         conn.notifications.add_observer_lifecycle(lambda e: event_queue.put(e))  # 1. Register observer first (no events missed)
 
         runs = conn.get_active_runs(run_match)  # 2. Get and display current active instances
         if runs:
-            console.print(f"[dim]Active instances in [/][ {env_config.id} ]")
+            console.print(f"[dim]Active instances in [/][ {conn.env_id} ]")
             columns = [
                 view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED,
                 view_inst.EXEC_TIME, view_inst.PHASES, view_inst.WARNINGS,
