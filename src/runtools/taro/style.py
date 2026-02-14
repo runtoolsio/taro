@@ -54,6 +54,10 @@ def stats_warn_count_style(s):
     return Theme.subtle
 
 
+def stage_style(job):
+    return state_style(job.lifecycle.stage)
+
+
 def job_state_style(job):
     return state_style(job.lifecycle.run_state)
 
