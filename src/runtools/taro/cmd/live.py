@@ -1,26 +1,25 @@
 """Live-updating terminal view of active job instances.
 
-Subscribes to lifecycle events via a connector and uses them to trigger table refreshes.
-The main loop blocks on the event queue for up to 1 second, then drains any remaining events,
-fetches the current active runs, and rebuilds the displayed table.
-Recently ended runs are retained for a short period (dimmed) before being removed.
+Subscribes to phase events via a connector to maintain an in-memory cache of active runs.
+After the initial fetch, no further RPC calls are needed — each phase event carries a full
+JobRun snapshot that replaces the cached entry. Recently ended runs are retained briefly
+(dimmed) before being removed.
 """
 
-import time
 from queue import Queue, Empty
 from typing import List, Optional
 
+import time
 import typer
 from rich import box
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
-
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria, SortOption
-from runtools.runcore.job import InstanceID, InstanceLifecycleEvent, JobRun
+from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobRun
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
@@ -34,6 +33,7 @@ COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.STAGE, view_inst.EXEC_T
 ENDED_RETENTION_SECONDS = 10
 
 _RIGHT_ALIGNED = {view_inst.EXEC_TIME}
+_FIXED_WIDTH = {view_inst.STAGE: 7}
 
 
 def _to_rich_style(pt_style: str) -> str:
@@ -67,24 +67,31 @@ class LiveView:
         self._run_match: Optional[JobRunCriteria] = run_match
         self._sort_option: SortOption = sort_option
         self._descending: bool = descending
+        self._active_runs: dict[InstanceID, JobRun] = {}
         self._ended_runs: dict[InstanceID, tuple[JobRun, float]] = {}
-        self._event_queue: Queue[InstanceLifecycleEvent] = Queue()
+        self._event_queue: Queue[InstancePhaseEvent] = Queue()
 
     def run(self) -> None:
-        """Subscribe to events, fetch initial state, and enter the refresh loop."""
+        """Subscribe to phase events, seed cache from initial RPC, then run event-driven refresh loop."""
         handler = lambda e: self._event_queue.put(e)
-        self._conn.notifications.add_observer_lifecycle(handler)
+        self._conn.notifications.add_observer_phase(handler)
         try:
-            with Live(self._build_table(self._collect_runs()), console=console, refresh_per_second=1) as live_display:
+            self._seed_cache()
+            with Live(self._build_table(), console=console, refresh_per_second=1) as live_display:
                 try:
                     while True:
                         self._drain_events()
                         self._prune_ended()
-                        live_display.update(self._build_table(self._collect_runs()))
+                        live_display.update(self._build_table())
                 except KeyboardInterrupt:
                     pass
         finally:
-            self._conn.notifications.remove_observer_lifecycle(handler)
+            self._conn.notifications.remove_observer_phase(handler)
+
+    def _seed_cache(self) -> None:
+        """One-time initial RPC to populate the active runs cache."""
+        for run in self._conn.get_active_runs(self._run_match):
+            self._active_runs[run.instance_id] = run
 
     def _drain_events(self) -> None:
         """Wait up to 1s for the first event, then drain any remaining."""
@@ -97,10 +104,15 @@ class LiveView:
             except Empty:
                 break
 
-    def _process_event(self, event: InstanceLifecycleEvent) -> None:
-        """Store ENDED event snapshot if it matches the filter criteria."""
-        if event.new_stage == Stage.ENDED and (not self._run_match or self._run_match(event.job_run)):
+    def _process_event(self, event: InstancePhaseEvent) -> None:
+        """Update active/ended cache from the event's JobRun snapshot."""
+        if self._run_match and not self._run_match(event.job_run):
+            return
+        if event.is_root_phase and event.new_stage == Stage.ENDED:
+            self._active_runs.pop(event.job_run.instance_id, None)
             self._ended_runs[event.job_run.instance_id] = (event.job_run, time.monotonic())
+        else:
+            self._active_runs[event.job_run.instance_id] = event.job_run
 
     def _prune_ended(self) -> None:
         """Remove ended run entries older than the retention period."""
@@ -110,15 +122,15 @@ class LiveView:
             if now - ts < ENDED_RETENTION_SECONDS
         }
 
-    def _collect_runs(self) -> list[JobRun]:
-        """Fetch active runs, merge with retained ended runs, and sort."""
-        active = self._conn.get_active_runs(self._run_match)
-        active_ids = {r.instance_id for r in active}
-        retained = [run for iid, (run, _) in self._ended_runs.items() if iid not in active_ids]
+    def _sorted_runs(self) -> list[JobRun]:
+        """Combine active and retained ended runs, sorted by the configured option."""
+        active = list(self._active_runs.values())
+        retained = [run for run, _ in self._ended_runs.values()]
         return self._sort_option.sort_runs(active + retained, reverse=self._descending)
 
-    def _build_table(self, runs: list[JobRun]) -> Table:
-        """Build a rich.Table from a list of JobRun objects."""
+    def _build_table(self) -> Table:
+        """Build a rich.Table from the current cached runs."""
+        runs = self._sorted_runs()
         table = Table(
             title=f" [ {self._env_name} ] ",
             title_style="bold",
@@ -131,7 +143,8 @@ class LiveView:
 
         for col in COLUMNS:
             justify = "right" if col in _RIGHT_ALIGNED else "left"
-            table.add_column(col.name, no_wrap=True, justify=justify)
+            min_width = _FIXED_WIDTH.get(col)
+            table.add_column(col.name, no_wrap=True, justify=justify, min_width=min_width)
 
         if not runs:
             table.add_row(Text("No active instances", style="dim"), *[""] * (len(COLUMNS) - 1))
