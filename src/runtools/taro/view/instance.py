@@ -1,10 +1,11 @@
 from typing import List, Tuple
 
 from runtools.runcore import util
-from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseDetail, PhasePath
+from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
 from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.printer import Column
-from runtools.taro.style import general_style, job_id_style, instance_style, run_term_style, warn_count_style, stage_style
+from runtools.taro.style import general_style, job_id_style, instance_style, run_term_style, warn_count_style, \
+    stage_style
 from runtools.taro.theme import Theme
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
@@ -40,13 +41,13 @@ class PhaseExtractor(PhaseVisitor):
     """
 
     def __init__(self):
-        self.phase_and_style: List[Tuple[PhaseDetail, str]] = []
+        self.phase_and_style: List[Tuple[PhaseRun, str]] = []
 
-    def visit_phase(self, phase_detail: PhaseDetail, parent_path: PhasePath) -> None:
-        if not phase_detail.lifecycle.is_running or phase_detail.any_child_running:
+    def visit_phase(self, phase_run: PhaseRun, parent_path: PhasePath) -> None:
+        if not phase_run.lifecycle.is_running or phase_run.any_child_running:
             return
 
-        if phase_detail.is_idle:
+        if phase_run.is_idle:
             theme = Theme.idle
         else:
             theme = ""
@@ -58,7 +59,7 @@ class PhaseExtractor(PhaseVisitor):
                     theme = Theme.managed
                     break
 
-        self.phase_and_style.append((phase_detail, theme))
+        self.phase_and_style.append((phase_run, theme))
 
     @property
     def text(self) -> str:

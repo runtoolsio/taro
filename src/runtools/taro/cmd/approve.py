@@ -2,7 +2,6 @@ from typing import List
 
 import typer
 from rich.console import Console
-
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, PhaseCriterion, LifecycleCriterion
 from runtools.runcore.run import Stage
@@ -54,7 +53,7 @@ def approve(
 
             if not force:
                 printer.print_table(
-                    [i.to_run() for i in approvable],
+                    [i.snap() for i in approvable],
                     [JOB_ID, RUN_ID, CREATED, PHASES, STATUS],
                     show_header=True, pager=False
                 )

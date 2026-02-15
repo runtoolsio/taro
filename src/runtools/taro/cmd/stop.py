@@ -2,7 +2,6 @@ from typing import List
 
 import typer
 from rich.console import Console
-
 from runtools.runcore import connector
 from runtools.runcore.client import TargetNotFoundError
 from runtools.runcore.criteria import JobRunCriteria
@@ -43,7 +42,7 @@ def stop(
 
             if not force:
                 printer.print_table(
-                    [i.to_run() for i in instances],
+                    [i.snap() for i in instances],
                     [JOB_ID, RUN_ID, CREATED, EXEC_TIME, PHASES, STATUS],
                     show_header=True, pager=False
                 )
