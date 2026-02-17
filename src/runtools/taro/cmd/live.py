@@ -27,12 +27,13 @@ from runtools.taro.view import instance as view_inst
 app = typer.Typer(invoke_without_command=True)
 console = Console()
 
-COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.STAGE, view_inst.EXEC_TIME, view_inst.PHASES, view_inst.STATUS]
+COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.PHASES, view_inst.TERM_STATUS,
+           view_inst.STATUS]
 
 ENDED_RETENTION_SECONDS = 10
 
 _RIGHT_ALIGNED = {view_inst.EXEC_TIME}
-_FIXED_WIDTH = {view_inst.STAGE: 7}
+_FIXED_WIDTH = {view_inst.TERM_STATUS: view_inst.TERM_STATUS.max_width}
 
 
 def _to_rich_style(pt_style: str) -> str:
