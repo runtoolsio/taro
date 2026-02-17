@@ -1,9 +1,8 @@
 """Live-updating terminal view of active job instances.
 
 Subscribes to phase events via a connector to maintain an in-memory cache of active runs.
-After the initial fetch, no further RPC calls are needed — each phase event carries a full
-JobRun snapshot that replaces the cached entry. Recently ended runs are retained briefly
-(dimmed) before being removed.
+Each phase event carries a full JobRun snapshot that replaces the cached entry.
+Recently ended runs are retained briefly (dimmed) before being removed.
 """
 
 from queue import Queue, Empty
@@ -106,13 +105,14 @@ class LiveView:
 
     def _process_event(self, event: InstancePhaseEvent) -> None:
         """Update active/ended cache from the event's JobRun snapshot."""
-        if self._run_match and not self._run_match(event.job_run):
+        job_run = event.job_run
+        if self._run_match and not self._run_match(job_run):
             return
         if event.is_root_phase and event.new_stage == Stage.ENDED:
-            self._active_runs.pop(event.job_run.instance_id, None)
-            self._ended_runs[event.job_run.instance_id] = (event.job_run, time.monotonic())
+            self._active_runs.pop(job_run.instance_id, None)
+            self._ended_runs[job_run.instance_id] = (job_run, time.monotonic())
         else:
-            self._active_runs[event.job_run.instance_id] = event.job_run
+            self._active_runs[job_run.instance_id] = job_run
 
     def _prune_ended(self) -> None:
         """Remove ended run entries older than the retention period."""
@@ -144,7 +144,8 @@ class LiveView:
         for col in COLUMNS:
             justify = "right" if col in _RIGHT_ALIGNED else "left"
             min_width = _FIXED_WIDTH.get(col)
-            table.add_column(col.name, no_wrap=True, justify=justify, min_width=min_width)
+            max_width = col.max_width if col == COLUMNS[-1] else None
+            table.add_column(col.name, no_wrap=True, justify=justify, min_width=min_width, max_width=max_width)
 
         if not runs:
             table.add_row(Text("No active instances", style="dim"), *[""] * (len(COLUMNS) - 1))
