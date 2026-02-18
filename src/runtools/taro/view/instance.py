@@ -48,7 +48,9 @@ class PhaseExtractor(PhaseVisitor):
         if not phase_run.lifecycle.is_running or phase_run.any_child_running:
             return
 
-        if phase_run.is_idle:
+        if phase_run.stop_requested:
+            theme = Theme.state_incomplete
+        elif phase_run.is_idle:
             theme = Theme.idle
         else:
             theme = ""

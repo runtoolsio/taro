@@ -1,8 +1,8 @@
 """Live-updating terminal view of active job instances.
 
-Subscribes to phase events via a connector to maintain an in-memory cache of active runs.
-Each phase event carries a full JobRun snapshot that replaces the cached entry.
-Recently ended runs are retained briefly (dimmed) before being removed.
+Uses a hybrid approach: phase events provide immediate updates for transitions, while periodic
+RPC polling (~1s) refreshes snapshots to pick up non-event state changes (e.g. stop requests)
+and detect crashed instances. Recently ended runs are retained briefly (dimmed) before being removed.
 """
 
 from queue import Queue, Empty
@@ -31,6 +31,7 @@ COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.PH
            view_inst.STATUS]
 
 ENDED_RETENTION_SECONDS = 10
+MISSING_GRACE_SECONDS = 5
 
 _RIGHT_ALIGNED = {view_inst.EXEC_TIME}
 _FIXED_WIDTH = {view_inst.TERM_STATUS: view_inst.TERM_STATUS.max_width}
@@ -69,18 +70,20 @@ class LiveView:
         self._descending: bool = descending
         self._active_runs: dict[InstanceID, JobRun] = {}
         self._ended_runs: dict[InstanceID, tuple[JobRun, float]] = {}
+        self._missing_runs: dict[InstanceID, float] = {}  # instance_id -> first_missing_at (monotonic)
         self._event_queue: Queue[InstancePhaseEvent] = Queue()
 
     def run(self) -> None:
-        """Subscribe to phase events, seed cache from initial RPC, then run event-driven refresh loop."""
+        """Subscribe to phase events and run hybrid event/polling refresh loop."""
         handler = lambda e: self._event_queue.put(e)
         self._conn.notifications.add_observer_phase(handler)
         try:
-            self._seed_cache()
+            self._refresh_active_runs()
             with Live(self._build_table(), console=console, refresh_per_second=1) as live_display:
                 try:
                     while True:
                         self._drain_events()
+                        self._refresh_active_runs()
                         self._prune_ended()
                         live_display.update(self._build_table())
                 except KeyboardInterrupt:
@@ -88,10 +91,30 @@ class LiveView:
         finally:
             self._conn.notifications.remove_observer_phase(handler)
 
-    def _seed_cache(self) -> None:
-        """One-time initial RPC to populate the active runs cache."""
-        for run in self._conn.get_active_runs(self._run_match):
-            self._active_runs[run.instance_id] = run
+    def _refresh_active_runs(self) -> None:
+        """RPC poll to refresh active runs. Updates snapshots and detects crashed instances.
+
+        Instances missing from RPC are given a grace period before removal, allowing END events
+        to arrive and handle the transition to ended state properly.
+        """
+        now = time.monotonic()
+        polled = {run.instance_id: run for run in self._conn.get_active_runs(self._run_match)}
+
+        # Update snapshots for instances still responding
+        for iid, run in polled.items():
+            self._active_runs[iid] = run
+            self._missing_runs.pop(iid, None)
+
+        # Track instances that disappeared from RPC
+        for iid in list(self._active_runs):
+            if iid not in polled and iid not in self._missing_runs:
+                self._missing_runs[iid] = now
+
+        # Remove instances missing beyond grace period (likely crashed)
+        for iid, missing_since in list(self._missing_runs.items()):
+            if now - missing_since >= MISSING_GRACE_SECONDS:
+                self._active_runs.pop(iid, None)
+                del self._missing_runs[iid]
 
     def _drain_events(self) -> None:
         """Wait up to 1s for the first event, then drain any remaining."""
@@ -111,9 +134,11 @@ class LiveView:
             return
         if event.is_root_phase and event.new_stage == Stage.ENDED:
             self._active_runs.pop(job_run.instance_id, None)
+            self._missing_runs.pop(job_run.instance_id, None)
             self._ended_runs[job_run.instance_id] = (job_run, time.monotonic())
-        else:
+        elif job_run.instance_id not in self._ended_runs:
             self._active_runs[job_run.instance_id] = job_run
+            self._missing_runs.pop(job_run.instance_id, None)
 
     def _prune_ended(self) -> None:
         """Remove ended run entries older than the retention period."""
