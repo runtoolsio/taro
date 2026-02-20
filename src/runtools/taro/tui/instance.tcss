@@ -1,0 +1,9 @@
+/* Textual CSS (TCSS) — a subset of CSS for terminal layout.
+   Selectors match widget class names: InstanceHeader targets the InstanceHeader widget.
+   See https://textual.textualize.io/css_reference/ */
+
+InstanceHeader {
+    dock: top;      /* Pin to top edge of parent, removed from normal flow */
+    height: 3;      /* 2 content rows + 1 padding */
+    padding: 0 1;
+}

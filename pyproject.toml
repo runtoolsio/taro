@@ -13,6 +13,7 @@ dynamic = ["version", "description"]
 dependencies = [
     #    "runtools-runcore @ git+ssh://git@github.com/runtoolsio/runcore",
     "pypager >=3.0.1",
+    "textual>=8.0.0",
     "typer>=0.15.4",
     "rich>=14.0.0",
 ]
