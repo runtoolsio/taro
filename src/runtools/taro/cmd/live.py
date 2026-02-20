@@ -1,14 +1,14 @@
 """Live-updating terminal view of active job instances.
 
-Uses a hybrid approach: phase events provide immediate updates for transitions, while periodic
-RPC polling (~1s) refreshes snapshots to pick up non-event state changes (e.g. stop requests)
-and detect crashed instances. Recently ended runs are retained briefly (dimmed) before being removed.
+Primarily event-driven: phase events provide immediate updates for transitions, and control events
+provide immediate updates for stop requests. A slow RPC poll (~10s) serves only as a heartbeat
+to detect crashed instances. Recently ended runs are retained briefly (dimmed) before being removed.
 """
 
+import time
 from queue import Queue, Empty
 from typing import List, Optional
 
-import time
 import typer
 from rich import box
 from rich.console import Console
@@ -19,9 +19,10 @@ from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria, SortOption
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobRun
+from runtools.taro import cli
+
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
-from runtools.taro import cli
 from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(invoke_without_command=True)
@@ -32,6 +33,7 @@ COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.PH
 
 ENDED_RETENTION_SECONDS = 10
 MISSING_GRACE_SECONDS = 5
+POLL_INTERVAL_SECONDS = 10
 
 _RIGHT_ALIGNED = {view_inst.EXEC_TIME}
 _FIXED_WIDTH = {view_inst.TERM_STATUS: view_inst.TERM_STATUS.max_width}
@@ -71,33 +73,42 @@ class LiveView:
         self._active_runs: dict[InstanceID, JobRun] = {}
         self._ended_runs: dict[InstanceID, tuple[JobRun, float]] = {}
         self._missing_runs: dict[InstanceID, float] = {}  # instance_id -> first_missing_at (monotonic)
-        self._event_queue: Queue[InstancePhaseEvent] = Queue()
+        self._event_queue: Queue = Queue()
+        self._last_poll: float = 0
 
     def run(self) -> None:
-        """Subscribe to phase events and run hybrid event/polling refresh loop."""
+        """Subscribe to instance events and run event-driven refresh loop with slow RPC heartbeat."""
         handler = lambda e: self._event_queue.put(e)
         self._conn.notifications.add_observer_phase(handler)
+        self._conn.notifications.add_observer_control(handler)
         try:
             self._refresh_active_runs()
-            with Live(self._build_table(), console=console, refresh_per_second=1) as live_display:
+            with Live(self._build_table(), console=console, refresh_per_second=10) as live_display:
                 try:
                     while True:
                         self._drain_events()
-                        self._refresh_active_runs()
+                        self._poll_if_due()
                         self._prune_ended()
                         live_display.update(self._build_table())
                 except KeyboardInterrupt:
                     pass
         finally:
             self._conn.notifications.remove_observer_phase(handler)
+            self._conn.notifications.remove_observer_control(handler)
+
+    def _poll_if_due(self) -> None:
+        """Run RPC poll when the heartbeat interval has elapsed."""
+        now = time.monotonic()
+        if now - self._last_poll >= POLL_INTERVAL_SECONDS:
+            self._refresh_active_runs()
 
     def _refresh_active_runs(self) -> None:
-        """RPC poll to refresh active runs. Updates snapshots and detects crashed instances.
+        """RPC heartbeat to discover new instances and detect crashed ones.
 
         Instances missing from RPC are given a grace period before removal, allowing END events
         to arrive and handle the transition to ended state properly.
         """
-        now = time.monotonic()
+        self._last_poll = time.monotonic()
         polled = {run.instance_id: run for run in self._conn.get_active_runs(self._run_match)}
 
         # Update snapshots for instances still responding
@@ -108,11 +119,11 @@ class LiveView:
         # Track instances that disappeared from RPC
         for iid in list(self._active_runs):
             if iid not in polled and iid not in self._missing_runs:
-                self._missing_runs[iid] = now
+                self._missing_runs[iid] = self._last_poll
 
         # Remove instances missing beyond grace period (likely crashed)
         for iid, missing_since in list(self._missing_runs.items()):
-            if now - missing_since >= MISSING_GRACE_SECONDS:
+            if self._last_poll - missing_since >= MISSING_GRACE_SECONDS:
                 self._active_runs.pop(iid, None)
                 del self._missing_runs[iid]
 
@@ -127,12 +138,12 @@ class LiveView:
             except Empty:
                 break
 
-    def _process_event(self, event: InstancePhaseEvent) -> None:
+    def _process_event(self, event) -> None:
         """Update active/ended cache from the event's JobRun snapshot."""
         job_run = event.job_run
         if self._run_match and not self._run_match(job_run):
             return
-        if event.is_root_phase and event.new_stage == Stage.ENDED:
+        if isinstance(event, InstancePhaseEvent) and event.is_root_phase and event.new_stage == Stage.ENDED:
             self._active_runs.pop(job_run.instance_id, None)
             self._missing_runs.pop(job_run.instance_id, None)
             self._ended_runs[job_run.instance_id] = (job_run, time.monotonic())
