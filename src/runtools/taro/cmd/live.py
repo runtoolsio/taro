@@ -15,14 +15,14 @@ from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
+
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria, SortOption
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobRun
-from runtools.taro import cli
-
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
+from runtools.taro import cli
 from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(invoke_without_command=True)
@@ -81,6 +81,7 @@ class LiveView:
         handler = lambda e: self._event_queue.put(e)
         self._conn.notifications.add_observer_phase(handler)
         self._conn.notifications.add_observer_control(handler)
+        self._conn.notifications.add_observer_status(handler)
         try:
             self._refresh_active_runs()
             with Live(self._build_table(), console=console, refresh_per_second=10) as live_display:
@@ -95,6 +96,7 @@ class LiveView:
         finally:
             self._conn.notifications.remove_observer_phase(handler)
             self._conn.notifications.remove_observer_control(handler)
+            self._conn.notifications.remove_observer_status(handler)
 
     def _poll_if_due(self) -> None:
         """Run RPC poll when the heartbeat interval has elapsed."""
