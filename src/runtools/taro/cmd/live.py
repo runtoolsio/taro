@@ -79,9 +79,7 @@ class LiveView:
     def run(self) -> None:
         """Subscribe to instance events and run event-driven refresh loop with slow RPC heartbeat."""
         handler = lambda e: self._event_queue.put(e)
-        self._conn.notifications.add_observer_phase(handler)
-        self._conn.notifications.add_observer_control(handler)
-        self._conn.notifications.add_observer_status(handler)
+        self._conn.notifications.add_observer_all_events(handler)
         try:
             self._refresh_active_runs()
             with Live(self._build_table(), console=console, refresh_per_second=10) as live_display:
@@ -94,9 +92,7 @@ class LiveView:
                 except KeyboardInterrupt:
                     pass
         finally:
-            self._conn.notifications.remove_observer_phase(handler)
-            self._conn.notifications.remove_observer_control(handler)
-            self._conn.notifications.remove_observer_status(handler)
+            self._conn.notifications.remove_observer_all_events(handler)
 
     def _poll_if_due(self) -> None:
         """Run RPC poll when the heartbeat interval has elapsed."""
@@ -142,7 +138,9 @@ class LiveView:
 
     def _process_event(self, event) -> None:
         """Update active/ended cache from the event's JobRun snapshot."""
-        job_run = event.job_run
+        job_run = getattr(event, 'job_run', None)
+        if job_run is None:
+            return  # Output events carry only instance metadata, not a full snapshot
         if self._run_match and not self._run_match(job_run):
             return
         if isinstance(event, InstancePhaseEvent) and event.is_root_phase and event.new_stage == Stage.ENDED:
