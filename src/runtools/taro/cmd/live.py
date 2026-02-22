@@ -7,7 +7,7 @@ to detect crashed instances. Recently ended runs are retained briefly (dimmed) b
 
 import time
 from queue import Queue, Empty
-from typing import List, Optional
+from typing import Optional
 
 import typer
 from rich import box
@@ -23,12 +23,13 @@ from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobRun
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
+from runtools.taro.tui.widgets import to_rich_style
 from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(invoke_without_command=True)
 console = Console()
 
-COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.PHASES, view_inst.TERM_STATUS,
+COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.PHASES,
            view_inst.STATUS]
 
 ENDED_RETENTION_SECONDS = 10
@@ -36,28 +37,18 @@ MISSING_GRACE_SECONDS = 5
 POLL_INTERVAL_SECONDS = 10
 
 _RIGHT_ALIGNED = {view_inst.EXEC_TIME}
-_FIXED_WIDTH = {view_inst.TERM_STATUS: view_inst.TERM_STATUS.max_width}
-
-
-def _to_rich_style(pt_style: str) -> str:
-    """Converts prompt_toolkit ANSI style names to rich style names.
-
-    Strips 'ansi' prefix and inserts '_' for bright variants:
-    'ansibrightred' -> 'bright_red', 'ansiblue' -> 'blue'.
-    """
-    if not pt_style:
-        return pt_style
-    parts = pt_style.split()
-    converted = []
-    for part in parts:
-        if part.startswith("ansi"):
-            name = part[4:]  # strip 'ansi'
-            if name.startswith("bright"):
-                name = "bright_" + name[6:]
-            converted.append(name)
-        else:
-            converted.append(part)
-    return " ".join(converted)
+# Column sizing — with expand=True, only columns with ratio set absorb extra space.
+# Columns with width are truly fixed; the rest stay content-sized.
+_COL_WIDTH = {
+    view_inst.JOB_ID: 20,
+    view_inst.RUN_ID: 20,
+    view_inst.EXEC_TIME: 10,
+    view_inst.TERM_STATUS: view_inst.TERM_STATUS.max_width,
+}
+_COL_RATIO = {
+    view_inst.PHASES: 1,
+    view_inst.STATUS: 2,
+}
 
 
 class LiveView:
@@ -176,13 +167,14 @@ class LiveView:
             caption="Ctrl+C to exit",
             caption_style="dim",
             padding=(0, 1),
+            expand=True,
         )
 
         for col in COLUMNS:
             justify = "right" if col in _RIGHT_ALIGNED else "left"
-            min_width = _FIXED_WIDTH.get(col)
-            max_width = col.max_width if col == COLUMNS[-1] else None
-            table.add_column(col.name, no_wrap=True, justify=justify, min_width=min_width, max_width=max_width)
+            width = _COL_WIDTH.get(col)
+            ratio = _COL_RATIO.get(col)
+            table.add_column(col.name, no_wrap=True, justify=justify, width=width, ratio=ratio)
 
         if not runs:
             table.add_row(Text("No active instances", style="dim"), *[""] * (len(COLUMNS) - 1))
@@ -193,7 +185,7 @@ class LiveView:
             cells = []
             for col in COLUMNS:
                 value = col.value_fnc(run)
-                style = "dim" if is_ended else _to_rich_style(col.colour_fnc(run))
+                style = "dim" if is_ended else to_rich_style(col.colour_fnc(run))
                 cells.append(Text(str(value), style=style))
             table.add_row(*cells)
 
@@ -202,7 +194,7 @@ class LiveView:
 
 @app.callback()
 def live(
-        instance_patterns: List[str] = typer.Argument(
+        instance_patterns: list[str] = typer.Argument(
             default=None,
             metavar="PATTERN",
             help="Instance ID patterns to filter results"

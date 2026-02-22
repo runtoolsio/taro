@@ -12,14 +12,14 @@ Textual quick reference for maintainers:
 """
 
 from rich.text import Text
-from runtools.runcore import util
-from runtools.runcore.job import JobRun
-from runtools.runcore.run import Stage
-from runtools.taro.style import stage_style, run_term_style
 from textual.widgets import Static
 
+from runtools.runcore import util
+from runtools.runcore.job import JobRun
+from runtools.taro.style import stage_style, run_term_style
 
-def _to_rich_style(pt_style: str) -> str:
+
+def to_rich_style(pt_style: str) -> str:
     """Converts prompt_toolkit ANSI style names to rich style names.
 
     The taro style module uses prompt_toolkit names (e.g. 'ansibrightred') because the CLI
@@ -110,5 +110,5 @@ class InstanceHeader(Static):
 def _stage_rich_style(job_run: JobRun) -> str:
     """Determine Rich style for the stage/termination indicator."""
     if job_run.lifecycle.is_ended and job_run.lifecycle.termination:
-        return _to_rich_style(run_term_style(job_run))
-    return _to_rich_style(stage_style(job_run))
+        return to_rich_style(run_term_style(job_run))
+    return to_rich_style(stage_style(job_run))

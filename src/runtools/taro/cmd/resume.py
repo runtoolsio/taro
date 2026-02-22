@@ -1,12 +1,13 @@
-from typing import List
+from typing import Optional, List
 
 import typer
 from rich.console import Console
+
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, PhaseCriterion, LifecycleCriterion
+from runtools.runcore.criteria import PhaseCriterion, LifecycleCriterion
 from runtools.runcore.run import Stage
-from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli, cliutil, printer
+from runtools.taro.cmd.resolve import resolve_instances
 from runtools.taro.view.instance import JOB_ID, RUN_ID, CREATED, PHASES, STATUS
 
 app = typer.Typer(invoke_without_command=True)
@@ -15,7 +16,7 @@ console = Console()
 
 @app.callback()
 def resume(
-        instance_patterns: List[str] = cli.INSTANCE_PATTERNS,
+        instance_patterns: Optional[List[str]] = cli.INSTANCE_PATTERNS_OPTIONAL,
         phase: str = typer.Option(..., "--phase", "-p", help="Phase ID to resume"),
         env: str = cli.ENV_OPTION_FIELD,
         force: bool = typer.Option(
@@ -26,46 +27,34 @@ def resume(
         ),
 ):
     """Resume jobs waiting at checkpoint"""
-    total_resumed = 0
-
     with connector.connect(env) as conn:
-        for pattern in instance_patterns:
-            run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
-            run_match += PhaseCriterion(phase_id=phase, lifecycle=LifecycleCriterion(stage=Stage.CREATED))
-            run_match += PhaseCriterion(phase_id=phase, idle=True)
-            instances = conn.get_instances(run_match)
+        instances = resolve_instances(
+            conn, instance_patterns,
+            update_criteria=lambda c: (
+                c.add(PhaseCriterion(phase_id=phase, lifecycle=LifecycleCriterion(stage=Stage.CREATED))),
+                c.add(PhaseCriterion(phase_id=phase, idle=True)),
+            ),
+            instance_filter=lambda inst: inst.find_phase_control_by_id(phase),
+            select_title="Select instance to resume",
+        )
 
-            if not instances:
-                console.print(f"\n[yellow]⚠[/] No instances found for pattern: [white]{pattern}[/]")
-                continue
+        if not instances:
+            console.print("[yellow]No resumable instances found[/]")
+            raise typer.Exit()
 
-            resumable = []
-            for inst in instances:
-                if inst.find_phase_control_by_id(phase):
-                    resumable.append(inst)
+        if not force:
+            printer.print_table(
+                [i.snap() for i in instances],
+                [JOB_ID, RUN_ID, CREATED, PHASES, STATUS],
+                show_header=True, pager=False,
+            )
+            if not cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True, newline_before=True):
+                raise typer.Exit()
 
-            if not resumable:
-                console.print(
-                    f"\n[dim]Pattern [/][white]{pattern}[/][dim] matches {len(instances)} instance(s), but none have phase '{phase}'[/]")
-                continue
+        total = 0
+        for inst in instances:
+            inst.find_phase_control_by_id(phase).resume()
+            total += 1
+            console.print(f"  [green]✓[/] Resumed {inst.id}")
 
-            console.print(f"\n[dim]Pattern [/][white]{pattern}[/][dim] matches ({len(resumable)} resumable):[/]")
-
-            if not force:
-                printer.print_table(
-                    [i.snap() for i in resumable],
-                    [JOB_ID, RUN_ID, CREATED, PHASES, STATUS],
-                    show_header=True, pager=False
-                )
-
-                if not cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True, newline_before=True):
-                    console.print("[dim]Skipped[/]")
-                    continue
-
-            for inst in resumable:
-                inst.find_phase_control_by_id(phase).resume()
-                console.print(f"  [green]✓[/] Resumed {inst.id}")
-                total_resumed += 1
-
-        style = "bold" if total_resumed else "yellow"
-        console.print(f"\n[{style}]Total resumed: {total_resumed}[/]")
+        console.print(f"\n[{'bold' if total else 'yellow'}]Total resumed: {total}[/]")

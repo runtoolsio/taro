@@ -4,12 +4,14 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.job import JobInstance, JobRun
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
 from runtools.taro.tui.instance_screen import InstanceApp
+from runtools.taro.tui.selector import select_instance, select_run
 
 app = typer.Typer(invoke_without_command=True)
 console = Console(stderr=True)
@@ -41,7 +43,7 @@ def instance(
             return
 
         if len(instances) > 1:
-            selected = _select_instance(instances)
+            selected = select_instance(conn, instances, run_match=run_match)
             if selected is not None:
                 _run_live(selected)
             return
@@ -57,7 +59,7 @@ def instance(
             _run_historical(history_runs[0])
             return
 
-        selected_run = _select_run(history_runs)
+        selected_run = select_run(history_runs)
         if selected_run is not None:
             _run_historical(selected_run)
 
@@ -70,47 +72,3 @@ def _run_live(job_instance: JobInstance):
 def _run_historical(job_run: JobRun):
     """Launch the TUI app with a historical run."""
     InstanceApp(job_run=job_run).run()
-
-
-def _select_instance(instances) -> Optional[JobInstance]:
-    """Prompt user to select from multiple active instances."""
-    console.print("\n[bold]Multiple active instances found:[/]\n")
-    for i, inst in enumerate(instances, 1):
-        snap = inst.snap()
-        stage = snap.lifecycle.stage.name
-        console.print(f"  [{i}] {snap.job_id}@{snap.run_id}  {stage}")
-
-    console.print()
-    selection = typer.prompt("Select instance number (or 'q' to quit)", default="1")
-    if selection.lower() == "q":
-        return None
-    try:
-        idx = int(selection) - 1
-        if 0 <= idx < len(instances):
-            return instances[idx]
-    except ValueError:
-        pass
-    console.print("[red]Invalid selection[/]")
-    return None
-
-
-def _select_run(runs) -> Optional[JobRun]:
-    """Prompt user to select from multiple historical runs."""
-    console.print("\n[bold]Multiple historical runs found:[/]\n")
-    for i, run in enumerate(runs, 1):
-        term = run.lifecycle.termination
-        status_name = term.status.name if term else run.lifecycle.stage.name
-        console.print(f"  [{i}] {run.job_id}@{run.run_id}  {status_name}")
-
-    console.print()
-    selection = typer.prompt("Select run number (or 'q' to quit)", default="1")
-    if selection.lower() == "q":
-        return None
-    try:
-        idx = int(selection) - 1
-        if 0 <= idx < len(runs):
-            return runs[idx]
-    except ValueError:
-        pass
-    console.print("[red]Invalid selection[/]")
-    return None

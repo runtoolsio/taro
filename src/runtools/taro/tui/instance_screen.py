@@ -3,6 +3,7 @@
 Textual quick reference for maintainers:
 - App is the top-level object that owns the event loop and the terminal screen.
 - App.run() takes over the terminal (alt-screen) and blocks until quit.
+- Screen is a full-screen container that can be pushed/popped on App's screen stack.
 - compose() declares the widget tree — called once, widgets are instantiated via `yield`.
 - on_mount() / on_unmount() are lifecycle hooks fired after the widget tree is built / before teardown.
 - CSS_PATH points to a Textual CSS file (subset of CSS) that controls layout and styling.
@@ -15,24 +16,29 @@ Textual quick reference for maintainers:
 
 from typing import Optional
 
-from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent
-from runtools.taro.tui.widgets import InstanceHeader
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.screen import Screen
+
+from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent
+from runtools.taro.tui.widgets import InstanceHeader
 
 
-class InstanceApp(App):
-    """Textual app for the instance detail TUI.
+class InstanceScreen(Screen):
+    """Textual screen for the instance detail view.
 
     Two modes:
     - live (instance provided): subscribes to events, header ticks elapsed every 1s.
     - historical (job_run provided): static display, no events or ticking.
+
+    Can be used standalone via InstanceApp, or pushed from another app.
     """
 
     CSS_PATH = "instance.tcss"
 
     BINDINGS = [
-        Binding("q", "quit", "Quit"),
+        Binding("escape", "dismiss", "Back", show=True),
+        Binding("q", "dismiss", "Quit", show=True),
     ]
 
     def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None) -> None:
@@ -61,8 +67,8 @@ class InstanceApp(App):
         uses call_from_thread() to safely schedule the update on Textual's event loop.
         """
         if self._live and self._instance is not None:
-            self._phase_handler = lambda event: self.call_from_thread(self._on_phase_event, event)
-            self._lifecycle_handler = lambda event: self.call_from_thread(self._on_lifecycle_event, event)
+            self._phase_handler = lambda event: self.app.call_from_thread(self._on_phase_event, event)
+            self._lifecycle_handler = lambda event: self.app.call_from_thread(self._on_lifecycle_event, event)
             self._instance.notifications.add_observer_phase(self._phase_handler)
             self._instance.notifications.add_observer_lifecycle(self._lifecycle_handler)
 
@@ -71,11 +77,12 @@ class InstanceApp(App):
 
     def _unsubscribe(self) -> None:
         if self._instance is not None:
-            self._instance.notifications.remove_observer_phase(self._phase_handler)
-            self._phase_handler = None
-
-            self._instance.notifications.remove_observer_lifecycle(self._lifecycle_handler)
-            self._lifecycle_handler = None
+            if self._phase_handler is not None:
+                self._instance.notifications.remove_observer_phase(self._phase_handler)
+                self._phase_handler = None
+            if self._lifecycle_handler is not None:
+                self._instance.notifications.remove_observer_lifecycle(self._lifecycle_handler)
+                self._lifecycle_handler = None
 
     def _on_phase_event(self, event: InstancePhaseEvent) -> None:
         self._update_run(event.job_run)
@@ -88,3 +95,25 @@ class InstanceApp(App):
     def _update_run(self, job_run: JobRun) -> None:
         header = self.query_one(InstanceHeader)
         header.update_run(job_run)
+
+
+class InstanceApp(App):
+    """Standalone Textual app for the instance detail TUI.
+
+    Thin wrapper that pushes InstanceScreen and exits when it is dismissed.
+    """
+
+    BINDINGS = [
+        Binding("q", "quit", "Quit"),
+    ]
+
+    def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None) -> None:
+        super().__init__()
+        self._instance = instance
+        self._job_run = job_run
+
+    def on_mount(self) -> None:
+        self.push_screen(
+            InstanceScreen(instance=self._instance, job_run=self._job_run),
+            callback=lambda _: self.exit(),
+        )
