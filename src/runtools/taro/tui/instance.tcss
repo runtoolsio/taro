@@ -12,3 +12,8 @@ PhaseTree {
     height: 1fr;
     padding: 0 1;
 }
+
+PhaseDetail {
+    height: 1fr;
+    padding: 0 1;
+}

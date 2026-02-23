@@ -21,7 +21,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 
 from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent
-from runtools.taro.tui.widgets import InstanceHeader, PhaseTree
+from runtools.taro.tui.widgets import InstanceHeader, PhaseDetail, PhaseSelected, PhaseTree
 
 
 class InstanceScreen(Screen):
@@ -60,6 +60,7 @@ class InstanceScreen(Screen):
     def compose(self) -> ComposeResult:
         yield InstanceHeader(self._job_run, live=self._live)
         yield PhaseTree(self._job_run, live=self._live)
+        yield PhaseDetail(self._job_run, live=self._live)
 
     def on_mount(self) -> None:
         """Subscribe to runcore events after the widget tree is ready.
@@ -93,9 +94,14 @@ class InstanceScreen(Screen):
         if event.job_run.lifecycle.is_ended:
             self._unsubscribe()
 
+    def on_phase_selected(self, event: PhaseSelected) -> None:
+        """Handle phase selection from the tree — update the detail panel."""
+        self.query_one(PhaseDetail).update_phase(event.phase_id)
+
     def _update_run(self, job_run: JobRun) -> None:
         self.query_one(InstanceHeader).update_run(job_run)
         self.query_one(PhaseTree).update_run(job_run)
+        self.query_one(PhaseDetail).update_run(job_run)
 
 
 class InstanceApp(App):

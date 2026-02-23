@@ -21,6 +21,7 @@ from textual.widgets._tree import TreeNode
 from runtools.runcore import util
 from runtools.runcore.job import JobRun
 from runtools.runcore.run import PhaseRun, Stage
+from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
 
@@ -177,6 +178,118 @@ class PhaseTree(Tree[str]):
         # Restore cursor position if the previously highlighted phase still exists
         if cursor_phase_id and cursor_phase_id in self._node_map:
             self.select_node(self._node_map[cursor_phase_id])
+
+
+class PhaseDetail(Static):
+    """Detail panel showing full information about the currently selected phase.
+
+    Renders a Rich Text block with phase metadata, lifecycle timestamps, and diagnostics.
+    Updated when the user navigates the PhaseTree or when a new snapshot arrives.
+    """
+
+    def __init__(self, job_run: JobRun, *, live: bool = False) -> None:
+        super().__init__()
+        self._job_run = job_run
+        self._phase_id = job_run.root_phase.phase_id
+        self._live = live
+        self._timer = None
+
+    def on_mount(self) -> None:
+        if self._live and not self._job_run.lifecycle.is_ended:
+            self._timer = self.set_interval(1.0, self.refresh)
+
+    def update_phase(self, phase_id: str) -> None:
+        """Select a different phase to display."""
+        self._phase_id = phase_id
+        self.refresh()
+
+    def update_run(self, job_run: JobRun) -> None:
+        """Replace the snapshot and refresh."""
+        self._job_run = job_run
+        if self._live and job_run.lifecycle.is_ended and self._timer is not None:
+            self._timer.stop()
+            self._timer = None
+        self.refresh()
+
+    def render(self) -> Text:
+        phase = self._job_run.find_phase_by_id(self._phase_id)
+        if phase is None:
+            return Text("Phase not found", style="dim")
+
+        style = _phase_style(phase)
+        lifecycle = phase.lifecycle
+        text = Text()
+
+        # Phase ID and type
+        text.append(phase.phase_id, style="bold")
+        if phase.phase_type:
+            text.append(f"  ({phase.phase_type})", style="bright_black")
+        text.append("\n")
+
+        # Stage / termination status
+        if lifecycle.is_ended and lifecycle.termination:
+            stage_text = lifecycle.termination.status.name
+        else:
+            stage_text = lifecycle.stage.name
+        text.append(stage_text, style=style)
+        text.append("\n")
+
+        # Timestamps — always show created; show started only when it meaningfully differs (wait time)
+        text.append(f"Created:     {format_dt_local_tz(lifecycle.created_at, null='N/A', include_ms=False)}\n",
+                     style="bright_black")
+        if lifecycle.started_at and int(lifecycle.created_at.timestamp()) != int(lifecycle.started_at.timestamp()):
+            text.append(f"Started:     {format_dt_local_tz(lifecycle.started_at, null='N/A', include_ms=False)}\n",
+                         style="bright_black")
+        if lifecycle.termination:
+            text.append(
+                f"Terminated:  {format_dt_local_tz(lifecycle.termination.terminated_at, null='N/A', include_ms=False)}"
+                "\n",
+                style="bright_black",
+            )
+
+        # Elapsed / total run time
+        elapsed = util.format_timedelta(lifecycle.total_run_time or lifecycle.elapsed, show_ms=False, null="N/A")
+        text.append(f"Elapsed:     {elapsed}\n", style="bright_black")
+
+        # Stop reason
+        if phase.stop_reason:
+            text.append(f"Stop reason: {phase.stop_reason.name}\n", style=Theme.state_incomplete)
+
+        # Termination message
+        if lifecycle.termination and lifecycle.termination.message:
+            text.append(f"Message:     {lifecycle.termination.message}\n")
+
+        # Attributes
+        if phase.attributes:
+            text.append("\nAttributes\n", style="bold")
+            for key, value in phase.attributes.items():
+                text.append(f"  {key}: {value}\n", style="bright_black")
+
+        # Variables
+        if phase.variables:
+            text.append("\nVariables\n", style="bold")
+            for key, value in phase.variables.items():
+                text.append(f"  {key}: {value}\n", style="bright_black")
+
+        # Faults
+        if self._job_run.faults:
+            text.append("\nFaults\n", style=Theme.state_failure)
+            for fault in self._job_run.faults:
+                text.append(f"  [{fault.category}] {fault.reason}\n", style=Theme.error)
+                if fault.stack_trace:
+                    text.append(f"{fault.stack_trace}\n", style="dim")
+
+        # Termination stack trace
+        if lifecycle.termination and lifecycle.termination.stack_trace:
+            text.append("\nStack trace\n", style=Theme.state_failure)
+            text.append(f"{lifecycle.termination.stack_trace}\n", style="dim")
+
+        # Children count
+        if phase.children:
+            text.append(f"\n{len(phase.children)} {'child' if len(phase.children) == 1 else 'children'}\n",
+                         style="bright_black")
+
+        return text
 
 
 def _collect_phase_ids(phase: PhaseRun) -> set[str]:
