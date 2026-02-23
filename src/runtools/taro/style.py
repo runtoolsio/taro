@@ -17,7 +17,7 @@ def job_id_stats_style(job_stats):
     return Theme.job
 
 
-def instance_style(job):
+def run_id_style(job):
     if job.lifecycle.termination and job.lifecycle.termination.status.outcome == Outcome.FAULT:
         return Theme.state_failure
     return Theme.instance
@@ -109,7 +109,7 @@ def job_instance_styled(job_instance):
     return [
         (job_id_style(job_instance), job_instance.entity_id),
         (Theme.id_separator, "@"),
-        (instance_style(job_instance), job_instance.instance_id)
+        (run_id_style(job_instance), job_instance.instance_id)
     ]
 
 

@@ -19,28 +19,6 @@ from runtools.runcore.job import JobRun
 from runtools.taro.style import stage_style, run_term_style
 
 
-def to_rich_style(pt_style: str) -> str:
-    """Converts prompt_toolkit ANSI style names to rich style names.
-
-    The taro style module uses prompt_toolkit names (e.g. 'ansibrightred') because the CLI
-    printer uses prompt_toolkit. Rich uses a different naming scheme ('bright_red'), so we
-    convert here for TUI use.
-    """
-    if not pt_style:
-        return pt_style
-    parts = pt_style.split()
-    converted = []
-    for part in parts:
-        if part.startswith("ansi"):
-            name = part[4:]
-            if name.startswith("bright"):
-                name = "bright_" + name[6:]
-            converted.append(name)
-        else:
-            converted.append(part)
-    return " ".join(converted)
-
-
 class InstanceHeader(Static):
     """Header widget showing job identity, stage, elapsed time, and status line.
 
@@ -110,5 +88,5 @@ class InstanceHeader(Static):
 def _stage_rich_style(job_run: JobRun) -> str:
     """Determine Rich style for the stage/termination indicator."""
     if job_run.lifecycle.is_ended and job_run.lifecycle.termination:
-        return to_rich_style(run_term_style(job_run))
-    return to_rich_style(stage_style(job_run))
+        return run_term_style(job_run)
+    return stage_style(job_run)

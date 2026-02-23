@@ -1,10 +1,10 @@
+import itertools
 import os
 import re
+import sys
 from collections import namedtuple
 from typing import List, Dict, Tuple
 
-import itertools
-import sys
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText
 from pypager.pager import Pager
@@ -13,6 +13,34 @@ from pypager.source import GeneratorSource
 from runtools.runcore.util import iterates
 
 Column = namedtuple('Column', 'name max_width value_fnc colour_fnc')
+
+_ANSI_COLORS = {'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'gray', 'white'}
+
+
+def _to_pt_style(style: str) -> str:
+    """Convert standard color names to prompt_toolkit ANSI names.
+
+    Args:
+        style: Space-separated style tokens (e.g. ``"bold bright_red"``).
+
+    Returns:
+        Converted style string (e.g. ``"bold ansibrightred"``).
+    """
+    if not style:
+        return style
+    converted = []
+    for token in style.split():
+        if token in _ANSI_COLORS:
+            converted.append('ansi' + token)
+        elif token.startswith('bright_'):
+            base = token[7:]  # strip 'bright_'
+            if base in _ANSI_COLORS:
+                converted.append('ansibright' + base)
+            else:
+                converted.append(token)
+        else:
+            converted.append(token)
+    return ' '.join(converted)
 
 
 def _print_not_formatted(style_text, *, file=None):
@@ -26,7 +54,8 @@ def print_styled(*style_and_text: Tuple[str, str], file=None):
     :param: style_and_text tuples of style and text to print
     """
     if sys.stdout.isatty():
-        print_formatted_text(FormattedText(list(style_and_text)), file=file)
+        pt_pairs = [(_to_pt_style(style), text) for style, text in style_and_text]
+        print_formatted_text(FormattedText(pt_pairs), file=file)
     else:
         _print_not_formatted(style_and_text, file=file)
 
@@ -65,11 +94,11 @@ def output_gen(items, columns: List[Column], show_header: bool, stretch_last_col
         yield [('bold', separator_line)]
 
     for item in itertools.chain(first_fifty, job_iter):
-        yield [(c.colour_fnc(item), f.format(_limit_text(c.value_fnc(item), w - 2)))
+        yield [(_to_pt_style(c.colour_fnc(item)), f.format(_limit_text(c.value_fnc(item), w - 2)))
                for c, w, f in zip(columns, column_widths, column_formats)]
 
     for line in footer:
-        yield [line]
+        yield [(_to_pt_style(line[0]), line[1])]
 
 
 def _calc_widths(items, columns: List[Column], stretch_last_column: bool):

@@ -4,14 +4,14 @@ from runtools.runcore import util
 from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
 from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.printer import Column
-from runtools.taro.style import general_style, job_id_style, instance_style, run_term_style, warn_count_style, \
+from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style, \
     stage_style
 from runtools.taro.theme import Theme
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
-RUN_ID = Column('RUN ID', 30, lambda j: j.run_id, job_id_style)
+RUN_ID = Column('RUN ID', 30, lambda j: j.run_id, run_id_style)
 STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
-INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, instance_style)
+INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)
 PARAMETERS = Column('PARAMETERS', 23,
                     lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
 CREATED = Column('CREATED', 25, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), general_style)

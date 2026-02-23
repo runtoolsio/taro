@@ -1,41 +1,31 @@
 """
+Standard ANSI color names used as the source of truth for the theme.
+Rich/Textual use these names directly; prompt_toolkit requires conversion (see printer._to_pt_style).
+
 BASE 16 COLOURS:
-    # Low intensity, dark.  (One or two components 0x80, the other 0x00.)
-        - ansiblack
-        - ansired
-        - ansigreen
-        - ansiyellow
-        - ansiblue
-        - ansimagenta
-        - ansicyan
-        - ansigray
+    # Low intensity, dark.
+        - black, red, green, yellow, blue, magenta, cyan, gray
 
     # High intensity, bright.
-        - ansibrightblack
-        - ansibrightred
-        - ansibrightgreen
-        - ansibrightyellow
-        - ansibrightblue
-        - ansibrightmagenta
-        - ansibrightcyan
-        - ansiwhite
+        - bright_black, bright_red, bright_green, bright_yellow,
+          bright_blue, bright_magenta, bright_cyan, white
 """
 
 
 class Theme:
     highlight = 'bold'
     job = 'bold'
-    instance = 'ansibrightblack'
+    instance = 'bright_black'
     id_separator = ''
-    success = 'ansigreen'
-    error = 'ansired'
-    warning = 'ansibrightyellow'
-    subtle = 'ansibrightblack'
+    success = 'green'
+    error = 'red'
+    warning = 'bright_yellow'
+    subtle = 'bright_black'
     idle = 'yellow'
     managed = 'cyan'
-    state_before_execution = 'ansigreen'
-    state_executing = 'ansiblue'
-    state_discarded = 'ansiyellow'
-    state_incomplete = 'ansibrightyellow'
-    state_failure = 'ansibrightred'
-    separator = 'ansibrightcyan'
+    state_before_execution = 'green'
+    state_executing = 'blue'
+    state_discarded = 'yellow'
+    state_incomplete = 'bright_yellow'
+    state_failure = 'bright_red'
+    separator = 'bright_cyan'

@@ -16,7 +16,6 @@ from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobInstance, JobRun
 from runtools.runcore.run import Stage
-from runtools.taro.tui.widgets import to_rich_style
 from runtools.taro.view import instance as view_inst
 
 COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.TERM_STATUS, view_inst.PHASES,
@@ -28,7 +27,7 @@ def _row_key(iid: InstanceID) -> str:
 
 
 def _build_cells(run: JobRun) -> list[Text]:
-    return [Text(str(col.value_fnc(run)), style=to_rich_style(col.colour_fnc(run))) for col in COLUMNS]
+    return [Text(str(col.value_fnc(run)), style=col.colour_fnc(run)) for col in COLUMNS]
 
 
 def _update_row(table: DataTable, key: str, run: JobRun) -> None:

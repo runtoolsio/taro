@@ -23,7 +23,6 @@ from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobRun
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
-from runtools.taro.tui.widgets import to_rich_style
 from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(invoke_without_command=True)
@@ -185,7 +184,7 @@ class LiveView:
             cells = []
             for col in COLUMNS:
                 value = col.value_fnc(run)
-                style = "dim" if is_ended else to_rich_style(col.colour_fnc(run))
+                style = "dim" if is_ended else col.colour_fnc(run)
                 cells.append(Text(str(value), style=style))
             table.add_row(*cells)
 
