@@ -89,7 +89,7 @@ def output_gen(items, columns: List[Column], show_header: bool, stretch_last_col
     column_formats = [" {:" + str(w - 1) + "} " for w in column_widths]
 
     if show_header:
-        yield [('bold', f.format(c.name)) for c, f in zip(columns, column_formats)]
+        yield [(_to_pt_style('bold cyan'), f.format(c.name)) for c, f in zip(columns, column_formats)]
         separator_line = " ".join("-" * w for w in column_widths)
         yield [('bold', separator_line)]
 
