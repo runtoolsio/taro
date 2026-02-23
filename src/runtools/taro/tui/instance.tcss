@@ -7,3 +7,8 @@ InstanceHeader {
     height: 3;      /* 2 content rows + 1 padding */
     padding: 0 1;
 }
+
+PhaseTree {
+    height: 1fr;
+    padding: 0 1;
+}
