@@ -11,9 +11,8 @@ app = typer.Typer()
 
 app.add_typer(approve.app, name="approve")
 app.add_typer(env.app, name="env")
-app.add_typer(instance.app, name="instance")
-app.add_typer(history.hist_app, name="h")  # Alias for history
 app.add_typer(history.app, name="history")
+app.add_typer(instance.app, name="instance")
 app.add_typer(listen.app, name="listen")
 app.add_typer(live.app, name="live")
 app.add_typer(of.app, name="of")
@@ -23,6 +22,14 @@ app.add_typer(stats.app, name="stats")
 app.add_typer(stop.app, name="stop")
 app.add_typer(tail.app, name="tail")
 app.add_typer(wait.app, name="wait")
+
+# Single-char aliases for frequently used commands
+app.add_typer(history.app, name="h", hidden=True)
+app.add_typer(instance.app, name="i", hidden=True)
+app.add_typer(live.app, name="l", hidden=True)
+app.add_typer(stats.app, name="s", hidden=True)
+app.add_typer(tail.app, name="t", hidden=True)
+app.add_typer(stop.app, name="x", hidden=True)
 
 
 def run():
