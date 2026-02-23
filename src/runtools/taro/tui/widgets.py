@@ -227,11 +227,7 @@ class PhaseDetail(Static):
         text.append("\n")
 
         # Stage / termination status
-        if lifecycle.is_ended and lifecycle.termination:
-            stage_text = lifecycle.termination.status.name
-        else:
-            stage_text = lifecycle.stage.name
-        text.append(stage_text, style=style)
+        text.append(_phase_stage_text(phase), style=style)
         text.append("\n")
 
         # Timestamps — always show created; show started only when it meaningfully differs (wait time)
@@ -292,6 +288,16 @@ class PhaseDetail(Static):
         return text
 
 
+def _phase_stage_text(phase: PhaseRun) -> str:
+    """Resolve display text for a phase's current stage."""
+    lifecycle = phase.lifecycle
+    if lifecycle.is_ended and lifecycle.termination:
+        return lifecycle.termination.status.name
+    if phase.is_idle:
+        return "WAITING"
+    return lifecycle.stage.name
+
+
 def _collect_phase_ids(phase: PhaseRun) -> set[str]:
     """Collect all phase_ids from a phase tree (including the root)."""
     ids = {phase.phase_id}
@@ -307,12 +313,7 @@ def _phase_label(phase: PhaseRun) -> Text:
 
     label = Text()
     label.append(phase.phase_id, style=style)
-
-    if lifecycle.is_ended and lifecycle.termination:
-        stage_text = lifecycle.termination.status.name
-    else:
-        stage_text = lifecycle.stage.name
-    label.append(f"  {stage_text}", style=style)
+    label.append(f"  {_phase_stage_text(phase)}", style=style)
 
     elapsed_str = util.format_timedelta(lifecycle.elapsed, show_ms=False, null="")
     if elapsed_str:
