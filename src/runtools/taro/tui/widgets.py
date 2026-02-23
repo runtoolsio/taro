@@ -3,6 +3,8 @@
 Textual quick reference for maintainers:
 - Static is a built-in widget for displaying content. Subclass it and override render()
   to return a Rich renderable (Text, Table, Panel, etc.) — Textual renders Rich natively.
+- Tree[str] is a built-in interactive tree widget. Each TreeNode stores a `data` value (here: phase_id).
+  Nodes are navigable with arrow keys and fire NodeHighlighted / NodeSelected events.
 - render() is called whenever the widget needs to repaint (after refresh(), resize, etc.).
 - refresh() marks the widget as dirty so render() is called on the next frame.
 - set_interval(secs, callback) creates a repeating timer on the event loop. Returns a Timer
@@ -12,8 +14,9 @@ Textual quick reference for maintainers:
 """
 
 from rich.text import Text
-from rich.tree import Tree
-from textual.widgets import Static
+from textual.message import Message
+from textual.widgets import Static, Tree
+from textual.widgets._tree import TreeNode
 
 from runtools.runcore import util
 from runtools.runcore.job import JobRun
@@ -88,22 +91,37 @@ class InstanceHeader(Static):
         return result
 
 
-class PhaseTree(Static):
-    """Tree widget showing the phase hierarchy of a job run.
+class PhaseSelected(Message):
+    """Posted when a phase node is highlighted in the tree."""
+
+    def __init__(self, phase_id: str) -> None:
+        super().__init__()
+        self.phase_id = phase_id
+
+
+class PhaseTree(Tree[str]):
+    """Interactive tree widget showing the phase hierarchy of a job run.
 
     Each node displays: {phase_id}  {STAGE}  {elapsed}
-    Color-coded by stage/outcome. In live mode, a 1-second timer keeps elapsed ticking.
+    Color-coded by stage/outcome. Nodes are navigable with arrow keys.
+    ``TreeNode.data`` stores the ``phase_id`` string for O(1) lookup.
+
+    In live mode, a 1-second timer keeps elapsed times ticking.
     """
 
     def __init__(self, job_run: JobRun, *, live: bool = False) -> None:
-        super().__init__()
+        root_phase = job_run.root_phase
+        super().__init__(_phase_label(root_phase), data=root_phase.phase_id)
         self._job_run = job_run
         self._live = live
         self._timer = None
+        self._node_map: dict[str, TreeNode[str]] = {}
 
     def on_mount(self) -> None:
+        self._populate_children(self.root, self._job_run.root_phase)
+        self.root.expand_all()
         if self._live and not self._job_run.lifecycle.is_ended:
-            self._timer = self.set_interval(1.0, self.refresh)
+            self._timer = self.set_interval(1.0, self._update_labels)
 
     def update_run(self, job_run: JobRun) -> None:
         """Replace the snapshot and refresh. Called from InstanceScreen on each event."""
@@ -111,20 +129,62 @@ class PhaseTree(Static):
         if self._live and job_run.lifecycle.is_ended and self._timer is not None:
             self._timer.stop()
             self._timer = None
-        self.refresh()
 
-    def render(self) -> Tree:
+        new_ids = _collect_phase_ids(job_run.root_phase)
+        if new_ids == set(self._node_map.keys()) | {job_run.root_phase.phase_id}:
+            self._update_labels()
+        else:
+            self._rebuild()
+
+    def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
+        """Post PhaseSelected when the cursor moves to a node."""
+        if event.node.data is not None:
+            self.post_message(PhaseSelected(event.node.data))
+
+    def _populate_children(self, parent_node: TreeNode[str], phase: PhaseRun) -> None:
+        """Recursively add children to the Textual tree and register them in _node_map."""
+        for child in phase.children:
+            child_node = parent_node.add(_phase_label(child), data=child.phase_id)
+            self._node_map[child.phase_id] = child_node
+            self._populate_children(child_node, child)
+
+    def _update_labels(self) -> None:
+        """Refresh all node labels from the current snapshot without rebuilding structure."""
         root_phase = self._job_run.root_phase
-        tree = Tree(_phase_label(root_phase))
-        _build_tree(tree, root_phase)
-        return tree
+        self.root.set_label(_phase_label(root_phase))
+        self._update_labels_recursive(root_phase)
+
+    def _update_labels_recursive(self, phase: PhaseRun) -> None:
+        for child in phase.children:
+            node = self._node_map.get(child.phase_id)
+            if node is not None:
+                node.set_label(_phase_label(child))
+            self._update_labels_recursive(child)
+
+    def _rebuild(self) -> None:
+        """Clear and re-populate the entire tree (structure changed)."""
+        cursor_phase_id = self.cursor_node.data if self.cursor_node else None
+
+        self.root.remove_children()
+        self._node_map.clear()
+
+        root_phase = self._job_run.root_phase
+        self.root.set_label(_phase_label(root_phase))
+        self.root.data = root_phase.phase_id
+        self._populate_children(self.root, root_phase)
+        self.root.expand_all()
+
+        # Restore cursor position if the previously highlighted phase still exists
+        if cursor_phase_id and cursor_phase_id in self._node_map:
+            self.select_node(self._node_map[cursor_phase_id])
 
 
-def _build_tree(tree_node: Tree, phase: PhaseRun) -> None:
-    """Recursively add children to the Rich tree."""
+def _collect_phase_ids(phase: PhaseRun) -> set[str]:
+    """Collect all phase_ids from a phase tree (including the root)."""
+    ids = {phase.phase_id}
     for child in phase.children:
-        branch = tree_node.add(_phase_label(child))
-        _build_tree(branch, child)
+        ids.update(_collect_phase_ids(child))
+    return ids
 
 
 def _phase_label(phase: PhaseRun) -> Text:
