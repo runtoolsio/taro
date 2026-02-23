@@ -5,7 +5,7 @@ automatically, phase/status changes refresh immediately, and ended instances are
 Historical runs are displayed statically.
 """
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -21,6 +21,8 @@ from runtools.taro.view import instance as view_inst
 COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.TERM_STATUS, view_inst.PHASES,
            view_inst.STATUS]
 
+_SEP_PREFIX = "__sep_"
+
 
 def _row_key(iid: InstanceID) -> str:
     return f"{iid.job_id}@{iid.run_id}"
@@ -28,6 +30,10 @@ def _row_key(iid: InstanceID) -> str:
 
 def _build_cells(run: JobRun) -> list[Text]:
     return [Text(str(col.value_fnc(run)), style=col.colour_fnc(run)) for col in COLUMNS]
+
+
+def _separator_cells(label: str) -> list[Text]:
+    return [Text(f"── {label} ──", style="bold dim")] + [Text("") for _ in COLUMNS[1:]]
 
 
 def _update_row(table: DataTable, key: str, run: JobRun) -> None:
@@ -127,6 +133,96 @@ class _LiveSelectorApp(_SelectorApp[Optional[JobInstance]]):
                 table.add_row(*_build_cells(job_run), key=key)
 
 
+class _CombinedSelectorApp(_SelectorApp[Optional[Union[JobInstance, JobRun]]]):
+    """Selector showing both active instances (live-updating) and historical runs (static)."""
+
+    def __init__(self, conn: EnvironmentConnector, instances: list[JobInstance], history_runs: list[JobRun], *,
+                 run_match: Optional[JobRunCriteria] = None, title: str = "Select instance") -> None:
+        super().__init__()
+        self._conn = conn
+        self._run_match = run_match
+        self._selector_title = title
+        self._instances: dict[str, JobInstance] = {}
+        self._live_runs: dict[str, JobRun] = {}
+        self._history_runs: dict[str, JobRun] = {}
+        self._env_handler = None
+
+        active_ids = set()
+        for inst in instances:
+            snap = inst.snap()
+            key = _row_key(snap.instance_id)
+            self._instances[key] = inst
+            self._live_runs[key] = snap
+            active_ids.add(snap.instance_id)
+
+        for run in history_runs:
+            if run.instance_id not in active_ids:
+                key = _row_key(run.instance_id)
+                self._history_runs[key] = run
+
+    def on_mount(self) -> None:
+        self.title = self._selector_title
+        self._rebuild_table(self.query_one(DataTable))
+        self._env_handler = lambda e: self.call_from_thread(self._on_event, e)
+        self._conn.notifications.add_observer_all_events(self._env_handler)
+
+    def on_unmount(self) -> None:
+        if self._env_handler is not None:
+            self._conn.notifications.remove_observer_all_events(self._env_handler)
+            self._env_handler = None
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        key = str(event.row_key.value)
+        if key.startswith(_SEP_PREFIX):
+            return
+        if key in self._instances:
+            self.exit(self._instances[key])
+        elif key in self._history_runs:
+            self.exit(self._history_runs[key])
+
+    def _on_event(self, event) -> None:
+        job_run = getattr(event, 'job_run', None)
+        if job_run is None:
+            return
+        if self._run_match and not self._run_match(job_run):
+            return
+
+        iid = job_run.instance_id
+        key = _row_key(iid)
+        table = self.query_one(DataTable)
+
+        if isinstance(event, InstancePhaseEvent) and event.is_root_phase and event.new_stage == Stage.ENDED:
+            self._live_runs.pop(key, None)
+            self._instances.pop(key, None)
+            if key in table.rows:
+                table.remove_row(row_key=key)
+            if not self._live_runs and f"{_SEP_PREFIX}active" in table.rows:
+                table.remove_row(row_key=f"{_SEP_PREFIX}active")
+        elif job_run.lifecycle.is_ended:
+            return
+        elif key in self._live_runs:
+            self._live_runs[key] = job_run
+            _update_row(table, key, job_run)
+        else:
+            inst = self._conn.get_instance(iid)
+            if inst is not None:
+                self._instances[key] = inst
+                self._live_runs[key] = job_run
+                self._rebuild_table(table)
+
+    def _rebuild_table(self, table: DataTable) -> None:
+        """Clear and re-populate table maintaining Active-then-History order."""
+        table.clear()
+        if self._live_runs:
+            table.add_row(*_separator_cells("Active"), key=f"{_SEP_PREFIX}active")
+            for key, run in self._live_runs.items():
+                table.add_row(*_build_cells(run), key=key)
+        if self._history_runs:
+            table.add_row(*_separator_cells("History"), key=f"{_SEP_PREFIX}history")
+            for key, run in self._history_runs.items():
+                table.add_row(*_build_cells(run), key=key)
+
+
 class _StaticSelectorApp(_SelectorApp[Optional[int]]):
     """Static selector for historical runs — no live updates."""
 
@@ -161,6 +257,24 @@ def select_instance(conn: EnvironmentConnector, instances: Sequence[JobInstance]
     """
     sorted_instances = sorted(instances, key=lambda i: i.snap().lifecycle.created_at, reverse=True)
     return _LiveSelectorApp(conn, sorted_instances, run_match=run_match, title=title).run()
+
+
+def select_instance_or_run(
+        conn: EnvironmentConnector,
+        instances: Sequence[JobInstance],
+        history_runs: Sequence[JobRun],
+        *,
+        run_match: Optional[JobRunCriteria] = None,
+        title: str = "Select instance",
+) -> Optional[Union[JobInstance, JobRun]]:
+    """Show a combined selector with active instances and historical runs.
+
+    Active instances are shown first with live updates, followed by historical runs.
+    Returns the selected JobInstance (live) or JobRun (historical), or None on cancel.
+    """
+    sorted_instances = sorted(instances, key=lambda i: i.snap().lifecycle.created_at, reverse=True)
+    sorted_history = sorted(history_runs, key=lambda r: r.lifecycle.created_at, reverse=True)
+    return _CombinedSelectorApp(conn, sorted_instances, sorted_history, run_match=run_match, title=title).run()
 
 
 def select_run(runs: Sequence[JobRun], *, title: str = "Select run") -> Optional[JobRun]:

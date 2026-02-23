@@ -11,7 +11,7 @@ from runtools.runcore.job import JobInstance, JobRun
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
 from runtools.taro.tui.instance_screen import InstanceApp
-from runtools.taro.tui.selector import select_instance, select_run
+from runtools.taro.tui.selector import select_instance_or_run
 
 app = typer.Typer(invoke_without_command=True)
 console = Console(stderr=True)
@@ -36,36 +36,37 @@ def instance(
     run_match = JobRunCriteria.parse(pattern, MatchingStrategy.PARTIAL) if pattern else JobRunCriteria()
 
     with connector.connect(env) as conn:
-        # Try active instances first
         instances = list(conn.get_instances(run_match))
 
-        if len(instances) == 1 and pattern:
-            _run_live(instances[0])
-            return
-
-        if instances:
-            selected = select_instance(conn, instances, run_match=run_match)
-            if selected is not None:
-                _run_live(selected)
-            return
-
-        # No active instances — try history
         history_runs = conn.read_history_runs(run_match, asc=False, limit=10)
 
-        if not history_runs:
+        # Deduplicate: exclude history runs that are also active
+        active_ids = {inst.id for inst in instances}
+        history_runs = [r for r in history_runs if r.instance_id not in active_ids]
+
+        total = len(instances) + len(history_runs)
+
+        if total == 0:
             if pattern:
                 console.print(f"[red]No instance found matching:[/] {pattern}")
             else:
                 console.print("[red]No instances found[/]")
             raise typer.Exit(1)
 
-        if len(history_runs) == 1 and pattern:
-            _run_historical(history_runs[0])
+        # Single match with explicit pattern — open directly
+        if total == 1 and pattern:
+            if instances:
+                _run_live(instances[0])
+            else:
+                _run_historical(history_runs[0])
             return
 
-        selected_run = select_run(history_runs)
-        if selected_run is not None:
-            _run_historical(selected_run)
+        # Multiple matches or no pattern — show combined selector
+        selected = select_instance_or_run(conn, instances, history_runs, run_match=run_match)
+        if isinstance(selected, JobInstance):
+            _run_live(selected)
+        elif isinstance(selected, JobRun):
+            _run_historical(selected)
 
 
 def _run_live(job_instance: JobInstance):
