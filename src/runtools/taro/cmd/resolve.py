@@ -3,7 +3,7 @@
 Handles both pattern-based lookup and interactive selection when no patterns are provided.
 """
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.util import MatchingStrategy
@@ -14,7 +14,7 @@ def resolve_instances(
         conn,
         patterns: Optional[list[str]],
         *,
-        update_criteria: Callable[[JobRunCriteria], None] | None = None,
+        update_criteria: Callable[[JobRunCriteria], Any] | None = None,
         instance_filter: Callable | None = None,
         select_title: str = "Select instance",
 ) -> list:

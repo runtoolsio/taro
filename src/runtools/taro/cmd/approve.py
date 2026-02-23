@@ -34,7 +34,7 @@ def approve(
                 c.add(PhaseCriterion(phase_id=phase, lifecycle=LifecycleCriterion(stage=Stage.CREATED))),
                 c.add(PhaseCriterion(phase_id=phase, idle=True)),
             ),
-            instance_filter=lambda inst: inst.find_phase_control_by_id(phase),
+            instance_filter=lambda i: i.find_phase_control_by_id(phase),
             select_title="Select instance to approve",
         )
 

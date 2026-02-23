@@ -17,7 +17,8 @@ console = Console()
 
 @app.callback()
 def wait(
-        instance_patterns: List[str] = typer.Argument(
+        instance_patterns: Optional[List[str]] = typer.Argument(
+            default=None,
             metavar="PATTERN",
             help="Instance ID patterns to specify which instances to wait for"
         ),
@@ -60,10 +61,11 @@ def wait(
         # Wait only for new batch job to start, ignore any that already started
         taro wait --stage RUNNING --future-only "batch*"
     """
-    executor = ThreadPoolExecutor(max_workers=len(instance_patterns))
+    patterns = instance_patterns or ["*"]
+    executor = ThreadPoolExecutor(max_workers=len(patterns))
     watchers = []
     with connector.connect(env) as conn:
-        for pattern in instance_patterns:
+        for pattern in patterns:
             run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
             run_match += LifecycleCriterion().reached_stage(stage)
             watcher = conn.watcher(run_match, search_past=not future_only)
