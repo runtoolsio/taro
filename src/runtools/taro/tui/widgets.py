@@ -5,6 +5,7 @@ Textual quick reference for maintainers:
   to return a Rich renderable (Text, Table, Panel, etc.) — Textual renders Rich natively.
 - Tree[str] is a built-in interactive tree widget. Each TreeNode stores a `data` value (here: phase_id).
   Nodes are navigable with arrow keys and fire NodeHighlighted / NodeSelected events.
+- RichLog is a scrollable, append-only log widget. Supports auto-scroll and incremental writes.
 - render() is called whenever the widget needs to repaint (after refresh(), resize, etc.).
 - refresh() marks the widget as dirty so render() is called on the next frame.
 - set_interval(secs, callback) creates a repeating timer on the event loop. Returns a Timer
@@ -13,13 +14,17 @@ Textual quick reference for maintainers:
 - Widget class name is used as the CSS selector (InstanceHeader → `InstanceHeader { ... }` in TCSS).
 """
 
+from bisect import insort
+from typing import Iterable, Optional
+
 from rich.text import Text
 from textual.message import Message
-from textual.widgets import Static, Tree
+from textual.widgets import RichLog, Static, Tree
 from textual.widgets._tree import TreeNode
 
 from runtools.runcore import util
-from runtools.runcore.job import JobRun
+from runtools.runcore.job import JobInstance, JobRun, InstanceOutputEvent
+from runtools.runcore.output import OutputLine
 from runtools.runcore.run import PhaseRun, Stage
 from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
@@ -131,7 +136,7 @@ class PhaseTree(Tree[str]):
             self._timer.stop()
             self._timer = None
 
-        new_ids = _collect_phase_ids(job_run.root_phase)
+        new_ids = collect_phase_ids(job_run.root_phase)
         if new_ids == set(self._node_map.keys()) | {job_run.root_phase.phase_id}:
             self._update_labels()
         else:
@@ -288,6 +293,102 @@ class PhaseDetail(Static):
         return text
 
 
+class OutputBuffer:
+    """Ordered, deduplicated buffer for output lines.
+
+    Handles out-of-order arrival via ordinal-based insertion sort and deduplication.
+    """
+
+    def __init__(self):
+        self._lines: list[OutputLine] = []
+        self._seen: set[int] = set()
+
+    def add_line(self, line: OutputLine):
+        if line.ordinal in self._seen:
+            return
+        self._seen.add(line.ordinal)
+        if not self._lines or line.ordinal > self._lines[-1].ordinal:
+            self._lines.append(line)
+        else:
+            insort(self._lines, line, key=lambda l: l.ordinal)
+
+    def add_lines(self, lines: Iterable[OutputLine]):
+        for line in lines:
+            self.add_line(line)
+
+    def get_lines(self, phase_ids: set[str] | None = None) -> list[OutputLine]:
+        if phase_ids is None:
+            return list(self._lines)
+        return [line for line in self._lines if line.source in phase_ids]
+
+
+class OutputPanel(RichLog):
+    """Bottom panel displaying job output with phase filtering.
+
+    In live mode, subscribes to output events and appends lines in real-time.
+    Supports filtering by phase subtree — selecting a phase shows output from
+    that phase and all its descendants.
+    """
+
+    def __init__(self, instance: Optional[JobInstance], *, live: bool = False) -> None:
+        super().__init__(wrap=True, highlight=False, markup=False)
+        self._instance = instance
+        self._live = live
+        self._buffer = OutputBuffer()
+        self._phase_filter: set[str] | None = None  # None = show all
+        self._output_observer = None
+
+    def on_mount(self) -> None:
+        # Subscribe to live events BEFORE fetching tail (dedup handles overlap)
+        if self._live and self._instance is not None:
+            self._output_observer = _OutputObserver(self)
+            self._instance.notifications.add_observer_output(self._output_observer)
+        # Fetch tail snapshot
+        if self._instance is not None:
+            self._buffer.add_lines(self._instance.output.tail())
+            self._render_lines(self._buffer.get_lines(self._phase_filter))
+
+    def on_unmount(self) -> None:
+        if self._instance is not None and self._output_observer is not None:
+            self._instance.notifications.remove_observer_output(self._output_observer)
+            self._output_observer = None
+
+    def _on_output(self, event: InstanceOutputEvent) -> None:
+        """Handle a live output event — called on Textual's event loop via call_from_thread."""
+        self._buffer.add_line(event.output_line)
+        line = event.output_line
+        if self._phase_filter is None or line.source in self._phase_filter:
+            self._write_line(line)
+
+    def update_phase_filter(self, phase_ids: set[str] | None) -> None:
+        """Filter output to a phase subtree (None = all)."""
+        if phase_ids == self._phase_filter:
+            return
+        self._phase_filter = phase_ids
+        self.clear()
+        self._render_lines(self._buffer.get_lines(phase_ids))
+
+    def _render_lines(self, lines: list[OutputLine]) -> None:
+        for line in lines:
+            self._write_line(line)
+
+    def _write_line(self, line: OutputLine) -> None:
+        text = Text(line.message)
+        if line.is_error:
+            text.stylize("red")
+        self.write(text)
+
+
+class _OutputObserver:
+    """Bridges runcore output events (background thread) to OutputPanel (Textual event loop)."""
+
+    def __init__(self, panel: OutputPanel) -> None:
+        self._panel = panel
+
+    def instance_output_update(self, event: InstanceOutputEvent) -> None:
+        self._panel.app.call_from_thread(self._panel._on_output, event)
+
+
 def _phase_stage_text(phase: PhaseRun) -> str:
     """Resolve display text for a phase's current stage."""
     lifecycle = phase.lifecycle
@@ -298,11 +399,11 @@ def _phase_stage_text(phase: PhaseRun) -> str:
     return lifecycle.stage.name
 
 
-def _collect_phase_ids(phase: PhaseRun) -> set[str]:
+def collect_phase_ids(phase: PhaseRun) -> set[str]:
     """Collect all phase_ids from a phase tree (including the root)."""
     ids = {phase.phase_id}
     for child in phase.children:
-        ids.update(_collect_phase_ids(child))
+        ids.update(collect_phase_ids(child))
     return ids
 
 

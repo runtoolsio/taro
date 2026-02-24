@@ -18,10 +18,13 @@ from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Horizontal
 from textual.screen import Screen
 
 from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent
-from runtools.taro.tui.widgets import InstanceHeader, PhaseDetail, PhaseSelected, PhaseTree
+from runtools.taro.tui.widgets import (
+    InstanceHeader, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, collect_phase_ids,
+)
 
 
 class InstanceScreen(Screen):
@@ -56,11 +59,14 @@ class InstanceScreen(Screen):
 
         self._phase_handler = None
         self._lifecycle_handler = None
+        self._selected_phase_id = self._job_run.root_phase.phase_id
 
     def compose(self) -> ComposeResult:
         yield InstanceHeader(self._job_run, live=self._live)
-        yield PhaseTree(self._job_run, live=self._live)
-        yield PhaseDetail(self._job_run, live=self._live)
+        with Horizontal(id="phase-container"):
+            yield PhaseTree(self._job_run, live=self._live)
+            yield PhaseDetail(self._job_run, live=self._live)
+        yield OutputPanel(self._instance, live=self._live)
 
     def on_mount(self) -> None:
         """Subscribe to runcore events after the widget tree is ready.
@@ -95,13 +101,25 @@ class InstanceScreen(Screen):
             self._unsubscribe()
 
     def on_phase_selected(self, event: PhaseSelected) -> None:
-        """Handle phase selection from the tree — update the detail panel."""
+        """Handle phase selection from the tree — update the detail and output panels."""
+        self._selected_phase_id = event.phase_id
         self.query_one(PhaseDetail).update_phase(event.phase_id)
+        self._update_output_filter()
 
     def _update_run(self, job_run: JobRun) -> None:
+        self._job_run = job_run
         self.query_one(InstanceHeader).update_run(job_run)
         self.query_one(PhaseTree).update_run(job_run)
         self.query_one(PhaseDetail).update_run(job_run)
+        self._update_output_filter()
+
+    def _update_output_filter(self) -> None:
+        """Recompute the output phase filter from the current snapshot and selected phase."""
+        if self._selected_phase_id == self._job_run.root_phase.phase_id:
+            self.query_one(OutputPanel).update_phase_filter(None)
+        else:
+            phase = self._job_run.find_phase_by_id(self._selected_phase_id)
+            self.query_one(OutputPanel).update_phase_filter(collect_phase_ids(phase) if phase else None)
 
 
 class InstanceApp(App):
