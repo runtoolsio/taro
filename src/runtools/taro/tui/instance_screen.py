@@ -16,7 +16,7 @@ Textual quick reference for maintainers:
 
 from typing import Optional
 
-from textual.app import App, ComposeResult
+from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
@@ -34,7 +34,7 @@ class InstanceScreen(Screen):
     - live (instance provided): subscribes to events, header ticks elapsed every 1s.
     - historical (job_run provided): static display, no events or ticking.
 
-    Can be used standalone via InstanceApp, or pushed from another app.
+    Pushed from the dashboard or other screens; dismiss to pop back.
     """
 
     CSS_PATH = "instance.tcss"
@@ -121,25 +121,3 @@ class InstanceScreen(Screen):
         else:
             phase = self._job_run.find_phase_by_id(self._selected_phase_id)
             self.query_one(OutputPanel).update_phase_filter(collect_phase_ids(phase) if phase else None)
-
-
-class InstanceApp(App):
-    """Standalone Textual app for the instance detail TUI.
-
-    Thin wrapper that pushes InstanceScreen and exits when it is dismissed.
-    """
-
-    BINDINGS = [
-        Binding("q", "quit", "Quit"),
-    ]
-
-    def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None) -> None:
-        super().__init__()
-        self._instance = instance
-        self._job_run = job_run
-
-    def on_mount(self) -> None:
-        self.push_screen(
-            InstanceScreen(instance=self._instance, job_run=self._job_run),
-            callback=lambda _: self.exit(),
-        )

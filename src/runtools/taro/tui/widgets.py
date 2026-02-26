@@ -54,7 +54,7 @@ class InstanceHeader(Static):
             self._timer = self.set_interval(1.0, self.refresh)
 
     def update_run(self, job_run: JobRun) -> None:
-        """Replace the snapshot and refresh. Called from InstanceApp on each event."""
+        """Replace the snapshot and refresh. Called from InstanceScreen on each event."""
         self._job_run = job_run
         if self._live and job_run.lifecycle.is_ended and self._timer is not None:
             self._timer.stop()

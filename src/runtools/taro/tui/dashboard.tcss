@@ -1,3 +1,9 @@
+#summary {
+    height: 1;
+    padding: 0 1;
+    color: $text-muted;
+}
+
 #active-table {
     height: auto;
     min-height: 5;

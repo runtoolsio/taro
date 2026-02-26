@@ -3,16 +3,16 @@ from rich.console import Console
 from rich.text import Text
 
 from runtools.runcore.err import RuntoolsException
-from runtools.taro.cmd import approve, env, history, instance, listen, live, of, ps, resume, stats, stop, tail, wait
+from runtools.taro.cmd import approve, dash, env, history, listen, live, of, ps, resume, stats, stop, tail, wait
 
 console = Console(stderr=True)
 
 app = typer.Typer()
 
 app.add_typer(approve.app, name="approve")
+app.add_typer(dash.app, name="dash")
 app.add_typer(env.app, name="env")
 app.add_typer(history.app, name="history")
-app.add_typer(instance.app, name="instance")
 app.add_typer(listen.app, name="listen")
 app.add_typer(live.app, name="live")
 app.add_typer(of.app, name="of")
@@ -24,8 +24,8 @@ app.add_typer(tail.app, name="tail")
 app.add_typer(wait.app, name="wait")
 
 # Single-char aliases for frequently used commands
+app.add_typer(dash.app, name="d", hidden=True)
 app.add_typer(history.app, name="h", hidden=True)
-app.add_typer(instance.app, name="i", hidden=True)
 app.add_typer(live.app, name="l", hidden=True)
 app.add_typer(stats.app, name="s", hidden=True)
 app.add_typer(tail.app, name="t", hidden=True)

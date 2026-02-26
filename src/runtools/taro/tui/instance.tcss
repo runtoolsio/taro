@@ -13,7 +13,9 @@ InstanceHeader {
 }
 
 #left-panel {
-    width: 1fr;
+    width: 42;
+    min-width: 35;
+    max-width: 55;
 }
 
 PhaseTree {
@@ -29,7 +31,7 @@ PhaseDetail {
 }
 
 OutputPanel {
-    width: 2fr;
+    width: 1fr;
     padding: 0 1;
     border-left: solid grey;
 }
