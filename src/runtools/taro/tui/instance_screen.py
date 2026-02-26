@@ -18,7 +18,7 @@ from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 
 from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent
@@ -63,10 +63,11 @@ class InstanceScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield InstanceHeader(self._job_run, live=self._live)
-        with Horizontal(id="phase-container"):
-            yield PhaseTree(self._job_run, live=self._live)
-            yield PhaseDetail(self._job_run, live=self._live)
-        yield OutputPanel(self._instance, live=self._live)
+        with Horizontal(id="main-container"):
+            with Vertical(id="left-panel"):
+                yield PhaseTree(self._job_run, live=self._live)
+                yield PhaseDetail(self._job_run, live=self._live)
+            yield OutputPanel(self._instance, live=self._live)
 
     def on_mount(self) -> None:
         """Subscribe to runcore events after the widget tree is ready.

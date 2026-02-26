@@ -25,7 +25,7 @@ from textual.widgets._tree import TreeNode
 from runtools.runcore import util
 from runtools.runcore.job import JobInstance, JobRun, InstanceOutputEvent
 from runtools.runcore.output import OutputLine
-from runtools.runcore.run import PhaseRun, Stage
+from runtools.runcore.run import Outcome, PhaseRun, Stage
 from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
@@ -112,8 +112,16 @@ class PhaseTree(Tree[str]):
     Color-coded by stage/outcome. Nodes are navigable with arrow keys.
     ``TreeNode.data`` stores the ``phase_id`` string for O(1) lookup.
 
+    Always expanded — nodes cannot be collapsed.
     In live mode, a 1-second timer keeps elapsed times ticking.
     """
+
+    ICON_NODE = ""
+    ICON_NODE_EXPANDED = ""
+
+    def action_toggle_node(self) -> None:
+        """Prevent collapsing — tree is always fully expanded."""
+        pass
 
     def __init__(self, job_run: JobRun, *, live: bool = False) -> None:
         root_phase = job_run.root_phase
@@ -414,13 +422,21 @@ def _phase_label(phase: PhaseRun) -> Text:
 
     label = Text()
     label.append(phase.phase_id, style=style)
-    label.append(f"  {_phase_stage_text(phase)}", style=style)
+    label.append(f"  {_phase_tree_stage_text(phase)}", style=style)
 
     elapsed_str = util.format_timedelta(lifecycle.elapsed, show_ms=False, null="")
     if elapsed_str:
         label.append(f"  {elapsed_str}", style=style)
 
     return label
+
+
+def _phase_tree_stage_text(phase: PhaseRun) -> str:
+    """Compact status text used in the phase tree labels."""
+    lifecycle = phase.lifecycle
+    if lifecycle.is_ended and lifecycle.termination:
+        return "✓" if lifecycle.termination.status.outcome == Outcome.SUCCESS else "✗"
+    return _phase_stage_text(phase)
 
 
 def _phase_style(phase: PhaseRun) -> str:

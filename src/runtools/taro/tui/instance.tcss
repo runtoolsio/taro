@@ -8,22 +8,28 @@ InstanceHeader {
     padding: 0 1;
 }
 
-#phase-container {
+#main-container {
     height: 1fr;
 }
 
-PhaseTree {
+#left-panel {
     width: 1fr;
+}
+
+PhaseTree {
+    height: 1fr;
     padding: 0 1;
 }
 
 PhaseDetail {
-    width: 1fr;
+    height: 40%;
+    min-height: 8;
     padding: 0 1;
+    border-top: solid grey;
 }
 
 OutputPanel {
-    height: 1fr;
+    width: 2fr;
     padding: 0 1;
-    border-top: solid grey;
+    border-left: solid grey;
 }
