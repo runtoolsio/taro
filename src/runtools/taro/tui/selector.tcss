@@ -1,3 +1,14 @@
-DataTable {
+#active-table {
+    height: auto;
+    min-height: 5;
+    max-height: 50%;
+}
+
+#history-table {
     height: 1fr;
+}
+
+#active-label, #history-label {
+    height: 1;
+    color: $text-muted;
 }

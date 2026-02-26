@@ -1,7 +1,8 @@
 """Instance/run selector — full-screen Textual DataTable for picking a single item.
 
 For active instances the table updates live via environment-level events: new instances appear
-automatically, phase/status changes refresh immediately, and ended instances are removed.
+automatically, phase/status changes refresh immediately, and ended instances are removed
+(or moved to a history section when both active and historical runs are shown).
 Historical runs are displayed statically.
 """
 
@@ -10,7 +11,7 @@ from typing import Optional, Sequence, Union
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.widgets import DataTable, Footer, Header
+from textual.widgets import DataTable, Footer, Header, Static
 
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria
@@ -20,25 +21,60 @@ from runtools.taro.view import instance as view_inst
 
 COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.TERM_STATUS, view_inst.PHASES,
            view_inst.STATUS]
+ACTIVE_COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.PHASES, view_inst.STATUS]
+HISTORY_COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.TERM_STATUS, view_inst.STATUS]
 
-_SEP_PREFIX = "__sep_"
+# Tight widths for TUI columns (last column = None → auto-expand to fill remaining space)
+_TUI_WIDTHS = {
+    'JOB ID': 20,
+    'RUN ID': 22,
+    'CREATED': 20,
+    'TERM': 13,
+    'PHASES': 24,
+}
 
 
 def _row_key(iid: InstanceID) -> str:
     return f"{iid.job_id}@{iid.run_id}"
 
 
-def _build_cells(run: JobRun) -> list[Text]:
-    return [Text(str(col.value_fnc(run)), style=col.colour_fnc(run)) for col in COLUMNS]
+def _build_cells(run: JobRun, columns: list = COLUMNS) -> list[Text]:
+    return [Text(str(col.value_fnc(run)), style=col.colour_fnc(run)) for col in columns]
 
 
-def _separator_cells(label: str) -> list[Text]:
-    return [Text(f"── {label} ──", style="bold dim")] + [Text("") for _ in COLUMNS[1:]]
+def _add_columns(table: DataTable, columns: list = COLUMNS) -> None:
+    for i, col in enumerate(columns):
+        is_last = i == len(columns) - 1
+        width = None if is_last else _TUI_WIDTHS.get(col.name, col.max_width)
+        table.add_column(col.name, key=col.name, width=width)
 
 
-def _update_row(table: DataTable, key: str, run: JobRun) -> None:
-    for col, cell in zip(COLUMNS, _build_cells(run)):
+def _update_row(table: DataTable, key: str, run: JobRun, columns: list = COLUMNS) -> None:
+    for col, cell in zip(columns, _build_cells(run, columns)):
         table.update_cell(key, col.name, cell)
+
+
+class _LinkedTable(DataTable):
+    """DataTable that jumps cursor to a sibling table at row boundaries."""
+
+    next_table: Optional["_LinkedTable"] = None
+    prev_table: Optional["_LinkedTable"] = None
+
+    def action_cursor_down(self) -> None:
+        if self.cursor_coordinate.row >= self.row_count - 1:
+            if self.next_table and self.next_table.display and self.next_table.row_count > 0:
+                self.next_table.focus()
+                self.next_table.move_cursor(row=0)
+                return
+        super().action_cursor_down()
+
+    def action_cursor_up(self) -> None:
+        if self.cursor_coordinate.row <= 0:
+            if self.prev_table and self.prev_table.display and self.prev_table.row_count > 0:
+                self.prev_table.focus()
+                self.prev_table.move_cursor(row=self.prev_table.row_count - 1)
+                return
+        super().action_cursor_up()
 
 
 class _SelectorApp[T](App[T]):
@@ -54,8 +90,7 @@ class _SelectorApp[T](App[T]):
     def compose(self) -> ComposeResult:
         yield Header()
         table = DataTable(cursor_type="row")
-        for col in COLUMNS:
-            table.add_column(col.name, key=col.name)
+        _add_columns(table)
         yield table
         yield Footer()
 
@@ -134,7 +169,11 @@ class _LiveSelectorApp(_SelectorApp[Optional[JobInstance]]):
 
 
 class _CombinedSelectorApp(_SelectorApp[Optional[Union[JobInstance, JobRun]]]):
-    """Selector showing both active instances (live-updating) and historical runs (static)."""
+    """Selector showing active instances and historical runs in two linked tables.
+
+    Arrow keys jump seamlessly between the active and history tables at row boundaries.
+    Ended instances are moved from the active table to history automatically.
+    """
 
     def __init__(self, conn: EnvironmentConnector, instances: list[JobInstance], history_runs: list[JobRun], *,
                  run_match: Optional[JobRunCriteria] = None, title: str = "Select instance") -> None:
@@ -160,9 +199,23 @@ class _CombinedSelectorApp(_SelectorApp[Optional[Union[JobInstance, JobRun]]]):
                 key = _row_key(run.instance_id)
                 self._history_runs[key] = run
 
+    def compose(self) -> ComposeResult:
+        yield Header()
+        active_table = _LinkedTable(cursor_type="row", id="active-table")
+        _add_columns(active_table, ACTIVE_COLUMNS)
+        history_table = _LinkedTable(cursor_type="row", id="history-table")
+        _add_columns(history_table, HISTORY_COLUMNS)
+        active_table.next_table = history_table
+        history_table.prev_table = active_table
+        yield Static("[bold dim]── Active ──[/]", id="active-label")
+        yield active_table
+        yield Static("[bold dim]── History ──[/]", id="history-label")
+        yield history_table
+        yield Footer()
+
     def on_mount(self) -> None:
         self.title = self._selector_title
-        self._rebuild_table(self.query_one(DataTable))
+        self._populate_tables()
         self._env_handler = lambda e: self.call_from_thread(self._on_event, e)
         self._conn.notifications.add_observer_all_events(self._env_handler)
 
@@ -173,8 +226,6 @@ class _CombinedSelectorApp(_SelectorApp[Optional[Union[JobInstance, JobRun]]]):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         key = str(event.row_key.value)
-        if key.startswith(_SEP_PREFIX):
-            return
         if key in self._instances:
             self.exit(self._instances[key])
         elif key in self._history_runs:
@@ -189,38 +240,36 @@ class _CombinedSelectorApp(_SelectorApp[Optional[Union[JobInstance, JobRun]]]):
 
         iid = job_run.instance_id
         key = _row_key(iid)
-        table = self.query_one(DataTable)
 
         if isinstance(event, InstancePhaseEvent) and event.is_root_phase and event.new_stage == Stage.ENDED:
             self._live_runs.pop(key, None)
             self._instances.pop(key, None)
-            if key in table.rows:
-                table.remove_row(row_key=key)
-            if not self._live_runs and f"{_SEP_PREFIX}active" in table.rows:
-                table.remove_row(row_key=f"{_SEP_PREFIX}active")
+            self._history_runs[key] = job_run
+            self._populate_tables()
         elif job_run.lifecycle.is_ended:
             return
         elif key in self._live_runs:
             self._live_runs[key] = job_run
-            _update_row(table, key, job_run)
+            active_table = self.query_one("#active-table", _LinkedTable)
+            _update_row(active_table, key, job_run, ACTIVE_COLUMNS)
         else:
             inst = self._conn.get_instance(iid)
             if inst is not None:
                 self._instances[key] = inst
                 self._live_runs[key] = job_run
-                self._rebuild_table(table)
+                active_table = self.query_one("#active-table", _LinkedTable)
+                active_table.add_row(*_build_cells(job_run, ACTIVE_COLUMNS), key=key)
 
-    def _rebuild_table(self, table: DataTable) -> None:
-        """Clear and re-populate table maintaining Active-then-History order."""
-        table.clear()
-        if self._live_runs:
-            table.add_row(*_separator_cells("Active"), key=f"{_SEP_PREFIX}active")
-            for key, run in self._live_runs.items():
-                table.add_row(*_build_cells(run), key=key)
-        if self._history_runs:
-            table.add_row(*_separator_cells("History"), key=f"{_SEP_PREFIX}history")
-            for key, run in self._history_runs.items():
-                table.add_row(*_build_cells(run), key=key)
+    def _populate_tables(self) -> None:
+        active_table = self.query_one("#active-table", _LinkedTable)
+        history_table = self.query_one("#history-table", _LinkedTable)
+        active_table.clear()
+        for key, run in self._live_runs.items():
+            active_table.add_row(*_build_cells(run, ACTIVE_COLUMNS), key=key)
+        history_table.clear()
+        sorted_history = sorted(self._history_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
+        for key, run in sorted_history:
+            history_table.add_row(*_build_cells(run, HISTORY_COLUMNS), key=key)
 
 
 class _StaticSelectorApp(_SelectorApp[Optional[int]]):

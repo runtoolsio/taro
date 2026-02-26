@@ -67,7 +67,7 @@ class InstanceScreen(Screen):
             with Vertical(id="left-panel"):
                 yield PhaseTree(self._job_run, live=self._live)
                 yield PhaseDetail(self._job_run, live=self._live)
-            yield OutputPanel(self._instance, live=self._live)
+            yield OutputPanel(self._instance, self._job_run, live=self._live)
 
     def on_mount(self) -> None:
         """Subscribe to runcore events after the widget tree is ready.
