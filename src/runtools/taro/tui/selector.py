@@ -4,7 +4,7 @@ Provides table-building utilities (LinkedTable, add_columns, build_cells, etc.) 
 the selector and the dashboard, plus pick-and-exit selector apps for action commands.
 """
 
-from typing import Optional, Sequence
+from typing import Iterable, Optional, Sequence
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -175,3 +175,41 @@ def select_instance(conn: EnvironmentConnector, instances: Sequence[JobInstance]
     """
     sorted_instances = sorted(instances, key=lambda i: i.snap().lifecycle.created_at, reverse=True)
     return _LiveSelectorApp(conn, sorted_instances, run_match=run_match, title=title).run()
+
+
+class _HistoryApp(App):
+    """Static read-only table for browsing historical job runs."""
+
+    BINDINGS = [
+        Binding("escape", "quit", "Quit", show=True),
+        Binding("q", "quit", "Quit", show=True),
+    ]
+
+    def __init__(self, runs: Iterable[JobRun], columns: Sequence, *, title: str = "History") -> None:
+        super().__init__()
+        self._runs = runs
+        self._columns = columns
+        self._title = title
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield DataTable(cursor_type="row")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.title = self._title
+        table = self.query_one(DataTable)
+        add_columns(table, self._columns)
+        for run in self._runs:
+            table.add_row(*build_cells(run, self._columns), key=row_key(run.instance_id))
+
+
+def show_history(runs: Iterable[JobRun], columns: Sequence, *, title: str = "History") -> None:
+    """Show a static DataTable of historical job runs.
+
+    Args:
+        runs: Job runs to display (consumed once on mount).
+        columns: Column definitions for the table.
+        title: Title displayed in the header.
+    """
+    _HistoryApp(runs, columns, title=title).run()

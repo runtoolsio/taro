@@ -9,6 +9,7 @@ from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, Termin
 from runtools.runcore.run import Outcome, Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cliutil, cli
+from runtools.taro.tui.selector import show_history
 from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(invoke_without_command=True)
@@ -97,10 +98,13 @@ def history(
 
         columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                    view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT]
-        try:
-            printer.print_table(runs_iter, columns, show_header=True, pager=not no_pager)
-        except BrokenPipeError:
-            cliutil.handle_broken_pipe(exit_code=1)
+        if no_pager:
+            try:
+                printer.print_table(runs_iter, columns, show_header=True, pager=False)
+            except BrokenPipeError:
+                cliutil.handle_broken_pipe(exit_code=1)
+        else:
+            show_history(runs_iter, columns)
 
 
 def _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault):
