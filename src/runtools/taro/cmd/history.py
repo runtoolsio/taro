@@ -104,7 +104,11 @@ def history(
             except BrokenPipeError:
                 cliutil.handle_broken_pipe(exit_code=1)
         else:
-            show_history(runs_iter, columns)
+            runs = list(runs_iter)
+            if not runs:
+                console.print("No matching runs")
+                return
+            show_history(runs, columns)
 
 
 def _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault):
