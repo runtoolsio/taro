@@ -30,7 +30,7 @@ ACTIVE_COLUMNS = [
 ]
 HISTORY_COLUMNS = [
     view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED,
-    view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.STATUS,
+    view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
 ]
 
 
