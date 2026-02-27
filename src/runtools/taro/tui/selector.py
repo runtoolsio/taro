@@ -9,12 +9,13 @@ from typing import Iterable, Optional, Sequence
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.widgets import DataTable, Footer, Header
+from textual.widgets import DataTable, Footer, Header, Static
 
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobInstance, JobRun
-from runtools.runcore.run import Stage
+from runtools.runcore.run import Outcome, Stage
+from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.view import instance as view_inst
 
 COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.TERM_STATUS, view_inst.PHASES,
@@ -177,6 +178,32 @@ def select_instance(conn: EnvironmentConnector, instances: Sequence[JobInstance]
     return _LiveSelectorApp(conn, sorted_instances, run_match=run_match, title=title).run()
 
 
+class _HistorySummary(Static):
+    """Single-row summary bar for history table."""
+
+    DEFAULT_CSS = "_HistorySummary { dock: top; height: 1; padding: 0 1; }"
+
+    def __init__(self, runs: Sequence[JobRun]) -> None:
+        super().__init__()
+        total = len(runs)
+        failed = sum(
+            1 for r in runs
+            if r.lifecycle.termination and r.lifecycle.termination.status.outcome == Outcome.FAULT
+        )
+        succeeded = sum(
+            1 for r in runs
+            if r.lifecycle.termination and r.lifecycle.termination.status.outcome == Outcome.SUCCESS
+        )
+        other = total - succeeded - failed
+        parts = [f"{total} runs", f"{succeeded} success", f"{failed} failed"]
+        if other:
+            parts.append(f"{other} other")
+        self._text = " · ".join(parts)
+
+    def render(self) -> Text:
+        return Text(self._text, style="dim")
+
+
 class _HistoryApp(App):
     """Static read-only table for browsing historical job runs."""
 
@@ -185,14 +212,15 @@ class _HistoryApp(App):
         Binding("q", "quit", "Quit", show=True),
     ]
 
-    def __init__(self, runs: Iterable[JobRun], columns: Sequence, *, title: str = "History") -> None:
+    def __init__(self, runs: Sequence[JobRun], columns: Sequence, *, title: str = "History") -> None:
         super().__init__()
-        self._runs = runs
+        self._runs = {row_key(r.instance_id): r for r in runs}
         self._columns = columns
         self._title = title
 
     def compose(self) -> ComposeResult:
         yield Header()
+        yield _HistorySummary(list(self._runs.values()))
         yield DataTable(cursor_type="row")
         yield Footer()
 
@@ -200,15 +228,21 @@ class _HistoryApp(App):
         self.title = self._title
         table = self.query_one(DataTable)
         add_columns(table, self._columns)
-        for run in self._runs:
-            table.add_row(*build_cells(run, self._columns), key=row_key(run.instance_id))
+        for key, run in self._runs.items():
+            table.add_row(*build_cells(run, self._columns), key=key)
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        key = str(event.row_key.value)
+        run = self._runs.get(key)
+        if run:
+            self.push_screen(InstanceScreen(job_run=run))
 
 
-def show_history(runs: Iterable[JobRun], columns: Sequence, *, title: str = "History") -> None:
-    """Show a static DataTable of historical job runs.
+def show_history(runs: Sequence[JobRun], columns: Sequence, *, title: str = "History") -> None:
+    """Show a static DataTable of historical job runs with a summary bar.
 
     Args:
-        runs: Job runs to display (consumed once on mount).
+        runs: Job runs to display.
         columns: Column definitions for the table.
         title: Title displayed in the header.
     """
