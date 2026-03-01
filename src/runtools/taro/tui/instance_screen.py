@@ -14,7 +14,7 @@ Textual quick reference for maintainers:
 - query_one(WidgetType) finds a single widget by type in the tree — similar to CSS selectors.
 """
 
-from typing import Optional
+from typing import Callable, Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -44,7 +44,8 @@ class InstanceScreen(Screen):
         Binding("q", "dismiss", "Quit", show=True),
     ]
 
-    def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None) -> None:
+    def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None,
+                 output_reader: Optional[Callable] = None) -> None:
         super().__init__()
         if instance is not None:
             self._instance = instance
@@ -57,6 +58,7 @@ class InstanceScreen(Screen):
         else:
             raise ValueError("Either instance or job_run must be provided")
 
+        self._output_reader = output_reader
         self._phase_handler = None
         self._lifecycle_handler = None
         self._selected_phase_id = self._job_run.root_phase.phase_id
@@ -67,7 +69,8 @@ class InstanceScreen(Screen):
             with Vertical(id="left-panel"):
                 yield PhaseTree(self._job_run, live=self._live)
                 yield PhaseDetail(self._job_run, live=self._live)
-            yield OutputPanel(self._instance, self._job_run, live=self._live)
+            yield OutputPanel(self._instance, self._job_run,
+                             output_reader=self._output_reader, live=self._live)
 
     def on_mount(self) -> None:
         """Subscribe to runcore events after the widget tree is ready.

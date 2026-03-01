@@ -6,6 +6,7 @@ from rich.console import Console
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, TerminationCriterion, \
     SortOption
+from runtools.runcore.output import MultiSourceOutputReader
 from runtools.runcore.run import Outcome, Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cliutil, cli
@@ -108,7 +109,7 @@ def history(
             if not runs:
                 console.print("No matching runs")
                 return
-            show_history(runs, columns)
+            show_history(runs, columns, output_reader=MultiSourceOutputReader(conn.output_backends).read_output)
 
 
 def _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault):

@@ -4,7 +4,7 @@ Provides table-building utilities (LinkedTable, add_columns, build_cells, etc.) 
 the selector and the dashboard, plus pick-and-exit selector apps for action commands.
 """
 
-from typing import Iterable, Optional, Sequence
+from typing import Callable, Iterable, Optional, Sequence
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -212,10 +212,12 @@ class _HistoryApp(App):
         Binding("q", "quit", "Quit", show=True),
     ]
 
-    def __init__(self, runs: Sequence[JobRun], columns: Sequence, *, title: str = "History") -> None:
+    def __init__(self, runs: Sequence[JobRun], columns: Sequence, *,
+                 output_reader: Optional[Callable] = None, title: str = "History") -> None:
         super().__init__()
         self._runs = {row_key(r.instance_id): r for r in runs}
         self._columns = columns
+        self._output_reader = output_reader
         self._title = title
 
     def compose(self) -> ComposeResult:
@@ -235,15 +237,17 @@ class _HistoryApp(App):
         key = str(event.row_key.value)
         run = self._runs.get(key)
         if run:
-            self.push_screen(InstanceScreen(job_run=run))
+            self.push_screen(InstanceScreen(job_run=run, output_reader=self._output_reader))
 
 
-def show_history(runs: Sequence[JobRun], columns: Sequence, *, title: str = "History") -> None:
+def show_history(runs: Sequence[JobRun], columns: Sequence, *,
+                 output_reader: Optional[Callable] = None, title: str = "History") -> None:
     """Show a static DataTable of historical job runs with a summary bar.
 
     Args:
         runs: Job runs to display.
         columns: Column definitions for the table.
+        output_reader: Callable to read output lines for an instance ID.
         title: Title displayed in the header.
     """
-    _HistoryApp(runs, columns, title=title).run()
+    _HistoryApp(runs, columns, output_reader=output_reader, title=title).run()

@@ -15,7 +15,7 @@ Textual quick reference for maintainers:
 """
 
 from bisect import insort
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from rich.text import Text
 from textual.message import Message
@@ -24,7 +24,7 @@ from textual.widgets._tree import TreeNode
 
 from runtools.runcore import util
 from runtools.runcore.job import JobInstance, JobRun, InstanceOutputEvent
-from runtools.runcore.output import OutputLine, read_output
+from runtools.runcore.output import OutputLine, OutputReadError
 from runtools.runcore.run import Outcome, PhaseRun, Stage
 from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
@@ -338,10 +338,12 @@ class OutputPanel(RichLog):
     that phase and all its descendants.
     """
 
-    def __init__(self, instance: Optional[JobInstance], job_run: JobRun, *, live: bool = False) -> None:
+    def __init__(self, instance: Optional[JobInstance], job_run: JobRun, *,
+                 output_reader: Optional[Callable] = None, live: bool = False) -> None:
         super().__init__(wrap=True, highlight=False, markup=False)
         self._instance = instance
         self._job_run = job_run
+        self._output_reader = output_reader
         self._live = live
         self._buffer = OutputBuffer()
         self._phase_filter: set[str] | None = None  # None = show all
@@ -352,11 +354,15 @@ class OutputPanel(RichLog):
         if self._live and self._instance is not None:
             self._output_observer = _OutputObserver(self)
             self._instance.notifications.add_observer_output(self._output_observer)
-        # Load output: live tail for active instances, file read for historical
+        # Load output: live tail for active instances, stored output for historical
         if self._instance is not None:
             self._buffer.add_lines(self._instance.output.tail())
-        elif self._job_run.output_locations:
-            self._buffer.add_lines(read_output(self._job_run.output_locations))
+        elif self._output_reader:
+            try:
+                self._buffer.add_lines(self._output_reader(self._job_run.instance_id))
+            except OutputReadError as e:
+                self.write(Text(f"Error reading output: {e}", style="red"))
+                return
         self._render_lines(self._buffer.get_lines(self._phase_filter))
 
     def on_unmount(self) -> None:

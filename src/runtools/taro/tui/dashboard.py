@@ -16,6 +16,7 @@ from textual.widgets import DataTable, Footer, Header, Static
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.job import InstancePhaseEvent, JobInstance, JobRun
+from runtools.runcore.output import MultiSourceOutputReader
 from runtools.runcore.run import Outcome, Stage
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
@@ -77,6 +78,7 @@ class DashboardScreen(Screen):
         self._instances: dict[str, JobInstance] = {}
         self._live_runs: dict[str, JobRun] = {}
         self._history_runs: dict[str, JobRun] = {}
+        self._output_reader = MultiSourceOutputReader(conn.output_backends)
         self._env_handler = None
         self._selected_key: str | None = None
 
@@ -129,12 +131,12 @@ class DashboardScreen(Screen):
         self._selected_key = key
         if key in self._instances:
             self.app.push_screen(
-                InstanceScreen(instance=self._instances[key]),
+                InstanceScreen(instance=self._instances[key], output_reader=self._output_reader.read_output),
                 callback=lambda _: self._on_detail_dismissed(),
             )
         elif key in self._history_runs:
             self.app.push_screen(
-                InstanceScreen(job_run=self._history_runs[key]),
+                InstanceScreen(job_run=self._history_runs[key], output_reader=self._output_reader.read_output),
                 callback=lambda _: self._on_detail_dismissed(),
             )
 
