@@ -3,15 +3,15 @@ requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
 [project]
-name = "runtools-taro"
+name = "runtoolsio-taro"
 authors = [{name = "Stan Svec", email = "dev@stansvec.com"}]
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dynamic = ["version", "description"]
 dependencies = [
-    #    "runtools-runcore @ git+ssh://git@github.com/runtoolsio/runcore",
+    "runtoolsio-runcore>=0.1,<0.2",
     "pypager >=3.0.1",
     "textual>=8.0.0",
     "typer>=0.15.4",
@@ -20,6 +20,9 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest"]
+
+[project.scripts]
+taro = "runtools.taro.main:run"
 
 [tool.flit.module]
 name = "runtools.taro"
