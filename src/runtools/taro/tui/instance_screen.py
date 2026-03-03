@@ -21,7 +21,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 
-from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent
+from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent, InstanceStatusEvent
 from runtools.taro.tui.widgets import (
     InstanceHeader, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, collect_phase_ids,
 )
@@ -61,6 +61,7 @@ class InstanceScreen(Screen):
         self._output_reader = output_reader
         self._phase_handler = None
         self._lifecycle_handler = None
+        self._status_handler = None
         self._selected_phase_id = self._job_run.root_phase.phase_id
 
     def compose(self) -> ComposeResult:
@@ -81,8 +82,10 @@ class InstanceScreen(Screen):
         if self._live and self._instance is not None:
             self._phase_handler = lambda event: self.app.call_from_thread(self._on_phase_event, event)
             self._lifecycle_handler = lambda event: self.app.call_from_thread(self._on_lifecycle_event, event)
+            self._status_handler = lambda event: self.app.call_from_thread(self._on_status_event, event)
             self._instance.notifications.add_observer_phase(self._phase_handler)
             self._instance.notifications.add_observer_lifecycle(self._lifecycle_handler)
+            self._instance.notifications.add_observer_status(self._status_handler)
 
     def on_unmount(self) -> None:
         self._unsubscribe()
@@ -95,9 +98,16 @@ class InstanceScreen(Screen):
             if self._lifecycle_handler is not None:
                 self._instance.notifications.remove_observer_lifecycle(self._lifecycle_handler)
                 self._lifecycle_handler = None
+            if self._status_handler is not None:
+                self._instance.notifications.remove_observer_status(self._status_handler)
+                self._status_handler = None
 
     def _on_phase_event(self, event: InstancePhaseEvent) -> None:
         self._update_run(event.job_run)
+
+    def _on_status_event(self, event: InstanceStatusEvent) -> None:
+        self._job_run = event.job_run
+        self.query_one(InstanceHeader).update_run(event.job_run)
 
     def _on_lifecycle_event(self, event: InstanceLifecycleEvent) -> None:
         self._update_run(event.job_run)
