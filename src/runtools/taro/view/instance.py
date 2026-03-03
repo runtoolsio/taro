@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from runtools.runcore import util
 from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
-from runtools.runcore.util import format_dt_local_tz
+from runtools.runcore.util import format_dt_local_tz, format_dt_compact
 from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style, \
     stage_style
@@ -14,12 +14,16 @@ STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)
 PARAMETERS = Column('PARAMETERS', 23,
                     lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
-CREATED = Column('CREATED', 25, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), general_style)
+CREATED = Column('CREATED', 19, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), general_style)
+CREATED_COMPACT = Column('CREATED', 12, lambda j: format_dt_compact(j.lifecycle.created_at), general_style)
 EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_local_tz(j.lifecycle.started_at, include_ms=False, null='N/A'),
                   general_style)
-ENDED = Column('ENDED', 25,
+ENDED = Column('ENDED', 19,
                lambda j: format_dt_local_tz(j.lifecycle.termination.terminated_at, include_ms=False, null='N/A'),
                general_style)
+ENDED_COMPACT = Column('ENDED', 12,
+                       lambda j: format_dt_compact(j.lifecycle.termination.terminated_at, null='N/A'),
+                       general_style)
 EXEC_TIME = Column('TIME', 18,
                    lambda j: util.format_timedelta(j.lifecycle.total_run_time or j.lifecycle.elapsed, show_ms=False,
                                                    null='N/A'),

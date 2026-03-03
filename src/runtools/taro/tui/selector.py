@@ -20,18 +20,16 @@ from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.view import instance as view_inst
 
-COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.TERM_STATUS, view_inst.PHASES,
+COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.TERM_STATUS, view_inst.PHASES,
            view_inst.STATUS]
 
 # Tight widths for TUI columns (last column = None → auto-expand to fill remaining space)
 TUI_WIDTHS = {
     'JOB ID': 20,
     'RUN ID': 22,
-    'CREATED': 20,
     'TERM': 13,
-    'PHASES': 30,
-    'ENDED': 20,
-    'TIME': 12,
+    'PHASES': 18,
+    'TIME': 9,
     'WARN': 6,
 }
 

@@ -27,11 +27,11 @@ from runtools.taro.theme import Theme
 from runtools.taro.view import instance as view_inst
 
 ACTIVE_COLUMNS = [
-    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.PHASES,
-    view_inst.EXEC_TIME, view_inst.WARNINGS, view_inst.STATUS,
+    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME,
+    view_inst.PHASES, view_inst.WARNINGS, view_inst.STATUS,
 ]
 HISTORY_COLUMNS = [
-    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED,
+    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.ENDED_COMPACT,
     view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
 ]
 
@@ -119,6 +119,7 @@ class DashboardScreen(Screen):
         self._populate_tables()
         self._env_handler = lambda e: self.app.call_from_thread(self._on_event, e)
         self._conn.notifications.add_observer_all_events(self._env_handler)
+        self.set_interval(1, self._refresh_active_rows)
 
     def on_unmount(self) -> None:
         if self._env_handler is not None:
@@ -222,6 +223,15 @@ class DashboardScreen(Screen):
         sorted_history = sorted(self._history_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_history:
             history_table.add_row(*build_cells(run, HISTORY_COLUMNS), key=key)
+
+    def _refresh_active_rows(self) -> None:
+        if not self._instances:
+            return
+        active_table = self.query_one("#active-table", LinkedTable)
+        for key, inst in self._instances.items():
+            snap = inst.snap()
+            self._live_runs[key] = snap
+            update_row(active_table, key, snap, ACTIVE_COLUMNS)
 
     def _restore_cursor(self, key: str | None) -> None:
         """Move cursor back to the row identified by key, searching both tables."""
