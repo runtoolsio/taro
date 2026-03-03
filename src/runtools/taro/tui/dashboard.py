@@ -18,6 +18,7 @@ from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.job import InstancePhaseEvent, JobInstance, JobRun
 from runtools.runcore.output import MultiSourceOutputReader
 from runtools.runcore.run import Outcome, Stage
+from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
     LinkedTable, add_columns, build_cells, row_key, update_row,
@@ -68,6 +69,7 @@ class DashboardScreen(Screen):
     BINDINGS = [
         Binding("escape", "quit_app", "Quit", show=True),
         Binding("q", "quit_app", "Quit", show=True),
+        Binding("d", "delete_selected", "Delete", show=True),
     ]
 
     def __init__(self, conn: EnvironmentConnector, instances: list[JobInstance], history_runs: list[JobRun], *,
@@ -125,6 +127,29 @@ class DashboardScreen(Screen):
 
     def action_quit_app(self) -> None:
         self.app.exit()
+
+    def action_delete_selected(self) -> None:
+        history_table = self.query_one("#history-table", LinkedTable)
+        if not history_table.has_focus or not history_table.row_count:
+            return
+        row_key_val = str(history_table.coordinate_to_cell_key(history_table.cursor_coordinate).row_key.value)
+        run = self._history_runs.get(row_key_val)
+        if not run:
+            return
+
+        def _on_confirm(confirmed: bool) -> None:
+            if not confirmed:
+                return
+            try:
+                self._conn.remove_history_runs(JobRunCriteria.instance_match(run.instance_id))
+            except (ValueError, OSError) as e:
+                self.app.notify(str(e), severity="error")
+                return
+            self._history_runs.pop(row_key_val, None)
+            history_table.remove_row(row_key=row_key_val)
+            self.query_one(DashboardSummary).refresh()
+
+        self.app.push_screen(ConfirmDeleteScreen(run.instance_id), callback=_on_confirm)
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         key = str(event.row_key.value)

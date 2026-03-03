@@ -4,7 +4,7 @@ Provides table-building utilities (LinkedTable, add_columns, build_cells, etc.) 
 the selector and the dashboard, plus pick-and-exit selector apps for action commands.
 """
 
-from typing import Callable, Iterable, Optional, Sequence
+from typing import Optional, Sequence
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -14,7 +14,9 @@ from textual.widgets import DataTable, Footer, Header, Static
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobInstance, JobRun
+from runtools.runcore.output import MultiSourceOutputReader
 from runtools.runcore.run import Outcome, Stage
+from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.view import instance as view_inst
 
@@ -185,6 +187,14 @@ class _HistorySummary(Static):
 
     def __init__(self, runs: Sequence[JobRun]) -> None:
         super().__init__()
+        self._text = self._summarize(runs)
+
+    def refresh_from(self, runs: Sequence[JobRun]) -> None:
+        self._text = self._summarize(runs)
+        self.refresh()
+
+    @staticmethod
+    def _summarize(runs: Sequence[JobRun]) -> str:
         total = len(runs)
         failed = sum(
             1 for r in runs
@@ -198,7 +208,7 @@ class _HistorySummary(Static):
         parts = [f"{total} runs", f"{succeeded} success", f"{failed} failed"]
         if other:
             parts.append(f"{other} other")
-        self._text = " · ".join(parts)
+        return " · ".join(parts)
 
     def render(self) -> Text:
         return Text(self._text, style="dim")
@@ -210,14 +220,18 @@ class _HistoryApp(App):
     BINDINGS = [
         Binding("escape", "quit", "Quit", show=True),
         Binding("q", "quit", "Quit", show=True),
+        Binding("d", "delete_selected", "Delete", show=True),
     ]
 
     def __init__(self, runs: Sequence[JobRun], columns: Sequence, *,
-                 output_reader: Optional[Callable] = None, title: str = "History") -> None:
+                 connector: Optional[EnvironmentConnector] = None, title: str = "History") -> None:
         super().__init__()
         self._runs = {row_key(r.instance_id): r for r in runs}
         self._columns = columns
-        self._output_reader = output_reader
+        self._connector = connector
+        self._output_reader = (
+            MultiSourceOutputReader(connector.output_backends).read_output if connector else None
+        )
         self._title = title
 
     def compose(self) -> ComposeResult:
@@ -239,15 +253,40 @@ class _HistoryApp(App):
         if run:
             self.push_screen(InstanceScreen(job_run=run, output_reader=self._output_reader))
 
+    def action_delete_selected(self) -> None:
+        if not self._connector:
+            return
+        table = self.query_one(DataTable)
+        if not table.row_count:
+            return
+        row_key_val = str(table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value)
+        run = self._runs.get(row_key_val)
+        if not run:
+            return
+
+        def _on_confirm(confirmed: bool) -> None:
+            if not confirmed:
+                return
+            try:
+                self._connector.remove_history_runs(JobRunCriteria.instance_match(run.instance_id))
+            except (ValueError, OSError) as e:
+                self.notify(str(e), severity="error")
+                return
+            self._runs.pop(row_key_val, None)
+            table.remove_row(row_key=row_key_val)
+            self.query_one(_HistorySummary).refresh_from(list(self._runs.values()))
+
+        self.push_screen(ConfirmDeleteScreen(run.instance_id), callback=_on_confirm)
+
 
 def show_history(runs: Sequence[JobRun], columns: Sequence, *,
-                 output_reader: Optional[Callable] = None, title: str = "History") -> None:
+                 connector: Optional[EnvironmentConnector] = None, title: str = "History") -> None:
     """Show a static DataTable of historical job runs with a summary bar.
 
     Args:
         runs: Job runs to display.
         columns: Column definitions for the table.
-        output_reader: Callable to read output lines for an instance ID.
+        connector: Open connector for output reading and delete operations.
         title: Title displayed in the header.
     """
-    _HistoryApp(runs, columns, output_reader=output_reader, title=title).run()
+    _HistoryApp(runs, columns, connector=connector, title=title).run()
