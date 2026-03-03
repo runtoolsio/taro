@@ -24,7 +24,7 @@ PhaseTree {
 }
 
 PhaseDetail {
-    height: 40%;
+    height: 1fr;
     min-height: 8;
     padding: 0 1;
     border-top: solid grey;
