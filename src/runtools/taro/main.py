@@ -1,13 +1,29 @@
+from typing import Optional
+
 import typer
 from rich.console import Console
 from rich.text import Text
 
 from runtools.runcore.err import RuntoolsException
+from runtools.taro import __version__
 from runtools.taro.cmd import approve, clean, dash, env, history, listen, live, of, ps, resume, stats, stop, tail, wait
 
 console = Console(stderr=True)
 
+
+def version_callback(value: bool):
+    if value:
+        print(f"taro {__version__}")
+        raise typer.Exit()
+
+
 app = typer.Typer()
+
+
+@app.callback()
+def main(version: Optional[bool] = typer.Option(None, "--version", "-V", callback=version_callback, is_eager=True,
+                                                 help="Show version and exit.")):
+    pass
 
 app.add_typer(approve.app, name="approve")
 app.add_typer(clean.app, name="clean")
