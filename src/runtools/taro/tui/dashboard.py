@@ -101,9 +101,10 @@ class DashboardScreen(Screen):
         yield Header()
         yield DashboardSummary(self._live_runs, self._history_runs)
 
-        active_table = LinkedTable(cursor_type="row", id="active-table")
+        # "renderable" lets Rich Text styles (phase colors, etc.) show through the cursor row
+        active_table = LinkedTable(cursor_type="row", id="active-table", cursor_foreground_priority="renderable")
         add_columns(active_table, ACTIVE_COLUMNS)
-        history_table = LinkedTable(cursor_type="row", id="history-table")
+        history_table = LinkedTable(cursor_type="row", id="history-table", cursor_foreground_priority="renderable")
         add_columns(history_table, HISTORY_COLUMNS)
         active_table.next_table = history_table
         history_table.prev_table = active_table

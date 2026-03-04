@@ -57,7 +57,7 @@ class PhaseExtractor(PhaseVisitor):
         elif phase_run.is_idle:
             theme = Theme.idle
         else:
-            theme = ""
+            theme = Theme.state_executing
             for ancestor in parent_path.iter_ancestors(reverse=True):
                 if ancestor.phase_type in ("APPROVAL", "MUTEX", "CHECKPOINT"):
                     theme = Theme.success

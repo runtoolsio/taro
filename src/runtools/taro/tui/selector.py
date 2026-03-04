@@ -107,7 +107,7 @@ class _LiveSelectorApp(App[Optional[JobInstance]]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        table = DataTable(cursor_type="row")
+        table = DataTable(cursor_type="row", cursor_foreground_priority="renderable")
         add_columns(table)
         yield table
         yield Footer()
@@ -235,7 +235,7 @@ class _HistoryApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         yield _HistorySummary(list(self._runs.values()))
-        yield DataTable(cursor_type="row")
+        yield DataTable(cursor_type="row", cursor_foreground_priority="renderable")
         yield Footer()
 
     def on_mount(self) -> None:
