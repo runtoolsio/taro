@@ -23,7 +23,7 @@ from runtools.runcore.run import Outcome, Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
-    LinkedTable, add_columns, build_cells, last_col_width, row_key, update_row,
+    LinkedTable, add_columns, build_cells, last_col_width, row_key,
 )
 from runtools.taro.theme import Theme
 from runtools.taro.view import instance as view_inst
@@ -216,9 +216,6 @@ class DashboardScreen(Screen):
             return
         elif key in self._live_runs:
             self._live_runs[key] = job_run
-            active_table = self.query_one("#active-table", LinkedTable)
-            rw = self._active_render_width()
-            update_row(active_table, key, job_run, ACTIVE_COLUMNS, render_width=rw)
         else:
             inst = self._conn.get_instance(iid)
             if inst is not None:
@@ -243,12 +240,9 @@ class DashboardScreen(Screen):
     def _refresh_active_rows(self) -> None:
         if not self._instances:
             return
-        active_table = self.query_one("#active-table", LinkedTable)
-        rw = self._active_render_width()
         for key, inst in self._instances.items():
-            snap = inst.snap()
-            self._live_runs[key] = snap
-            update_row(active_table, key, snap, ACTIVE_COLUMNS, render_width=rw)
+            self._live_runs[key] = inst.snap()
+        self._populate_tables()
 
     def _restore_cursor(self, key: str | None) -> None:
         """Move cursor back to the row identified by key, searching both tables."""

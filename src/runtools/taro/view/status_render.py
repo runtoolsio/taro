@@ -16,10 +16,11 @@ def render_status(status: Status | None, width: int) -> Text:
     """Render status as styled Text, with visual progress bars when possible.
 
     Fallback ladder (uniform level for all ops, then greedy per-op):
-      1. Full bars — divide width evenly across all ops
-      2. Compact ``name pct%`` for each op (greedy)
-      3. Percent only ``pct%`` for each op (greedy)
-      4. ``+N`` suffix for ops that don't fit
+      1. Full bars: ``name done/total unit ━━╸━━ pct%`` — width evenly divided
+      2. Short bars: ``name ━━╸━━ pct%`` — width evenly divided
+      3. Compact ``name pct%`` for each op (greedy)
+      4. Percent only ``pct%`` for each op (greedy)
+      5. ``+N`` suffix for ops that don't fit
 
     Args:
         status: Current job status snapshot (may be None).
@@ -33,13 +34,15 @@ def render_status(status: Status | None, width: int) -> Text:
     if not progress_ops:
         return Text(str(status))
 
-    # Try full bars for all ops — distribute width evenly
+    # Try uniform representation levels — distribute width evenly
     n = len(progress_ops)
     sep_total = len(SEPARATOR) * (n - 1)
     per_op_width = (width - sep_total) // n
-    bars = [_build_bar(op, per_op_width) for op in progress_ops]
-    if all(bars):
-        return _join(bars)
+
+    for bar_builder in (_build_bar, _build_short_bar):
+        bars = [bar_builder(op, per_op_width) for op in progress_ops]
+        if all(bars):
+            return _join(bars)
 
     # Greedy fallback: compact → pct only → +N
     result = Text()
@@ -98,31 +101,32 @@ def _pct_only(op: Operation) -> Text:
 
 
 def _build_bar(op: Operation, width: int) -> Text | None:
-    """Build a styled progress bar Text for a single operation.
-
-    Layout: ``{name} {completed}/{total} {unit} ━━━╸╺━━━ {pct}%``
-
-    Args:
-        op: Operation with valid pct_done.
-        width: Available character width.
-
-    Returns:
-        Styled Text, or None if not enough space for a meaningful bar.
-    """
-    clamped = max(0.0, min(op.pct_done, 1.0))
-    pct = round(clamped * 100)
+    """Full bar: ``{name} {completed}/{total} {unit} ━━━╸╺━━━ {pct}%``"""
     completed_str = _format_number(op.completed)
     total_str = _format_number(op.total)
-
     prefix = f"{op.name} {completed_str}/{total_str}"
     if op.unit:
         prefix += f" {op.unit}"
     prefix += " "
+    return _bar_with_prefix(op, prefix, width)
 
+
+def _build_short_bar(op: Operation, width: int) -> Text | None:
+    """Short bar: ``{name} ━━━╸╺━━━ {pct}%``"""
+    return _bar_with_prefix(op, f"{op.name} ", width)
+
+
+def _bar_with_prefix(op: Operation, prefix: str, width: int) -> Text | None:
+    """Build a styled progress bar with the given prefix.
+
+    Returns:
+        Styled Text, or None if not enough space for a meaningful bar (min 4 chars).
+    """
+    clamped = max(0.0, min(op.pct_done, 1.0))
+    pct = round(clamped * 100)
     suffix = f" {pct}%"
 
     bar_width = min(width - len(prefix) - len(suffix), MAX_BAR)
-
     if bar_width < 4:
         return None
 
@@ -130,8 +134,6 @@ def _build_bar(op: Operation, width: int) -> Text | None:
     filled = int(filled_total)
     remainder = filled_total - filled
 
-    # Bar = bright_blue filled segment + bright_black empty segment
-    # Half-character (╸/╺) sits at the boundary for sub-cell precision
     if filled >= bar_width:
         bright = "━" * bar_width
         dim_bar = ""
@@ -149,5 +151,4 @@ def _build_bar(op: Operation, width: int) -> Text | None:
     if dim_bar:
         text.append(dim_bar, style="bright_black")
     text.append(suffix, style="dim")
-
     return text
