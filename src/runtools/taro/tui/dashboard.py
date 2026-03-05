@@ -124,7 +124,7 @@ class DashboardScreen(Screen):
         self._populate_tables()
         self._env_handler = lambda e: self.app.call_from_thread(self._on_event, e)
         self._conn.notifications.add_observer_all_events(self._env_handler)
-        self.set_interval(1, self._refresh_active_rows)
+        self.set_interval(0.25, self._refresh_active_rows)
 
     def on_unmount(self) -> None:
         if self._env_handler is not None:
