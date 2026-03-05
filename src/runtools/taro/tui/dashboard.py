@@ -5,11 +5,13 @@ InstanceScreen detail view; dismissing it pops back to the dashboard. The event
 handler continues receiving updates while the detail screen is shown.
 """
 
+import logging
 from typing import Optional
 
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.css.query import NoMatches
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
@@ -25,6 +27,8 @@ from runtools.taro.tui.selector import (
 )
 from runtools.taro.theme import Theme
 from runtools.taro.view import instance as view_inst
+
+log = logging.getLogger(__name__)
 
 ACTIVE_COLUMNS = [
     view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME,
@@ -193,9 +197,12 @@ class DashboardScreen(Screen):
         if self._run_match and not self._run_match(job_run):
             return
 
-        if not self.is_mounted:
-            return
+        try:
+            self._handle_event(event, job_run)
+        except NoMatches:
+            log.debug("DOM query failed during teardown, ignoring event")
 
+    def _handle_event(self, event, job_run: JobRun) -> None:
         iid = job_run.instance_id
         key = row_key(iid)
 
@@ -217,9 +224,7 @@ class DashboardScreen(Screen):
             if inst is not None:
                 self._instances[key] = inst
                 self._live_runs[key] = job_run
-                active_table = self.query_one("#active-table", LinkedTable)
-                active_table.add_row(*build_cells(job_run, ACTIVE_COLUMNS, render_width=self._active_render_width()),
-                                     key=key)
+                self._populate_tables()
                 self.query_one(DashboardSummary).refresh()
 
     def _populate_tables(self) -> None:
