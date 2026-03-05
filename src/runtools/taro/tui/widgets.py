@@ -18,9 +18,11 @@ from bisect import insort
 from typing import Callable, Iterable, Optional
 
 from rich.text import Text
+from textual import work
 from textual.message import Message
 from textual.widgets import RichLog, Static, Tree
 from textual.widgets._tree import TreeNode
+from textual.worker import get_current_worker
 
 from runtools.runcore import util
 from runtools.runcore.job import JobInstance, JobRun, InstanceOutputEvent
@@ -336,6 +338,8 @@ class OutputPanel(RichLog):
     that phase and all its descendants.
     """
 
+    _WRITE_BATCH_SIZE = 500
+
     def __init__(self, instance: Optional[JobInstance], job_run: JobRun, *,
                  output_reader: Optional[Callable] = None, live: bool = False) -> None:
         super().__init__(wrap=True, highlight=False, markup=False)
@@ -345,6 +349,7 @@ class OutputPanel(RichLog):
         self._live = live
         self._buffer = OutputBuffer()
         self._phase_filter: set[str] | None = None  # None = show all
+        self._filter_generation = 0  # incremented on each filter change
         self._output_observer = None
 
     def on_mount(self) -> None:
@@ -352,16 +357,12 @@ class OutputPanel(RichLog):
         if self._live and self._instance is not None:
             self._output_observer = _OutputObserver(self)
             self._instance.notifications.add_observer_output(self._output_observer)
-        # Load output: live tail for active instances, stored output for historical
+        # Load output: live tail for active instances (fast, in-memory)
         if self._instance is not None:
             self._buffer.add_lines(self._instance.output.tail())
+            self._write_batch(self._buffer.get_lines(self._phase_filter))
         elif self._output_reader:
-            try:
-                self._buffer.add_lines(self._output_reader(self._job_run.instance_id))
-            except OutputReadError as e:
-                self.write(Text(f"Error reading output: {e}", style="red"))
-                return
-        self._render_lines(self._buffer.get_lines(self._phase_filter))
+            self._load_history_output()
 
     def on_unmount(self) -> None:
         if self._instance is not None and self._output_observer is not None:
@@ -375,23 +376,50 @@ class OutputPanel(RichLog):
         if self._phase_filter is None or line.source in self._phase_filter:
             self._write_line(line)
 
+    @work(thread=True, exclusive=True, group="output_load")
+    def _load_history_output(self) -> None:
+        """Load stored output in a background thread, writing batches to the UI."""
+        worker = get_current_worker()
+        try:
+            lines = self._output_reader(self._job_run.instance_id)
+        except OutputReadError as e:
+            if not worker.is_cancelled:
+                self.app.call_from_thread(self.write, Text(f"Error reading output: {e}", style="red"))
+            return
+
+        # Buffer add + filter + batch splitting all happen in this thread (no race).
+        self._buffer.add_lines(lines)
+        gen = self._filter_generation
+        filtered = self._buffer.get_lines(self._phase_filter)
+
+        for i in range(0, len(filtered), self._WRITE_BATCH_SIZE):
+            if worker.is_cancelled or gen != self._filter_generation:
+                return
+            batch = filtered[i:i + self._WRITE_BATCH_SIZE]
+            self.app.call_from_thread(self._write_batch, batch)
+
     def update_phase_filter(self, phase_ids: set[str] | None) -> None:
         """Filter output to a phase subtree (None = all)."""
         if phase_ids == self._phase_filter:
             return
         self._phase_filter = phase_ids
+        self._filter_generation += 1
         self.clear()
-        self._render_lines(self._buffer.get_lines(phase_ids))
+        self._write_batch(self._buffer.get_lines(phase_ids))
 
-    def _render_lines(self, lines: list[OutputLine]) -> None:
-        for line in lines:
-            self._write_line(line)
+    def _write_batch(self, lines: list[OutputLine]) -> None:
+        """Write multiple lines as a single Text object to minimize DOM updates."""
+        if not lines:
+            return
+        batch = Text()
+        for i, line in enumerate(lines):
+            if i > 0:
+                batch.append("\n")
+            batch.append(line.message, style="red" if line.is_error else "")
+        self.write(batch)
 
     def _write_line(self, line: OutputLine) -> None:
-        text = Text(line.message)
-        if line.is_error:
-            text.stylize("red")
-        self.write(text)
+        self.write(Text(line.message, style="red" if line.is_error else ""))
 
 
 class _OutputObserver:
