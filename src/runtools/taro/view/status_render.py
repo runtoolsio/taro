@@ -51,10 +51,11 @@ def render_status(status: Status | None, width: int) -> Text:
     for i, op in enumerate(progress_ops):
         leftover_count = len(progress_ops) - i - 1
         reserve = len(f" +{leftover_count}") if leftover_count else 0
+        sep = len(SEPARATOR) if i > 0 else 0
 
         for renderer in (_compact, _pct_only):
             text = renderer(op)
-            if text.cell_len <= remaining - reserve:
+            if text.cell_len + sep <= remaining - reserve:
                 if i > 0:
                     result.append(SEPARATOR)
                     remaining -= len(SEPARATOR)
