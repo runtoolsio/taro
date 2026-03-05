@@ -10,6 +10,7 @@ from runtools.runcore.status import Operation, Status
 
 MAX_BAR = 30
 SEPARATOR = "  "
+WIDTH_SAFETY_MARGIN = 3
 
 
 def render_status(status: Status | None, width: int) -> Text:
@@ -34,10 +35,13 @@ def render_status(status: Status | None, width: int) -> Text:
     if not progress_ops:
         return Text(str(status))
 
+    # Be conservative: runtime table layout may be a few chars tighter than hints.
+    effective_width = max(width - WIDTH_SAFETY_MARGIN, 0)
+
     # Try uniform representation levels — distribute width evenly
     n = len(progress_ops)
     sep_total = len(SEPARATOR) * (n - 1)
-    per_op_width = (width - sep_total) // n
+    per_op_width = (effective_width - sep_total) // n
 
     for bar_builder in (_build_bar, _build_short_bar):
         bars = [bar_builder(op, per_op_width) for op in progress_ops]
@@ -46,7 +50,7 @@ def render_status(status: Status | None, width: int) -> Text:
 
     # Greedy fallback: compact → pct only → +N
     result = Text()
-    remaining = width
+    remaining = effective_width
 
     for i, op in enumerate(progress_ops):
         leftover_count = len(progress_ops) - i - 1
@@ -65,7 +69,11 @@ def render_status(status: Status | None, width: int) -> Text:
         else:
             count = leftover_count + 1
             if not result:
-                return Text(str(status))
+                # Final compact fallback: always show at least one signal, not full status text.
+                head = _pct_only(op)
+                if count > 1:
+                    head.append(f" +{count - 1}", style="dim")
+                return head
             result.append(f" +{count}", style="dim")
             break
 

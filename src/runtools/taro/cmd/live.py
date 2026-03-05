@@ -158,7 +158,11 @@ class LiveView:
         return self._sort_option.sort_runs(active + retained, reverse=self._descending)
 
     def _status_width(self) -> int:
-        """Estimate STATUS column width from terminal width and ratio-based column layout."""
+        """Estimate STATUS column width from terminal width and ratio-based column layout.
+
+        Subtracts a small safety margin because Rich's internal ratio distribution
+        may round differently than our manual calculation.
+        """
         try:
             term_width = os.get_terminal_size().columns
         except OSError:
@@ -169,8 +173,8 @@ class LiveView:
         total_ratio = sum(_COL_RATIO.get(col, 0) for col in COLUMNS)
         status_ratio = _COL_RATIO.get(view_inst.STATUS, 0)
         if total_ratio > 0 and status_ratio > 0:
-            return int(remaining * status_ratio / total_ratio)
-        return remaining
+            return int(remaining * status_ratio / total_ratio) - 2
+        return remaining - 2
 
     def _build_table(self) -> Table:
         """Build a rich.Table from the current cached runs."""
