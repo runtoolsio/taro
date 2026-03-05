@@ -182,8 +182,7 @@ class DashboardScreen(Screen):
             else:
                 self._live_runs[key] = snap
 
-        self._populate_tables()
-        self._restore_cursor(self._selected_key)
+        self._populate_tables(focus_key=self._selected_key)
         self.query_one(DashboardSummary).refresh()
 
     def _active_render_width(self) -> dict[str, int]:
@@ -224,9 +223,21 @@ class DashboardScreen(Screen):
                 self._populate_tables()
                 self.query_one(DashboardSummary).refresh()
 
-    def _populate_tables(self) -> None:
+    def _populate_tables(self, *, focus_key: str | None = None) -> None:
         active_table = self.query_one("#active-table", LinkedTable)
         history_table = self.query_one("#history-table", LinkedTable)
+        tables = (active_table, history_table)
+
+        # Save cursor position before clearing
+        saved: dict[str, tuple[bool, str]] = {}
+        if not focus_key:
+            for table in tables:
+                if table.row_count > 0:
+                    saved[table.id] = (
+                        table.has_focus,
+                        str(table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value),
+                    )
+
         rw = self._active_render_width()
         active_table.clear()
         sorted_active = sorted(self._live_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
@@ -237,6 +248,19 @@ class DashboardScreen(Screen):
         for key, run in sorted_history:
             history_table.add_row(*build_cells(run, HISTORY_COLUMNS), key=key)
 
+        # Restore cursor position (focus_key resolved after repopulation — row may have moved between tables)
+        if focus_key:
+            for table in tables:
+                if focus_key in table.rows:
+                    saved[table.id] = (True, focus_key)
+                    break
+        for table in tables:
+            info = saved.get(table.id)
+            if info and info[1] in table.rows:
+                table.move_cursor(row=table.get_row_index(info[1]))
+                if info[0]:
+                    table.focus()
+
     def _refresh_active_rows(self) -> None:
         if not self._instances:
             return
@@ -244,15 +268,6 @@ class DashboardScreen(Screen):
             self._live_runs[key] = inst.snap()
         self._populate_tables()
 
-    def _restore_cursor(self, key: str | None) -> None:
-        """Move cursor back to the row identified by key, searching both tables."""
-        if key is None:
-            return
-        for table in (self.query_one("#active-table", LinkedTable), self.query_one("#history-table", LinkedTable)):
-            if key in table.rows:
-                table.focus()
-                table.move_cursor(row=table.get_row_index(key))
-                return
 
 
 class DashboardApp(App):

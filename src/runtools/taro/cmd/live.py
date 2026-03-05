@@ -122,7 +122,7 @@ class LiveView:
         first = True
         while True:
             try:
-                event = self._event_queue.get(timeout=1 if first else 0)
+                event = self._event_queue.get(timeout=0.25 if first else 0)
                 self._process_event(event)
                 first = False
             except Empty:

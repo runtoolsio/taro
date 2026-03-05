@@ -61,7 +61,7 @@ def render_status(status: Status | None, width: int) -> Text:
             continue
         if result.cell_len > 0:
             sep = GROUP_SEPARATOR if prev_is_spinner != is_spinner else SEPARATOR
-            result.append(sep, style="dim")
+            result.append(sep, style="bright_black")
         result.append_text(text)
         prev_is_spinner = is_spinner
 

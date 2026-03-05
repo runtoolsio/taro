@@ -51,8 +51,8 @@ class InstanceHeader(Static):
 
     def on_mount(self) -> None:
         if self._live and not self._job_run.lifecycle.is_ended:
-            # refresh() triggers render() on the next frame — elapsed time updates each tick
-            self._timer = self.set_interval(1.0, self.refresh)
+            # refresh() triggers render() on the next frame — elapsed time and spinner update each tick
+            self._timer = self.set_interval(0.25, self.refresh)
 
     def update_run(self, job_run: JobRun) -> None:
         """Replace the snapshot and refresh. Called from InstanceScreen on each event."""
