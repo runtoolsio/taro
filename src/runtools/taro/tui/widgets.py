@@ -384,8 +384,17 @@ class OutputPanel(RichLog):
         self._render_lines(self._buffer.get_lines(phase_ids))
 
     def _render_lines(self, lines: list[OutputLine]) -> None:
+        if not lines:
+            return
+        batch = Text()
         for line in lines:
-            self._write_line(line)
+            if batch.cell_len > 0:
+                batch.append("\n")
+            msg = Text(line.message)
+            if line.is_error:
+                msg.stylize("red")
+            batch.append_text(msg)
+        self.write(batch)
 
     def _write_line(self, line: OutputLine) -> None:
         text = Text(line.message)
