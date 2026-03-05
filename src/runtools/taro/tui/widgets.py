@@ -29,6 +29,7 @@ from runtools.runcore.run import Outcome, PhaseRun, Stage
 from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
+from runtools.taro.view.status_render import render_status
 
 
 class InstanceHeader(Static):
@@ -84,11 +85,8 @@ class InstanceHeader(Static):
         line1.append("          ", style="")
         line1.append(f"elapsed: {elapsed_str}", style="bright_black")
 
-        # Row 2: status line
-        status_str = str(job_run.status or "")
-        line2 = Text()
-        if status_str:
-            line2.append(status_str, style="")
+        # Row 2: status line with progress bar when available
+        line2 = render_status(job_run.status, self.size.width if self.size.width > 0 else 60)
 
         result = Text()
         result.append(line1)

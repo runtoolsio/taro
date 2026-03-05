@@ -5,6 +5,7 @@ provide immediate updates for stop requests. A slow RPC poll (~10s) serves only 
 to detect crashed instances. Recently ended runs are retained briefly (dimmed) before being removed.
 """
 
+import os
 import time
 from queue import Queue, Empty
 from typing import Optional
@@ -24,6 +25,7 @@ from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
 from runtools.taro.view import instance as view_inst
+from runtools.taro.view.instance import render_cell
 
 app = typer.Typer(invoke_without_command=True)
 console = Console()
@@ -155,6 +157,21 @@ class LiveView:
         retained = [run for run, _ in self._ended_runs.values()]
         return self._sort_option.sort_runs(active + retained, reverse=self._descending)
 
+    def _status_width(self) -> int:
+        """Estimate STATUS column width from terminal width and ratio-based column layout."""
+        try:
+            term_width = os.get_terminal_size().columns
+        except OSError:
+            return view_inst.STATUS.max_width
+        fixed = sum(_COL_WIDTH.get(col, 0) for col in COLUMNS)
+        padding = len(COLUMNS) * 2
+        remaining = term_width - fixed - padding
+        total_ratio = sum(_COL_RATIO.get(col, 0) for col in COLUMNS)
+        status_ratio = _COL_RATIO.get(view_inst.STATUS, 0)
+        if total_ratio > 0 and status_ratio > 0:
+            return int(remaining * status_ratio / total_ratio)
+        return remaining
+
     def _build_table(self) -> Table:
         """Build a rich.Table from the current cached runs."""
         runs = self._sorted_runs()
@@ -179,13 +196,13 @@ class LiveView:
             table.add_row(Text("No active instances", style="dim"), *[""] * (len(COLUMNS) - 1))
             return table
 
+        status_w = self._status_width()
         for run in runs:
-            is_ended = run.instance_id in self._ended_runs
-            cells = []
-            for col in COLUMNS:
-                value = col.value_fnc(run)
-                style = "dim" if is_ended else col.colour_fnc(run)
-                cells.append(Text(str(value), style=style))
+            dim = "dim" if run.instance_id in self._ended_runs else ""
+            cells = [
+                render_cell(run, col, width=status_w if col is view_inst.STATUS else None, style_override=dim)
+                for col in COLUMNS
+            ]
             table.add_row(*cells)
 
         return table

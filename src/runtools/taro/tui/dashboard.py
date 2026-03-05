@@ -21,7 +21,7 @@ from runtools.runcore.run import Outcome, Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
-    LinkedTable, add_columns, build_cells, row_key, update_row,
+    LinkedTable, add_columns, build_cells, last_col_width, row_key, update_row,
 )
 from runtools.taro.theme import Theme
 from runtools.taro.view import instance as view_inst
@@ -182,11 +182,18 @@ class DashboardScreen(Screen):
         self._restore_cursor(self._selected_key)
         self.query_one(DashboardSummary).refresh()
 
+    def _active_render_width(self) -> dict[str, int]:
+        active_table = self.query_one("#active-table", LinkedTable)
+        return {'STATUS': last_col_width(active_table, ACTIVE_COLUMNS)}
+
     def _on_event(self, event) -> None:
         job_run = getattr(event, 'job_run', None)
         if job_run is None:
             return
         if self._run_match and not self._run_match(job_run):
+            return
+
+        if not self.is_mounted:
             return
 
         iid = job_run.instance_id
@@ -203,23 +210,26 @@ class DashboardScreen(Screen):
         elif key in self._live_runs:
             self._live_runs[key] = job_run
             active_table = self.query_one("#active-table", LinkedTable)
-            update_row(active_table, key, job_run, ACTIVE_COLUMNS)
+            rw = self._active_render_width()
+            update_row(active_table, key, job_run, ACTIVE_COLUMNS, render_width=rw)
         else:
             inst = self._conn.get_instance(iid)
             if inst is not None:
                 self._instances[key] = inst
                 self._live_runs[key] = job_run
                 active_table = self.query_one("#active-table", LinkedTable)
-                active_table.add_row(*build_cells(job_run, ACTIVE_COLUMNS), key=key)
+                active_table.add_row(*build_cells(job_run, ACTIVE_COLUMNS, render_width=self._active_render_width()),
+                                     key=key)
                 self.query_one(DashboardSummary).refresh()
 
     def _populate_tables(self) -> None:
         active_table = self.query_one("#active-table", LinkedTable)
         history_table = self.query_one("#history-table", LinkedTable)
+        rw = self._active_render_width()
         active_table.clear()
         sorted_active = sorted(self._live_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_active:
-            active_table.add_row(*build_cells(run, ACTIVE_COLUMNS), key=key)
+            active_table.add_row(*build_cells(run, ACTIVE_COLUMNS, render_width=rw), key=key)
         history_table.clear()
         sorted_history = sorted(self._history_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_history:
@@ -229,10 +239,11 @@ class DashboardScreen(Screen):
         if not self._instances:
             return
         active_table = self.query_one("#active-table", LinkedTable)
+        rw = self._active_render_width()
         for key, inst in self._instances.items():
             snap = inst.snap()
             self._live_runs[key] = snap
-            update_row(active_table, key, snap, ACTIVE_COLUMNS)
+            update_row(active_table, key, snap, ACTIVE_COLUMNS, render_width=rw)
 
     def _restore_cursor(self, key: str | None) -> None:
         """Move cursor back to the row identified by key, searching both tables."""

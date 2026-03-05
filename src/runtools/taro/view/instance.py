@@ -1,12 +1,16 @@
 from typing import List, Tuple
 
+from rich.text import Text
+
 from runtools.runcore import util
+from runtools.runcore.job import JobRun
 from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
 from runtools.runcore.util import format_dt_local_tz, format_dt_compact
 from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style, \
     stage_style
 from runtools.taro.theme import Theme
+from runtools.taro.view.status_render import render_status
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
 RUN_ID = Column('RUN ID', 30, lambda j: j.run_id, run_id_style)
@@ -33,11 +37,35 @@ PHASES = Column('PHASES', 30, lambda j: j.accept_visitor(PhaseExtractor()).text,
 TERM_STATUS = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
                      lambda j: j.lifecycle.termination.status.name if j.lifecycle.termination else '',
                      lambda j: run_term_style(j) if j.lifecycle.termination else general_style(j))
-STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style)
+STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style, lambda j, w: render_status(j.status, w))
 RESULT = Column('RESULT', 50, lambda j: str(j.status or ''), general_style)
 WARNINGS = Column('WARN', 6, lambda j: str(len(j.status.warnings)) if j.status else '0', warn_count_style)
 
 DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, PHASES, WARNINGS, STATUS]
+
+
+def render_cell(run: JobRun, col: Column, *, width: int | None = None, style_override: str = "") -> Text:
+    """Render a single column cell for a job run.
+
+    Args:
+        run: Job run snapshot.
+        col: Column definition.
+        width: Optional render width hint for columns with rich_fnc.
+            If omitted, ``col.max_width`` is used.
+        style_override: If set, used instead of col.colour_fnc (e.g. "dim" for ended runs).
+    """
+    if col.rich_fnc:
+        rich_width = width if width is not None else col.max_width
+        value = col.rich_fnc(run, rich_width)
+    else:
+        value = col.value_fnc(run)
+    style = style_override or col.colour_fnc(run)
+    if isinstance(value, Text):
+        if style:
+            value = value.copy()
+            value.stylize(style)
+        return value
+    return Text(str(value), style=style)
 
 
 class PhaseExtractor(PhaseVisitor):

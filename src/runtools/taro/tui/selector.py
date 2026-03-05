@@ -19,6 +19,7 @@ from runtools.runcore.run import Outcome, Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.view import instance as view_inst
+from runtools.taro.view.instance import render_cell
 
 COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.TERM_STATUS, view_inst.PHASES,
            view_inst.STATUS]
@@ -38,8 +39,12 @@ def row_key(iid: InstanceID) -> str:
     return f"{iid.job_id}@{iid.run_id}"
 
 
-def build_cells(run: JobRun, columns: Sequence = COLUMNS) -> list[Text]:
-    return [Text(str(col.value_fnc(run)), style=col.colour_fnc(run)) for col in columns]
+def build_cells(run: JobRun, columns: Sequence = COLUMNS, *,
+                render_width: dict[str, int] | None = None) -> list[Text]:
+    return [
+        render_cell(run, col, width=(render_width.get(col.name) if render_width else None))
+        for col in columns
+    ]
 
 
 def add_columns(table: DataTable, columns: Sequence = COLUMNS) -> None:
@@ -49,8 +54,19 @@ def add_columns(table: DataTable, columns: Sequence = COLUMNS) -> None:
         table.add_column(col.name, key=col.name, width=width)
 
 
-def update_row(table: DataTable, key: str, run: JobRun, columns: Sequence = COLUMNS) -> None:
-    for col, cell in zip(columns, build_cells(run, columns)):
+def last_col_width(table: DataTable, columns: Sequence) -> int:
+    """Estimate last column width from table content width minus fixed columns."""
+    if table.size.width == 0:
+        return columns[-1].max_width
+    fixed = sum(TUI_WIDTHS.get(col.name, col.max_width) for col in columns[:-1])
+    # DataTable adds 2-char cell padding per column
+    padding = len(columns) * 2
+    return table.size.width - fixed - padding
+
+
+def update_row(table: DataTable, key: str, run: JobRun, columns: Sequence = COLUMNS, *,
+               render_width: dict[str, int] | None = None) -> None:
+    for col, cell in zip(columns, build_cells(run, columns, render_width=render_width)):
         table.update_cell(key, col.name, cell)
 
 
