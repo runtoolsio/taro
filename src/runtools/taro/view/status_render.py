@@ -12,6 +12,7 @@ from runtools.runcore.status import Operation, Status
 
 MAX_BAR = 30
 SEPARATOR = "  "
+GROUP_SEPARATOR = "  ·  "
 WIDTH_SAFETY_MARGIN = 3
 SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 SPINNER_FPS = 8
@@ -22,6 +23,7 @@ def render_status(status: Status | None, width: int) -> Text:
 
     Operations with a known total get progress bars (fallback ladder).
     Operations without a total get a spinner with count.
+    All ops are rendered in creation order.
 
     Args:
         status: Current job status snapshot (may be None).
@@ -34,88 +36,74 @@ def render_status(status: Status | None, width: int) -> Text:
     if not active_ops:
         return Text(str(status))
 
-    bar_ops = [op for op in active_ops if op.pct_done is not None and op.total > 0]
-    spinner_ops = [op for op in active_ops if op.pct_done is None or op.total <= 0]
+    bar_ops = [op for op in active_ops if _has_progress(op)]
 
     # Be conservative: runtime table layout may be a few chars tighter than hints.
     effective_width = max(width - WIDTH_SAFETY_MARGIN, 0)
 
-    # Reserve space for spinner ops, then give the rest to bar ops.
-    spinner_texts = [_spinner(op) for op in spinner_ops]
-    spinner_width = sum(t.cell_len for t in spinner_texts) + len(SEPARATOR) * max(len(spinner_texts) - 1, 0)
-    if bar_ops and spinner_texts:
-        spinner_width += len(SEPARATOR)
-    bar_width = effective_width - spinner_width
+    # Pre-render spinner ops (fixed width); compute remaining width for bar ops.
+    spinner_cache = {id(op): _spinner(op) for op in active_ops if not _has_progress(op)}
+    spinner_total = sum(t.cell_len for t in spinner_cache.values())
+    sep_total = len(GROUP_SEPARATOR) * (len(active_ops) - 1)  # conservative estimate
+    bar_width = effective_width - spinner_total - sep_total
 
-    bar_result = _render_bar_ops(bar_ops, bar_width) if bar_ops else None
+    # Pick uniform bar level for all bar ops.
+    bar_cache = _build_uniform_bars(bar_ops, bar_width)
 
-    if bar_result and spinner_texts:
-        result = bar_result
-        for t in spinner_texts:
-            result.append(SEPARATOR)
-            result.append_text(t)
-        return result
-    elif bar_result:
-        return bar_result
-    elif spinner_texts:
-        return _join(spinner_texts)
+    # Assemble in creation order, with a · between different op types.
+    result = Text()
+    prev_is_spinner: bool | None = None
+    for op in active_ops:
+        op_id = id(op)
+        is_spinner = op_id in spinner_cache
+        text = spinner_cache.get(op_id) or (bar_cache or {}).get(op_id)
+        if text is None:
+            continue
+        if result.cell_len > 0:
+            sep = GROUP_SEPARATOR if prev_is_spinner != is_spinner else SEPARATOR
+            result.append(sep, style="dim")
+        result.append_text(text)
+        prev_is_spinner = is_spinner
 
-    return Text(str(status))
+    return result if result.cell_len > 0 else Text(str(status))
 
 
-def _render_bar_ops(bar_ops: list[Operation], width: int) -> Text | None:
-    """Render operations with known totals using the fallback ladder."""
-    if width <= 0:
+def _has_progress(op: Operation) -> bool:
+    return op.pct_done is not None and op.total > 0
+
+
+def _build_uniform_bars(bar_ops: list[Operation], width: int) -> dict[int, Text] | None:
+    """Build bar representations for ops with known totals, keyed by id(op).
+
+    Tries uniform levels (full bar → short bar → compact → pct only).
+    Returns None if no bar ops or width is insufficient.
+    """
+    if not bar_ops or width <= 0:
         return None
 
-    # Try uniform representation levels — distribute width evenly
     n = len(bar_ops)
-    sep_total = len(SEPARATOR) * (n - 1)
-    per_op_width = (width - sep_total) // n
+    per_op_width = width // n if n else 0
 
-    for bar_builder in (_build_bar, _build_short_bar):
-        bars = [bar_builder(op, per_op_width) for op in bar_ops]
+    for builder in (_build_bar, _build_short_bar):
+        bars = [builder(op, per_op_width) for op in bar_ops]
         if all(bars):
-            return _join(bars)
+            return {id(op): bar for op, bar in zip(bar_ops, bars)}
 
-    # Greedy fallback: compact → pct only → +N
-    result = Text()
+    # Greedy fallback: compact → pct only
+    result = {}
     remaining = width
-
     for i, op in enumerate(bar_ops):
-        leftover_count = len(bar_ops) - i - 1
-        reserve = len(f" +{leftover_count}") if leftover_count else 0
         sep = len(SEPARATOR) if i > 0 else 0
-
         for renderer in (_compact, _pct_only):
             text = renderer(op)
-            if text.cell_len + sep <= remaining - reserve:
-                if i > 0:
-                    result.append(SEPARATOR)
-                    remaining -= len(SEPARATOR)
-                result.append_text(text)
-                remaining -= text.cell_len
+            if text.cell_len + sep <= remaining:
+                result[id(op)] = text
+                remaining -= text.cell_len + sep
                 break
         else:
-            count = leftover_count + 1
-            if not result:
-                head = _pct_only(op)
-                if count > 1:
-                    head.append(f" +{count - 1}", style="dim")
-                return head
-            result.append(f" +{count}", style="dim")
             break
 
-    return result if result.cell_len > 0 else None
-
-
-def _join(texts: list[Text]) -> Text:
-    result = Text()
-    for i, t in enumerate(texts):
-        if i > 0:
-            result.append(SEPARATOR)
-        result.append_text(t)
-    return result
+    return result if result else None
 
 
 def _format_number(value: float) -> str:
