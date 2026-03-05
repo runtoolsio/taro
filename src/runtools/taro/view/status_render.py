@@ -4,6 +4,8 @@ Produces styled ``Text`` objects suitable for both TUI (Textual DataTable cells)
 and Rich Live/Table views. All cells stay as ``Text`` — no custom renderables.
 """
 
+import time
+
 from rich.text import Text
 
 from runtools.runcore.status import Operation, Status
@@ -11,17 +13,15 @@ from runtools.runcore.status import Operation, Status
 MAX_BAR = 30
 SEPARATOR = "  "
 WIDTH_SAFETY_MARGIN = 3
+SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+SPINNER_FPS = 8
 
 
 def render_status(status: Status | None, width: int) -> Text:
     """Render status as styled Text, with visual progress bars when possible.
 
-    Fallback ladder (uniform level for all ops, then greedy per-op):
-      1. Full bars: ``name done/total unit ━━╸━━ pct%`` — width evenly divided
-      2. Short bars: ``name ━━╸━━ pct%`` — width evenly divided
-      3. Compact ``name pct%`` for each op (greedy)
-      4. Percent only ``pct%`` for each op (greedy)
-      5. ``+N`` suffix for ops that don't fit
+    Operations with a known total get progress bars (fallback ladder).
+    Operations without a total get a spinner with count.
 
     Args:
         status: Current job status snapshot (may be None).
@@ -30,30 +30,60 @@ def render_status(status: Status | None, width: int) -> Text:
     if not status:
         return Text("")
 
-    progress_ops = [op for op in status.operations if not op.finished and op.pct_done is not None and op.total > 0]
-
-    if not progress_ops:
+    active_ops = [op for op in status.operations if not op.finished]
+    if not active_ops:
         return Text(str(status))
+
+    bar_ops = [op for op in active_ops if op.pct_done is not None and op.total > 0]
+    spinner_ops = [op for op in active_ops if op.pct_done is None or op.total <= 0]
 
     # Be conservative: runtime table layout may be a few chars tighter than hints.
     effective_width = max(width - WIDTH_SAFETY_MARGIN, 0)
 
+    # Reserve space for spinner ops, then give the rest to bar ops.
+    spinner_texts = [_spinner(op) for op in spinner_ops]
+    spinner_width = sum(t.cell_len for t in spinner_texts) + len(SEPARATOR) * max(len(spinner_texts) - 1, 0)
+    if bar_ops and spinner_texts:
+        spinner_width += len(SEPARATOR)
+    bar_width = effective_width - spinner_width
+
+    bar_result = _render_bar_ops(bar_ops, bar_width) if bar_ops else None
+
+    if bar_result and spinner_texts:
+        result = bar_result
+        for t in spinner_texts:
+            result.append(SEPARATOR)
+            result.append_text(t)
+        return result
+    elif bar_result:
+        return bar_result
+    elif spinner_texts:
+        return _join(spinner_texts)
+
+    return Text(str(status))
+
+
+def _render_bar_ops(bar_ops: list[Operation], width: int) -> Text | None:
+    """Render operations with known totals using the fallback ladder."""
+    if width <= 0:
+        return None
+
     # Try uniform representation levels — distribute width evenly
-    n = len(progress_ops)
+    n = len(bar_ops)
     sep_total = len(SEPARATOR) * (n - 1)
-    per_op_width = (effective_width - sep_total) // n
+    per_op_width = (width - sep_total) // n
 
     for bar_builder in (_build_bar, _build_short_bar):
-        bars = [bar_builder(op, per_op_width) for op in progress_ops]
+        bars = [bar_builder(op, per_op_width) for op in bar_ops]
         if all(bars):
             return _join(bars)
 
     # Greedy fallback: compact → pct only → +N
     result = Text()
-    remaining = effective_width
+    remaining = width
 
-    for i, op in enumerate(progress_ops):
-        leftover_count = len(progress_ops) - i - 1
+    for i, op in enumerate(bar_ops):
+        leftover_count = len(bar_ops) - i - 1
         reserve = len(f" +{leftover_count}") if leftover_count else 0
         sep = len(SEPARATOR) if i > 0 else 0
 
@@ -69,7 +99,6 @@ def render_status(status: Status | None, width: int) -> Text:
         else:
             count = leftover_count + 1
             if not result:
-                # Final compact fallback: always show at least one signal, not full status text.
                 head = _pct_only(op)
                 if count > 1:
                     head.append(f" +{count - 1}", style="dim")
@@ -77,7 +106,7 @@ def render_status(status: Status | None, width: int) -> Text:
             result.append(f" +{count}", style="dim")
             break
 
-    return result
+    return result if result.cell_len > 0 else None
 
 
 def _join(texts: list[Text]) -> Text:
@@ -92,6 +121,20 @@ def _join(texts: list[Text]) -> Text:
 def _format_number(value: float) -> str:
     """Format a number: drop decimal if it's a whole number."""
     return str(int(value)) if value == int(value) else str(value)
+
+
+def _spinner(op: Operation) -> Text:
+    """Spinner representation for ops without a known total: ``name ⠹ count unit``."""
+    frame = SPINNER_FRAMES[int(time.monotonic() * SPINNER_FPS) % len(SPINNER_FRAMES)]
+    text = Text()
+    text.append(f"{op.name} ", style="")
+    text.append(frame, style="bright_blue")
+    completed_str = _format_number(op.completed) if op.completed is not None else ""
+    if completed_str:
+        text.append(f" {completed_str}", style="dim")
+        if op.unit:
+            text.append(f" {op.unit}", style="dim")
+    return text
 
 
 def _compact(op: Operation) -> Text:
