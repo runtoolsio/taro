@@ -10,7 +10,7 @@ from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style, \
     stage_style
 from runtools.taro.theme import Theme
-from runtools.taro.view.status_render import render_status
+from runtools.taro.view.status_render import render_result, render_status
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
 RUN_ID = Column('RUN ID', 14, lambda j: j.run_id, run_id_style)
@@ -38,7 +38,10 @@ TERM_STATUS = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
                      lambda j: j.lifecycle.termination.status.name if j.lifecycle.termination else '',
                      lambda j: run_term_style(j) if j.lifecycle.termination else general_style(j))
 STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style, lambda j, w: render_status(j.status, w))
-RESULT = Column('RESULT', 50, lambda j: str(j.status or ''), general_style)
+RESULT = Column('RESULT', 50,
+                lambda j: j.status.result.message if j.status and j.status.result
+                else j.status.finished_ops_summary if j.status else '',
+                general_style, lambda j, w: render_result(j.status, w))
 WARNINGS = Column('WARN', 6, lambda j: str(len(j.status.warnings)) if j.status else '0', warn_count_style)
 
 DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, PHASES, WARNINGS, STATUS]

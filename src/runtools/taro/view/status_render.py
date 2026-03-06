@@ -12,8 +12,7 @@ from rich.text import Text
 from runtools.runcore.status import Operation, Status
 
 MAX_BAR = 30
-SEPARATOR = "  "
-GROUP_SEPARATOR = "  ·  "
+SEPARATOR = " · "
 WIDTH_SAFETY_MARGIN = 3
 SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 SPINNER_FPS = 8
@@ -36,64 +35,69 @@ def render_status(status: Status | None, width: int) -> Text:
         return Text("")
 
     now = datetime.now(UTC).replace(tzinfo=None)
-    visible_ops = [
+    active_ops = [op for op in status.operations if not op.finished]
+    lingering_ops = [
         op for op in status.operations
-        if not op.finished or max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS
+        if op.finished and max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS
     ]
-    active_ops = [op for op in visible_ops if not op.finished]
-    lingering_ops = [op for op in visible_ops if op.finished]
-    if not visible_ops:
-        return Text(str(status))
+    if not active_ops and not lingering_ops:
+        return _fallback(status)
 
     bar_ops = [op for op in active_ops if _has_progress(op)]
 
     # Be conservative: runtime table layout may be a few chars tighter than hints.
     effective_width = max(width - WIDTH_SAFETY_MARGIN, 0)
 
-    # Pre-render fixed-width ops; compute remaining width for bar ops.
-    finished_cache = {id(op): _finished(op) for op in lingering_ops}
+    # Budget width for active ops only — lingering ops get whatever is left.
     spinner_cache = {id(op): _spinner(op) for op in active_ops if not _has_progress(op)}
-    fixed_total = (sum(t.cell_len for t in finished_cache.values())
-                   + sum(t.cell_len for t in spinner_cache.values()))
-    sep_total = len(GROUP_SEPARATOR) * (len(visible_ops) - 1)
-    bar_width = effective_width - fixed_total - sep_total
-
-    # Pick uniform bar level for all bar ops.
+    active_fixed = sum(t.cell_len for t in spinner_cache.values())
+    active_sep = len(SEPARATOR) * max(len(active_ops) - 1, 0)
+    bar_width = effective_width - active_fixed - active_sep
     bar_cache = _build_uniform_bars(bar_ops, bar_width)
 
-    # Assemble in creation order, with a · between different op types.
+    # Assemble active ops first, then append lingering ops if space allows.
     result = Text()
-    prev_is_spinner: bool | None = None
-    for op in visible_ops:
-        op_id = id(op)
-        if op.finished:
-            text = finished_cache.get(op_id)
-            is_spinner = False
-        else:
-            is_spinner = op_id in spinner_cache
-            text = spinner_cache.get(op_id) or (bar_cache or {}).get(op_id)
+    for op in active_ops:
+        text = spinner_cache.get(id(op)) or (bar_cache or {}).get(id(op))
         if text is None:
             continue
         if result.cell_len > 0:
-            sep = GROUP_SEPARATOR if prev_is_spinner != is_spinner else SEPARATOR
-            result.append(sep, style="bright_black")
+            result.append(SEPARATOR)
         result.append_text(text)
-        prev_is_spinner = is_spinner
 
-    return result if result.cell_len > 0 else Text(str(status))
+    for op in lingering_ops:
+        text = _finished(op)
+        sep_len = len(SEPARATOR) if result.cell_len > 0 else 0
+        if result.cell_len + sep_len + text.cell_len > effective_width:
+            break
+        if sep_len:
+            result.append(SEPARATOR)
+        result.append_text(text)
+
+    return result if result.cell_len > 0 else _fallback(status)
+
+
+def _fallback(status: Status) -> Text:
+    if status.last_event:
+        return Text(status.last_event.message)
+    return Text("")
+
+
+def render_result(status: Status | None, width: int) -> Text:
+    """Render the result column: job result, or finished ops summary as fallback."""
+    if not status:
+        return Text("")
+
+    if status.result:
+        return Text(status.result.message)
+
+    summary = status.finished_ops_summary
+    return Text(summary, style="dim") if summary else Text("")
 
 
 def _finished(op: Operation) -> Text:
     """Dimmed finished indicator: ``name ✓ result``, ``name ✓ 50 files``, or ``name ✓``."""
-    text = Text()
-    text.append(f"{op.name} ✓", style="dim")
-    if op.result:
-        text.append(f" {op.result}", style="dim")
-    elif op.completed is not None:
-        text.append(f" {_format_number(op.completed)}", style="dim")
-        if op.unit:
-            text.append(f" {op.unit}", style="dim")
-    return text
+    return Text(op.finished_summary, style="dim")
 
 
 def _has_progress(op: Operation) -> bool:
