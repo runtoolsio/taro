@@ -43,8 +43,8 @@ def of(
             console.print(f"[red]Error:[/] Instance not found: {instance_id}")
             raise typer.Exit(1)
         for output_loc in runs[0].output_locations:
-            if output_loc.type == 'file':
-                print(output_loc.source)
+            if output_loc.is_file:
+                print(output_loc.as_path())
                 return
 
         console.print(f"[red]Error:[/] No output file found for {instance_id}")
