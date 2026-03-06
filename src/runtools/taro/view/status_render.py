@@ -5,6 +5,7 @@ and Rich Live/Table views. All cells stay as ``Text`` — no custom renderables.
 """
 
 import time
+from datetime import datetime, UTC
 
 from rich.text import Text
 
@@ -16,6 +17,7 @@ GROUP_SEPARATOR = "  ·  "
 WIDTH_SAFETY_MARGIN = 3
 SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 SPINNER_FPS = 8
+FINISHED_LINGER_SECONDS = 5
 
 
 def render_status(status: Status | None, width: int) -> Text:
@@ -23,6 +25,7 @@ def render_status(status: Status | None, width: int) -> Text:
 
     Operations with a known total get progress bars (fallback ladder).
     Operations without a total get a spinner with count.
+    Finished ops linger for a few seconds (dimmed with ✓) before disappearing.
     All ops are rendered in creation order.
 
     Args:
@@ -32,8 +35,14 @@ def render_status(status: Status | None, width: int) -> Text:
     if not status:
         return Text("")
 
-    active_ops = [op for op in status.operations if not op.finished]
-    if not active_ops:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    visible_ops = [
+        op for op in status.operations
+        if not op.finished or max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS
+    ]
+    active_ops = [op for op in visible_ops if not op.finished]
+    lingering_ops = [op for op in visible_ops if op.finished]
+    if not visible_ops:
         return Text(str(status))
 
     bar_ops = [op for op in active_ops if _has_progress(op)]
@@ -41,11 +50,13 @@ def render_status(status: Status | None, width: int) -> Text:
     # Be conservative: runtime table layout may be a few chars tighter than hints.
     effective_width = max(width - WIDTH_SAFETY_MARGIN, 0)
 
-    # Pre-render spinner ops (fixed width); compute remaining width for bar ops.
+    # Pre-render fixed-width ops; compute remaining width for bar ops.
+    finished_cache = {id(op): _finished(op) for op in lingering_ops}
     spinner_cache = {id(op): _spinner(op) for op in active_ops if not _has_progress(op)}
-    spinner_total = sum(t.cell_len for t in spinner_cache.values())
-    sep_total = len(GROUP_SEPARATOR) * (len(active_ops) - 1)  # conservative estimate
-    bar_width = effective_width - spinner_total - sep_total
+    fixed_total = (sum(t.cell_len for t in finished_cache.values())
+                   + sum(t.cell_len for t in spinner_cache.values()))
+    sep_total = len(GROUP_SEPARATOR) * (len(visible_ops) - 1)
+    bar_width = effective_width - fixed_total - sep_total
 
     # Pick uniform bar level for all bar ops.
     bar_cache = _build_uniform_bars(bar_ops, bar_width)
@@ -53,10 +64,14 @@ def render_status(status: Status | None, width: int) -> Text:
     # Assemble in creation order, with a · between different op types.
     result = Text()
     prev_is_spinner: bool | None = None
-    for op in active_ops:
+    for op in visible_ops:
         op_id = id(op)
-        is_spinner = op_id in spinner_cache
-        text = spinner_cache.get(op_id) or (bar_cache or {}).get(op_id)
+        if op.finished:
+            text = finished_cache.get(op_id)
+            is_spinner = False
+        else:
+            is_spinner = op_id in spinner_cache
+            text = spinner_cache.get(op_id) or (bar_cache or {}).get(op_id)
         if text is None:
             continue
         if result.cell_len > 0:
@@ -66,6 +81,19 @@ def render_status(status: Status | None, width: int) -> Text:
         prev_is_spinner = is_spinner
 
     return result if result.cell_len > 0 else Text(str(status))
+
+
+def _finished(op: Operation) -> Text:
+    """Dimmed finished indicator: ``name ✓ result``, ``name ✓ 50 files``, or ``name ✓``."""
+    text = Text()
+    text.append(f"{op.name} ✓", style="dim")
+    if op.result:
+        text.append(f" {op.result}", style="dim")
+    elif op.completed is not None:
+        text.append(f" {_format_number(op.completed)}", style="dim")
+        if op.unit:
+            text.append(f" {op.unit}", style="dim")
+    return text
 
 
 def _has_progress(op: Operation) -> bool:
