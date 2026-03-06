@@ -42,6 +42,7 @@ class InstanceScreen(Screen):
     BINDINGS = [
         Binding("escape", "dismiss", "Back", show=True),
         Binding("q", "dismiss", "Quit", show=True),
+        Binding("F", "load_full_output", "Full output", show=True),
     ]
 
     def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None,
@@ -134,3 +135,6 @@ class InstanceScreen(Screen):
         else:
             phase = self._job_run.find_phase_by_id(self._selected_phase_id)
             self.query_one(OutputPanel).update_phase_filter(collect_phase_ids(phase) if phase else None)
+
+    def action_load_full_output(self) -> None:
+        self.query_one(OutputPanel).load_full()

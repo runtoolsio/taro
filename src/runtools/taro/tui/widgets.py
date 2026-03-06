@@ -336,9 +336,13 @@ class OutputPanel(RichLog):
     In live mode, subscribes to output events and appends lines in real-time.
     Supports filtering by phase subtree — selecting a phase shows output from
     that phase and all its descendants.
+
+    History mode loads only the last _DEFAULT_TAIL_LINES by default for fast startup.
+    Press 'f' (via InstanceScreen binding) to load full output.
     """
 
     _WRITE_BATCH_SIZE = 500
+    _DEFAULT_TAIL_LINES = 1000
 
     def __init__(self, instance: Optional[JobInstance], job_run: JobRun, *,
                  output_reader: Optional[Callable] = None, live: bool = False) -> None:
@@ -349,7 +353,8 @@ class OutputPanel(RichLog):
         self._live = live
         self._buffer = OutputBuffer()
         self._phase_filter: set[str] | None = None  # None = show all
-        self._filter_generation = 0  # incremented on each filter change
+        self._load_generation = 0  # incremented on any reload (filter change or full load)
+        self._tail_mode: bool = not live  # history starts in tail mode
         self._output_observer = None
 
     def on_mount(self) -> None:
@@ -362,7 +367,7 @@ class OutputPanel(RichLog):
             self._buffer.add_lines(self._instance.output.tail())
             self._write_batch(self._buffer.get_lines(self._phase_filter))
         elif self._output_reader:
-            self._load_history_output()
+            self._reload_history()
 
     def on_unmount(self) -> None:
         if self._instance is not None and self._output_observer is not None:
@@ -376,36 +381,61 @@ class OutputPanel(RichLog):
         if self._phase_filter is None or line.source in self._phase_filter:
             self._write_line(line)
 
+    def _reload_history(self) -> None:
+        """Clear display and reload history output from storage with current filter/tail settings."""
+        self._load_generation += 1
+        self.clear()
+        self._load_history_output()
+
     @work(thread=True, exclusive=True, group="output_load")
     def _load_history_output(self) -> None:
         """Load stored output in a background thread, writing batches to the UI."""
         worker = get_current_worker()
+        max_lines = self._DEFAULT_TAIL_LINES if self._tail_mode else 0
         try:
-            lines = self._output_reader(self._job_run.instance_id)
+            lines = self._output_reader(
+                self._job_run.instance_id, sources=self._phase_filter, max_lines=max_lines,
+            )
         except OutputReadError as e:
             if not worker.is_cancelled:
                 self.app.call_from_thread(self.write, Text(f"Error reading output: {e}", style="red"))
             return
 
-        # Buffer add + filter + batch splitting all happen in this thread (no race).
-        self._buffer.add_lines(lines)
-        gen = self._filter_generation
-        filtered = self._buffer.get_lines(self._phase_filter)
+        gen = self._load_generation
+        truncated = self._tail_mode and len(lines) >= self._DEFAULT_TAIL_LINES
 
-        for i in range(0, len(filtered), self._WRITE_BATCH_SIZE):
-            if worker.is_cancelled or gen != self._filter_generation:
+        for i in range(0, len(lines), self._WRITE_BATCH_SIZE):
+            if worker.is_cancelled or gen != self._load_generation:
                 return
-            batch = filtered[i:i + self._WRITE_BATCH_SIZE]
+            batch = lines[i:i + self._WRITE_BATCH_SIZE]
             self.app.call_from_thread(self._write_batch, batch)
+
+        if truncated and not worker.is_cancelled and gen == self._load_generation:
+            self.app.call_from_thread(
+                self.write,
+                Text(f"── showing last {self._DEFAULT_TAIL_LINES} lines (press F for full output) ──", style="dim"),
+            )
 
     def update_phase_filter(self, phase_ids: set[str] | None) -> None:
         """Filter output to a phase subtree (None = all)."""
         if phase_ids == self._phase_filter:
             return
         self._phase_filter = phase_ids
-        self._filter_generation += 1
-        self.clear()
-        self._write_batch(self._buffer.get_lines(phase_ids))
+        if self._live:
+            # Live mode: filter from in-memory buffer (instant)
+            self._load_generation += 1
+            self.clear()
+            self._write_batch(self._buffer.get_lines(phase_ids))
+        else:
+            # History mode: reload from storage with targeted sources + max_lines
+            self._reload_history()
+
+    def load_full(self) -> None:
+        """Switch from tail mode to full output and reload."""
+        if not self._tail_mode:
+            return
+        self._tail_mode = False
+        self._reload_history()
 
     def _write_batch(self, lines: list[OutputLine]) -> None:
         """Write multiple lines as a single Text object to minimize DOM updates."""
