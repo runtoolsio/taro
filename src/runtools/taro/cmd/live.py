@@ -24,32 +24,38 @@ from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobRun
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
+from runtools.taro.style import run_term_style
 from runtools.taro.view import instance as view_inst
 from runtools.taro.view.instance import render_cell
 
 app = typer.Typer(invoke_without_command=True)
 console = Console()
 
-COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.PHASES,
-           view_inst.STATUS]
+COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.PHASES, view_inst.STATUS]
 
 ENDED_RETENTION_SECONDS = 10
 MISSING_GRACE_SECONDS = 5
 POLL_INTERVAL_SECONDS = 10
 
-_RIGHT_ALIGNED = {view_inst.EXEC_TIME}
+_RIGHT_ALIGNED = set()
 # Column sizing — with expand=True, only columns with ratio set absorb extra space.
 # Columns with width are truly fixed; the rest stay content-sized.
 _COL_WIDTH = {
     view_inst.JOB_ID: 20,
-    view_inst.RUN_ID: 20,
+    view_inst.RUN_ID: 14,
     view_inst.EXEC_TIME: 10,
-    view_inst.TERM_STATUS: view_inst.TERM_STATUS.max_width,
 }
 _COL_RATIO = {
     view_inst.PHASES: 1,
     view_inst.STATUS: 2,
 }
+
+
+def _ended_run_id_style(run: JobRun) -> str:
+    """Termination color for non-success, dim for success."""
+    if run.lifecycle.termination:
+        return run_term_style(run) or "dim"
+    return "dim"
 
 
 class LiveView:
@@ -202,11 +208,15 @@ class LiveView:
 
         status_w = self._status_width()
         for run in runs:
-            dim = "dim" if run.instance_id in self._ended_runs else ""
-            cells = [
-                render_cell(run, col, width=status_w if col is view_inst.STATUS else None, style_override=dim)
-                for col in COLUMNS
-            ]
+            ended = run.instance_id in self._ended_runs
+            cells = []
+            for col in COLUMNS:
+                if ended:
+                    style = _ended_run_id_style(run) if col is view_inst.RUN_ID else "dim"
+                else:
+                    style = ""
+                cells.append(render_cell(run, col, width=status_w if col is view_inst.STATUS else None,
+                                         style_override=style))
             table.add_row(*cells)
 
         return table

@@ -13,9 +13,9 @@ from runtools.taro.theme import Theme
 from runtools.taro.view.status_render import render_status
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
-RUN_ID = Column('RUN ID', 30, lambda j: j.run_id, run_id_style)
+RUN_ID = Column('RUN ID', 14, lambda j: j.run_id, run_id_style)
 STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
-INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)
+INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)  # job_id@run_id varies
 PARAMETERS = Column('PARAMETERS', 23,
                     lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
 CREATED = Column('CREATED', 19, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), general_style)
