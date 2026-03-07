@@ -26,7 +26,7 @@ COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_i
 
 # Tight widths for TUI columns (last column = None → auto-expand to fill remaining space)
 TUI_WIDTHS = {
-    'JOB ID': 20,
+    'JOB ID': 25,
     'RUN ID': 14,
     'TERM': 13,
     'PHASES': 18,

@@ -15,6 +15,13 @@ from runtools.taro.view.status_render import render_result, render_status
 _CELL_PADDING = 2
 
 
+def end_ellipsis(text: str, width: int) -> str:
+    """Truncate with end ellipsis: ``stream-expiration-event`` → ``stream-expiration-ev…``."""
+    if len(text) <= width:
+        return text
+    return text[:width - 1] + "…" if width >= 2 else text[:width]
+
+
 def mid_ellipsis(text: str, width: int) -> str:
     """Truncate with middle ellipsis: ``2026-03-07T02-2`` → ``2026-…T02-2``."""
     if len(text) <= width:
@@ -26,7 +33,7 @@ def mid_ellipsis(text: str, width: int) -> str:
     return text[:head] + "…" + text[-tail:]
 
 
-JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
+JOB_ID = Column('JOB ID', 25, lambda j: end_ellipsis(j.job_id, 25 - _CELL_PADDING), job_id_style)
 RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 14 - _CELL_PADDING), run_id_style)
 STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)  # job_id@run_id varies

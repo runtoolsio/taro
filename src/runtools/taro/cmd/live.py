@@ -41,7 +41,7 @@ _RIGHT_ALIGNED = set()
 # Column sizing — with expand=True, only columns with ratio set absorb extra space.
 # Columns with width are truly fixed; the rest stay content-sized.
 _COL_WIDTH = {
-    view_inst.JOB_ID: 20,
+    view_inst.JOB_ID: 25,
     view_inst.RUN_ID: 14,
     view_inst.EXEC_TIME: 10,
 }
