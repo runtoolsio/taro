@@ -36,6 +36,9 @@ from runtools.taro.view.status_render import render_status
 
 
 APP_CSS = """
+Screen {
+    background: $surface;
+}
 Footer {
     background: $surface;
     .footer-key--key {
@@ -59,7 +62,7 @@ class Section(Vertical):
         border-title-color: $text-muted;
         border-title-align: left;
         padding: 0 1;
-        margin-bottom: 1;
+        margin-bottom: 0;
         background: $surface;
 
         &:focus-within {
@@ -116,7 +119,7 @@ class ScreenHeader(Static):
     ScreenHeader {
         dock: top;
         height: auto;
-        padding: 1 2;
+        padding: 1 2 0 2;
         background: $surface;
         border-bottom: solid $primary 30%;
     }

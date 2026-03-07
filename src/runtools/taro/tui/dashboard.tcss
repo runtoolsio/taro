@@ -2,10 +2,18 @@
     height: auto;
     min-height: 5;
     max-height: 60%;
+    border: round $accent;
+    &:focus-within {
+        border: round $accent;
+    }
 }
 
 #history-section {
     height: 1fr;
+    border: round $primary 20%;
+    &:focus-within {
+        border: round $primary 50%;
+    }
 }
 
 #active-table {
