@@ -8,24 +8,23 @@ handler continues receiving updates while the detail screen is shown.
 import logging
 from typing import Optional
 
-from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.css.query import NoMatches
 from textual.screen import Screen
-from textual.widgets import DataTable, Footer, Header, Static
+from textual.widgets import DataTable, Footer
 
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.job import InstancePhaseEvent, JobInstance, JobRun
 from runtools.runcore.output import MultiSourceOutputReader
-from runtools.runcore.run import Outcome, Stage
+from runtools.runcore.run import Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
     LinkedTable, add_columns, build_cells, last_col_width, row_key,
 )
-from runtools.taro.theme import Theme
+from runtools.taro.tui.widgets import APP_CSS, ScreenHeader, Section, build_history_metrics
 from runtools.taro.view import instance as view_inst
 
 log = logging.getLogger(__name__)
@@ -40,31 +39,6 @@ HISTORY_COLUMNS = [
 ]
 
 
-class DashboardSummary(Static):
-    """Single-row summary: active count · completed count · failed count."""
-
-    def __init__(self, live_runs: dict[str, JobRun], history_runs: dict[str, JobRun]) -> None:
-        super().__init__(id="summary")
-        self._live_runs = live_runs
-        self._history_runs = history_runs
-
-    def render(self) -> Text:
-        active = len(self._live_runs)
-        failed = sum(
-            1 for r in self._history_runs.values()
-            if r.lifecycle.termination and r.lifecycle.termination.status.outcome == Outcome.FAULT
-        )
-        completed = len(self._history_runs) - failed
-
-        text = Text()
-        text.append(f"{active} active", style=Theme.state_executing if active else "dim")
-        text.append("  ·  ", style="dim")
-        text.append(f"{completed} completed", style="dim")
-        text.append("  ·  ", style="dim")
-        text.append(f"{failed} failed", style=Theme.state_failure if failed else "dim")
-        return text
-
-
 class DashboardScreen(Screen):
     """Main dashboard view with live-updating active and history tables."""
 
@@ -77,9 +51,10 @@ class DashboardScreen(Screen):
     ]
 
     def __init__(self, conn: EnvironmentConnector, instances: list[JobInstance], history_runs: list[JobRun], *,
-                 run_match: Optional[JobRunCriteria] = None) -> None:
+                 env_name: str = "", run_match: Optional[JobRunCriteria] = None) -> None:
         super().__init__()
         self._conn = conn
+        self._env_name = env_name
         self._run_match = run_match
         self._instances: dict[str, JobInstance] = {}
         self._live_runs: dict[str, JobRun] = {}
@@ -102,8 +77,7 @@ class DashboardScreen(Screen):
                 self._history_runs[key] = run
 
     def compose(self) -> ComposeResult:
-        yield Header()
-        yield DashboardSummary(self._live_runs, self._history_runs)
+        yield ScreenHeader("Dashboard", self._env_name)
 
         # "renderable" lets Rich Text styles (phase colors, etc.) show through the cursor row
         active_table = LinkedTable(cursor_type="row", id="active-table", cursor_foreground_priority="renderable")
@@ -113,15 +87,17 @@ class DashboardScreen(Screen):
         active_table.next_table = history_table
         history_table.prev_table = active_table
 
-        yield Static("[bold dim]── Active ──[/]", id="active-label")
-        yield active_table
-        yield Static("[bold dim]── History ──[/]", id="history-label")
-        yield history_table
+        with Section(id="active-section") as section:
+            section.border_title = self._active_title()
+            yield active_table
+        with Section(id="history-section") as section:
+            section.border_title = "History"
+            yield history_table
         yield Footer()
 
     def on_mount(self) -> None:
-        self.app.title = "Dashboard"
         self._populate_tables()
+        self._refresh_header()
         self._env_handler = lambda e: self.app.call_from_thread(self._on_event, e)
         self._conn.notifications.add_observer_all_events(self._env_handler)
         self.set_interval(0.25, self._refresh_active_rows)
@@ -153,7 +129,7 @@ class DashboardScreen(Screen):
                 return
             self._history_runs.pop(row_key_val, None)
             history_table.remove_row(row_key=row_key_val)
-            self.query_one(DashboardSummary).refresh()
+            self._refresh_header()
 
         self.app.push_screen(ConfirmDeleteScreen(run.instance_id), callback=_on_confirm)
 
@@ -183,7 +159,16 @@ class DashboardScreen(Screen):
                 self._live_runs[key] = snap
 
         self._populate_tables(focus_key=self._selected_key)
-        self.query_one(DashboardSummary).refresh()
+        self._refresh_header()
+
+    def _active_title(self) -> str:
+        count = len(self._live_runs)
+        return f"Active ({count})" if count else "Active"
+
+    def _refresh_header(self) -> None:
+        self.query_one("#active-section", Section).border_title = self._active_title()
+        metrics = build_history_metrics(self._history_runs.values(), active_count=len(self._live_runs))
+        self.query_one(ScreenHeader).update_metrics(metrics)
 
     def _active_render_width(self) -> dict[str, int]:
         active_table = self.query_one("#active-table", LinkedTable)
@@ -210,7 +195,7 @@ class DashboardScreen(Screen):
             self._instances.pop(key, None)
             self._history_runs[key] = job_run
             self._populate_tables()
-            self.query_one(DashboardSummary).refresh()
+            self._refresh_header()
         elif job_run.lifecycle.is_ended:
             return
         elif key in self._live_runs:
@@ -221,7 +206,7 @@ class DashboardScreen(Screen):
                 self._instances[key] = inst
                 self._live_runs[key] = job_run
                 self._populate_tables()
-                self.query_one(DashboardSummary).refresh()
+                self._refresh_header()
 
     def _populate_tables(self, *, focus_key: str | None = None) -> None:
         active_table = self.query_one("#active-table", LinkedTable)
@@ -273,15 +258,19 @@ class DashboardScreen(Screen):
 class DashboardApp(App):
     """Thin wrapper that pushes DashboardScreen and exits when it is dismissed."""
 
+    CSS = APP_CSS
+
     def __init__(self, conn: EnvironmentConnector, instances: list[JobInstance], history_runs: list[JobRun], *,
-                 run_match: Optional[JobRunCriteria] = None) -> None:
+                 env_name: str = "", run_match: Optional[JobRunCriteria] = None) -> None:
         super().__init__()
         self._conn = conn
         self._instances = instances
         self._history_runs = history_runs
+        self._env_name = env_name
         self._run_match = run_match
 
     def on_mount(self) -> None:
         self.push_screen(DashboardScreen(
-            self._conn, self._instances, self._history_runs, run_match=self._run_match,
+            self._conn, self._instances, self._history_runs,
+            env_name=self._env_name, run_match=self._run_match,
         ))

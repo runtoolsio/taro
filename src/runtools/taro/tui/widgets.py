@@ -19,6 +19,7 @@ from typing import Callable, Iterable, Optional
 
 from rich.text import Text
 from textual import work
+from textual.containers import Vertical
 from textual.message import Message
 from textual.widgets import RichLog, Static, Tree
 from textual.widgets._tree import TreeNode
@@ -32,6 +33,123 @@ from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
 from runtools.taro.view.status_render import render_status
+
+
+APP_CSS = """
+Footer {
+    background: $surface;
+    .footer-key--key {
+        background: $surface;
+        color: $text;
+    }
+    .footer-key--description {
+        color: $text-muted;
+        background: $surface;
+    }
+}
+"""
+
+
+class Section(Vertical):
+    """Bordered section card with focus-within emphasis."""
+
+    DEFAULT_CSS = """
+    Section {
+        border: round $primary 30%;
+        border-title-color: $text-muted;
+        border-title-align: left;
+        padding: 0 1;
+        margin-bottom: 1;
+        background: $surface;
+
+        &:focus-within {
+            border: round $primary 70%;
+            border-title-color: $text;
+            border-title-style: bold;
+        }
+
+        .datatable--header {
+            color: $text-muted;
+        }
+    }
+    """
+
+
+_METRIC_SEP = "  ·  "
+
+
+def build_history_metrics(runs: Iterable[JobRun], *, active_count: int | None = None) -> Text:
+    """Build a styled metrics bar from job runs.
+
+    Args:
+        runs: Job runs to summarise (typically history).
+        active_count: If provided, prepend an "N active" segment.
+    """
+    run_list = list(runs)
+    failed = sum(1 for r in run_list if r.lifecycle.termination
+                 and r.lifecycle.termination.status.outcome == Outcome.FAULT)
+    succeeded = sum(1 for r in run_list if r.lifecycle.termination
+                    and r.lifecycle.termination.status.outcome == Outcome.SUCCESS)
+    other = len(run_list) - succeeded - failed
+
+    text = Text()
+    if active_count is not None:
+        text.append(f"{active_count} active", style=Theme.state_executing if active_count else "dim")
+        text.append(_METRIC_SEP, style="dim")
+    text.append(f"{succeeded} completed", style="dim")
+    text.append(_METRIC_SEP, style="dim")
+    text.append(f"{failed} failed", style=Theme.state_failure if failed else "dim")
+    if other:
+        text.append(_METRIC_SEP, style="dim")
+        text.append(f"{other} other", style="dim")
+    return text
+
+
+class ScreenHeader(Static):
+    """Reusable two-row header: title + env on row 1, metrics on row 2.
+
+    Row 1: {title}                          {env_name}
+    Row 2: metrics text (styled, caller-provided via update_metrics)
+    """
+
+    DEFAULT_CSS = """
+    ScreenHeader {
+        dock: top;
+        height: auto;
+        padding: 1 2;
+        background: $surface;
+        border-bottom: solid $primary 30%;
+    }
+    """
+
+    def __init__(self, title: str, env_name: str = "") -> None:
+        super().__init__()
+        self._title = title
+        self._env_name = env_name
+        self._metrics = Text()
+
+    def update_metrics(self, metrics: Text) -> None:
+        self._metrics = metrics
+        self.refresh()
+
+    def render(self) -> Text:
+        width = self.size.width if self.size.width > 0 else 80
+        env_part = Text(f"[ {self._env_name} ]", style=Theme.subtle) if self._env_name else Text()
+        title_part = Text(self._title, style="bold " + Theme.state_executing)
+        pad = width - title_part.cell_len - env_part.cell_len
+        line1 = Text()
+        line1.append_text(title_part)
+        if pad > 0:
+            line1.append(" " * pad)
+        line1.append_text(env_part)
+
+        if self._metrics.cell_len == 0:
+            return line1
+        result = Text()
+        result.append_text(line1)
+        result.append("\n")
+        result.append_text(self._metrics)
+        return result
 
 
 class InstanceHeader(Static):

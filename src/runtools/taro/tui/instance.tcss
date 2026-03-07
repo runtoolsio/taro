@@ -4,8 +4,8 @@
 
 InstanceHeader {
     dock: top;      /* Pin to top edge of parent, removed from normal flow */
-    height: 3;      /* 2 content rows + 1 padding */
-    padding: 0 1;
+    height: auto;
+    padding: 1 2;
 }
 
 #main-container {
@@ -18,20 +18,27 @@ InstanceHeader {
     max-width: 55;
 }
 
+#phases-section {
+    height: 1fr;
+}
+
+#detail-section {
+    height: 1fr;
+    min-height: 8;
+}
+
+#output-section {
+    width: 1fr;
+}
+
 PhaseTree {
     height: 1fr;
-    padding: 0 1;
 }
 
 PhaseDetail {
     height: 1fr;
-    min-height: 8;
-    padding: 0 1;
-    border-top: solid grey;
 }
 
 OutputPanel {
     width: 1fr;
-    padding: 0 1;
-    border-left: solid grey;
 }

@@ -9,15 +9,16 @@ from typing import Optional, Sequence
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.widgets import DataTable, Footer, Header, Static
+from textual.widgets import DataTable, Footer
 
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.criteria import JobRunCriteria
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobInstance, JobRun
 from runtools.runcore.output import MultiSourceOutputReader
-from runtools.runcore.run import Outcome, Stage
+from runtools.runcore.run import Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
+from runtools.taro.tui.widgets import APP_CSS, ScreenHeader, Section, build_history_metrics
 from runtools.taro.view import instance as view_inst
 from runtools.taro.view.instance import render_cell
 
@@ -28,6 +29,8 @@ COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_i
 TUI_WIDTHS = {
     'JOB ID': 25,
     'RUN ID': 14,
+    'CREATED': 9,
+    'ENDED': 9,
     'TERM': 13,
     'PHASES': 18,
     'TIME': 9,
@@ -61,7 +64,7 @@ def last_col_width(table: DataTable, columns: Sequence) -> int:
     fixed = sum(TUI_WIDTHS.get(col.name, col.max_width) for col in columns[:-1])
     # DataTable adds 2-char cell padding per column
     padding = len(columns) * 2
-    return table.size.width - fixed - padding
+    return max(table.size.width - fixed - padding, 20)
 
 
 def update_row(table: DataTable, key: str, run: JobRun, columns: Sequence = COLUMNS, *,
@@ -100,6 +103,9 @@ class _LiveSelectorApp(App[Optional[JobInstance]]):
     instances, discovery of new ones, and removal of ended ones.
     """
 
+    CSS = APP_CSS
+    CSS_PATH = "selector.tcss"
+
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", show=True),
         Binding("q", "cancel", "Cancel", show=True),
@@ -122,14 +128,15 @@ class _LiveSelectorApp(App[Optional[JobInstance]]):
             self._runs[key] = snap
 
     def compose(self) -> ComposeResult:
-        yield Header()
+        yield ScreenHeader(self._selector_title, self._conn.env_id)
         table = DataTable(cursor_type="row", cursor_foreground_priority="renderable")
         add_columns(table)
-        yield table
+        with Section(id="table-section") as section:
+            section.border_title = "Instances"
+            yield table
         yield Footer()
 
     def on_mount(self) -> None:
-        self.title = self._selector_title
         table = self.query_one(DataTable)
         for key, run in self._runs.items():
             table.add_row(*build_cells(run), key=key)
@@ -194,42 +201,11 @@ def select_instance(conn: EnvironmentConnector, instances: Sequence[JobInstance]
     return _LiveSelectorApp(conn, sorted_instances, run_match=run_match, title=title).run()
 
 
-class _HistorySummary(Static):
-    """Single-row summary bar for history table."""
-
-    DEFAULT_CSS = "_HistorySummary { dock: top; height: 1; padding: 0 1; }"
-
-    def __init__(self, runs: Sequence[JobRun]) -> None:
-        super().__init__()
-        self._text = self._summarize(runs)
-
-    def refresh_from(self, runs: Sequence[JobRun]) -> None:
-        self._text = self._summarize(runs)
-        self.refresh()
-
-    @staticmethod
-    def _summarize(runs: Sequence[JobRun]) -> str:
-        total = len(runs)
-        failed = sum(
-            1 for r in runs
-            if r.lifecycle.termination and r.lifecycle.termination.status.outcome == Outcome.FAULT
-        )
-        succeeded = sum(
-            1 for r in runs
-            if r.lifecycle.termination and r.lifecycle.termination.status.outcome == Outcome.SUCCESS
-        )
-        other = total - succeeded - failed
-        parts = [f"{total} runs", f"{succeeded} success", f"{failed} failed"]
-        if other:
-            parts.append(f"{other} other")
-        return " · ".join(parts)
-
-    def render(self) -> Text:
-        return Text(self._text, style="dim")
-
-
 class _HistoryApp(App):
     """Static read-only table for browsing historical job runs."""
+
+    CSS = APP_CSS
+    CSS_PATH = "selector.tcss"
 
     BINDINGS = [
         Binding("escape", "quit", "Quit", show=True),
@@ -247,19 +223,21 @@ class _HistoryApp(App):
             MultiSourceOutputReader(connector.output_backends).read_output if connector else None
         )
         self._title = title
+        self._env_name = connector.env_id if connector else ""
 
     def compose(self) -> ComposeResult:
-        yield Header()
-        yield _HistorySummary(list(self._runs.values()))
-        yield DataTable(cursor_type="row", cursor_foreground_priority="renderable")
+        yield ScreenHeader(self._title, self._env_name)
+        with Section(id="table-section") as section:
+            section.border_title = "History"
+            yield DataTable(cursor_type="row", cursor_foreground_priority="renderable")
         yield Footer()
 
     def on_mount(self) -> None:
-        self.title = self._title
         table = self.query_one(DataTable)
         add_columns(table, self._columns)
         for key, run in self._runs.items():
             table.add_row(*build_cells(run, self._columns), key=key)
+        self._refresh_metrics()
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         key = str(event.row_key.value)
@@ -288,9 +266,12 @@ class _HistoryApp(App):
                 return
             self._runs.pop(row_key_val, None)
             table.remove_row(row_key=row_key_val)
-            self.query_one(_HistorySummary).refresh_from(list(self._runs.values()))
+            self._refresh_metrics()
 
         self.push_screen(ConfirmDeleteScreen(run.instance_id), callback=_on_confirm)
+
+    def _refresh_metrics(self) -> None:
+        self.query_one(ScreenHeader).update_metrics(build_history_metrics(self._runs.values()))
 
 
 def show_history(runs: Sequence[JobRun], columns: Sequence, *,

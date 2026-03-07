@@ -23,7 +23,7 @@ from textual.screen import Screen
 
 from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent, InstanceStatusEvent
 from runtools.taro.tui.widgets import (
-    InstanceHeader, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, collect_phase_ids,
+    InstanceHeader, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, Section, collect_phase_ids,
 )
 
 
@@ -69,10 +69,16 @@ class InstanceScreen(Screen):
         yield InstanceHeader(self._job_run, live=self._live)
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
-                yield PhaseTree(self._job_run, live=self._live)
-                yield PhaseDetail(self._job_run, live=self._live)
-            yield OutputPanel(self._instance, self._job_run,
-                             output_reader=self._output_reader, live=self._live)
+                with Section(id="phases-section") as section:
+                    section.border_title = "Phases"
+                    yield PhaseTree(self._job_run, live=self._live)
+                with Section(id="detail-section") as section:
+                    section.border_title = "Detail"
+                    yield PhaseDetail(self._job_run, live=self._live)
+            with Section(id="output-section") as section:
+                section.border_title = "Output"
+                yield OutputPanel(self._instance, self._job_run,
+                                 output_reader=self._output_reader, live=self._live)
 
     def on_mount(self) -> None:
         """Subscribe to runcore events after the widget tree is ready.
