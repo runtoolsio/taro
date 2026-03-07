@@ -1,6 +1,6 @@
 #active-section {
     height: auto;
-    min-height: 5;
+    min-height: 7;
     max-height: 60%;
     border: round $accent;
     &:focus-within {

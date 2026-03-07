@@ -13,12 +13,13 @@ class ConfirmDeleteScreen(ModalScreen[bool]):
     DEFAULT_CSS = """
     ConfirmDeleteScreen {
         align: center middle;
+        background: $background 60%;
     }
     ConfirmDeleteScreen > Vertical {
         width: auto;
         height: auto;
         padding: 1 3;
-        border: thick $accent;
+        border: thick $error;
         background: $surface;
     }
     ConfirmDeleteScreen > Vertical > Label {

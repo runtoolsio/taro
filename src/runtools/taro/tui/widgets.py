@@ -39,6 +39,9 @@ APP_CSS = """
 Screen {
     background: $surface;
 }
+ConfirmDeleteScreen {
+    background: $background 60% !important;
+}
 Footer {
     background: $surface;
     .footer-key--key {
@@ -138,7 +141,7 @@ class ScreenHeader(Static):
     def render(self) -> Text:
         width = self.size.width if self.size.width > 0 else 80
         env_part = Text(f"[ {self._env_name} ]", style=Theme.subtle) if self._env_name else Text()
-        title_part = Text(self._title, style="bold " + Theme.state_executing)
+        title_part = Text(self._title, style="bold cyan")
         pad = width - title_part.cell_len - env_part.cell_len
         line1 = Text()
         line1.append_text(title_part)
