@@ -12,8 +12,22 @@ from runtools.taro.style import general_style, job_id_style, run_id_style, run_t
 from runtools.taro.theme import Theme
 from runtools.taro.view.status_render import render_result, render_status
 
+_CELL_PADDING = 2
+
+
+def mid_ellipsis(text: str, width: int) -> str:
+    """Truncate with middle ellipsis: ``2026-03-07T02-2`` → ``2026-…T02-2``."""
+    if len(text) <= width:
+        return text
+    if width < 3:
+        return text[:width]
+    tail = (width - 1) // 2
+    head = width - 1 - tail
+    return text[:head] + "…" + text[-tail:]
+
+
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
-RUN_ID = Column('RUN ID', 14, lambda j: j.run_id, run_id_style)
+RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 14 - _CELL_PADDING), run_id_style)
 STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)  # job_id@run_id varies
 PARAMETERS = Column('PARAMETERS', 23,

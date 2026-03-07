@@ -6,8 +6,6 @@ from runtools.taro.theme import Theme
 
 
 def job_id_style(job):
-    if job.lifecycle.termination and job.lifecycle.termination.status.outcome == Outcome.FAULT:
-        return Theme.job + " " + Theme.state_failure
     return Theme.job
 
 
@@ -18,14 +16,10 @@ def job_id_stats_style(job_stats):
 
 
 def run_id_style(job):
-    if job.lifecycle.termination and job.lifecycle.termination.status.outcome == Outcome.FAULT:
-        return Theme.state_failure
     return Theme.instance
 
 
 def general_style(job):
-    if job.lifecycle.termination and job.lifecycle.termination.status.outcome == Outcome.FAULT:
-        return Theme.state_failure
     return ""
 
 
