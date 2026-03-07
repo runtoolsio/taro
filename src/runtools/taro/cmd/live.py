@@ -44,10 +44,10 @@ _COL_WIDTH = {
     view_inst.JOB_ID: 25,
     view_inst.RUN_ID: 14,
     view_inst.EXEC_TIME: 10,
+    view_inst.PHASES: 18,
 }
 _COL_RATIO = {
-    view_inst.PHASES: 1,
-    view_inst.STATUS: 2,
+    view_inst.STATUS: 1,
 }
 
 
