@@ -364,6 +364,7 @@ class PhaseDetail(Static):
             else:
                 phase_ids = collect_phase_ids(phase)
                 visible_ops = [op for op in self._job_run.status.operations if op.source in phase_ids]
+            fmt_num = lambda v: str(int(v)) if v == int(v) else str(v)
             for op in visible_ops:
                 if op.finished:
                     text.append(f"{op.finished_summary}\n", style="dim")
@@ -373,10 +374,9 @@ class PhaseDetail(Static):
                         pct = round(max(0.0, min(op.pct_done, 1.0)) * 100)
                         text.append(f" {pct}%", style=Theme.state_executing)
                     if op.completed is not None:
-                        fmt = lambda v: str(int(v)) if v == int(v) else str(v)
-                        parts = fmt(op.completed)
+                        parts = fmt_num(op.completed)
                         if op.total is not None:
-                            parts += f"/{fmt(op.total)}"
+                            parts += f"/{fmt_num(op.total)}"
                         if op.unit:
                             parts += f" {op.unit}"
                         text.append(f" {parts}", style="bright_black")
