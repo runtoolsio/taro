@@ -115,6 +115,7 @@ class InstanceScreen(Screen):
     def _on_status_event(self, event: InstanceStatusEvent) -> None:
         self._job_run = event.job_run
         self.query_one(InstanceHeader).update_run(event.job_run)
+        self.query_one(PhaseDetail).update_run(event.job_run)
 
     def _on_lifecycle_event(self, event: InstanceLifecycleEvent) -> None:
         self._update_run(event.job_run)

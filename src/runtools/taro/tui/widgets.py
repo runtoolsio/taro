@@ -63,7 +63,7 @@ class Section(Vertical):
     Section {
         border: round $primary 30%;
         border-title-color: $text-muted;
-        border-title-align: left;
+        border-title-align: right;
         padding: 0 1;
         margin-bottom: 0;
         background: $surface;
@@ -356,6 +356,33 @@ class PhaseDetail(Static):
         style = _phase_style(phase)
         lifecycle = phase.lifecycle
         text = Text()
+
+        # Operations filtered by selected phase + descendants (root shows all)
+        if self._job_run.status and self._job_run.status.operations:
+            if self._phase_id == self._job_run.root_phase.phase_id:
+                visible_ops = self._job_run.status.operations
+            else:
+                phase_ids = collect_phase_ids(phase)
+                visible_ops = [op for op in self._job_run.status.operations if op.source in phase_ids]
+            for op in visible_ops:
+                if op.finished:
+                    text.append(f"{op.finished_summary}\n", style="dim")
+                else:
+                    text.append(f"{op.name}", style="")
+                    if op.pct_done is not None:
+                        pct = round(max(0.0, min(op.pct_done, 1.0)) * 100)
+                        text.append(f" {pct}%", style=Theme.state_executing)
+                    if op.completed is not None:
+                        fmt = lambda v: str(int(v)) if v == int(v) else str(v)
+                        parts = fmt(op.completed)
+                        if op.total is not None:
+                            parts += f"/{fmt(op.total)}"
+                        if op.unit:
+                            parts += f" {op.unit}"
+                        text.append(f" {parts}", style="bright_black")
+                    text.append("\n")
+            if visible_ops:
+                text.append("─" * 30 + "\n", style="bright_black")
 
         # Phase ID and type
         text.append(phase.phase_id, style="bold")

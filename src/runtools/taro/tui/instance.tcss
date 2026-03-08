@@ -15,17 +15,17 @@ InstanceHeader {
 }
 
 #left-panel {
-    width: 42;
-    min-width: 35;
-    max-width: 55;
+    width: 52;
+    min-width: 40;
+    max-width: 65;
 }
 
 #phases-section {
-    height: 1fr;
+    height: 2fr;
 }
 
 #detail-section {
-    height: 1fr;
+    height: 3fr;
     min-height: 8;
 }
 
