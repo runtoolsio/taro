@@ -14,14 +14,22 @@
 
 #history-section {
     height: 1fr;
+    opacity: 60%;
     border: round $primary 40%;
     &:focus-within {
+        opacity: 100%;
         border: round $primary 70%;
     }
 }
 
 #active-table {
     height: auto;
+    & > .datatable--cursor {
+        background: $accent 20%;
+    }
+    &:focus > .datatable--cursor {
+        background: $accent 30%;
+    }
 }
 
 #history-table {

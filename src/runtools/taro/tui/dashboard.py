@@ -198,6 +198,8 @@ class DashboardScreen(Screen):
             self._history_runs[key] = job_run
             self._populate_tables()
             self._refresh_header()
+            if not self._live_runs:
+                self.query_one("#history-table", LinkedTable).focus()
         elif job_run.lifecycle.is_ended:
             return
         elif key in self._live_runs:

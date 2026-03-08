@@ -4,7 +4,7 @@ from rich.text import Text
 
 from runtools.runcore import util
 from runtools.runcore.job import JobRun
-from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
+from runtools.runcore.run import Outcome, TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
 from runtools.runcore.util import format_dt_local_tz, format_dt_compact
 from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style, \
@@ -39,24 +39,34 @@ STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)  # job_id@run_id varies
 PARAMETERS = Column('PARAMETERS', 23,
                     lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
-CREATED = Column('CREATED', 19, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), general_style)
-CREATED_COMPACT = Column('CREATED', 12, lambda j: format_dt_compact(j.lifecycle.created_at), general_style)
+_muted_style = lambda _: Theme.metadata
+CREATED = Column('CREATED', 19, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), _muted_style)
+CREATED_COMPACT = Column('CREATED', 12, lambda j: format_dt_compact(j.lifecycle.created_at), _muted_style)
 EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_local_tz(j.lifecycle.started_at, include_ms=False, null='N/A'),
                   general_style)
 ENDED = Column('ENDED', 19,
                lambda j: format_dt_local_tz(j.lifecycle.termination.terminated_at, include_ms=False, null='N/A'),
-               general_style)
+               _muted_style)
 ENDED_COMPACT = Column('ENDED', 12,
                        lambda j: format_dt_compact(j.lifecycle.termination.terminated_at, null='N/A'),
-                       general_style)
+                       _muted_style)
 EXEC_TIME = Column('TIME', 18,
                    lambda j: util.format_timedelta(j.lifecycle.total_run_time or j.lifecycle.elapsed, show_ms=False,
                                                    null='N/A'),
                    general_style)
 PHASES = Column('PHASES', 30, lambda j: j.accept_visitor(PhaseExtractor()).text,
                 lambda j: j.accept_visitor(PhaseExtractor()).style)
+def _term_display(j: JobRun) -> str:
+    if not j.lifecycle.termination:
+        return ''
+    status = j.lifecycle.termination.status
+    if status == TerminationStatus.COMPLETED:
+        return '✓'
+    return status.name
+
+
 TERM_STATUS = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
-                     lambda j: j.lifecycle.termination.status.name if j.lifecycle.termination else '',
+                     _term_display,
                      lambda j: run_term_style(j) if j.lifecycle.termination else general_style(j))
 STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style, lambda j, w: render_status(j.status, w))
 RESULT = Column('RESULT', 50,
