@@ -31,7 +31,7 @@ class Theme:
     separator = 'bright_black'
 
     # TUI-specific semantic styles (Rich markup)
-    title = 'bold cyan'
-    metadata = 'bright_black'
+    title = 'bold #5ec4d4'
+    metadata = '#7b96b0'
     label = 'bold'
     section_heading = 'bold'

@@ -6,8 +6,8 @@ InstanceHeader {
     dock: top;      /* Pin to top edge of parent, removed from normal flow */
     height: auto;
     padding: 1 2;
-    background: $primary 8%;
-    border-bottom: solid $primary 50%;
+    background: $panel;
+    border-bottom: wide $accent 40%;
 }
 
 #main-container {

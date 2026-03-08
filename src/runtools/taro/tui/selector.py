@@ -18,7 +18,7 @@ from runtools.runcore.output import MultiSourceOutputReader
 from runtools.runcore.run import Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
-from runtools.taro.tui.widgets import APP_CSS, ScreenHeader, Section, build_history_metrics
+from runtools.taro.tui.widgets import APP_CSS, ScreenHeader, Section, build_history_metrics, setup_theme
 from runtools.taro.view import instance as view_inst
 from runtools.taro.view.instance import render_cell
 
@@ -137,6 +137,7 @@ class _LiveSelectorApp(App[Optional[JobInstance]]):
         yield Footer()
 
     def on_mount(self) -> None:
+        setup_theme(self)
         table = self.query_one(DataTable)
         for key, run in self._runs.items():
             table.add_row(*build_cells(run), key=key)
@@ -233,6 +234,7 @@ class _HistoryApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        setup_theme(self)
         table = self.query_one(DataTable)
         add_columns(table, self._columns)
         for key, run in self._runs.items():

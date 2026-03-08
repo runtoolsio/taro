@@ -19,8 +19,10 @@ from typing import Callable, Iterable, Optional
 
 from rich.text import Text
 from textual import work
+from textual.app import App
 from textual.containers import Vertical
 from textual.message import Message
+from textual.theme import Theme as TextualTheme
 from textual.widgets import RichLog, Static, Tree
 from textual.widgets._tree import TreeNode
 from textual.worker import get_current_worker
@@ -33,6 +35,30 @@ from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
 from runtools.taro.view.status_render import render_status
+
+
+TARO_THEME = TextualTheme(
+    name="taro",
+    primary="#5ec4d4",       # teal — identity color, borders, scrollbars
+    secondary="#7b96b0",     # muted steel blue — secondary info
+    accent="#e0a84c",        # warm amber — active states, attention
+    background="#141820",    # deep navy black
+    surface="#1c2230",       # dark blue-gray
+    panel="#262e3a",         # raised surface
+    success="#73c974",       # green
+    warning="#d49a4e",       # orange (distinct from amber accent)
+    error="#e06c75",         # coral red
+    dark=True,
+    variables={
+        "footer-background": "#1c2230",
+    },
+)
+
+
+def setup_theme(app: "App") -> None:
+    """Register and activate the Taro theme."""
+    app.register_theme(TARO_THEME)
+    app.theme = TARO_THEME.name
 
 
 APP_CSS = """
@@ -129,8 +155,8 @@ class ScreenHeader(Static):
         dock: top;
         height: auto;
         padding: 1 2 0 2;
-        background: $primary 8%;
-        border-bottom: solid $primary 50%;
+        background: $panel;
+        border-bottom: wide $accent 40%;
     }
     """
 

@@ -24,7 +24,7 @@ from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
     LinkedTable, add_columns, build_cells, last_col_width, row_key,
 )
-from runtools.taro.tui.widgets import APP_CSS, ScreenHeader, Section, build_history_metrics
+from runtools.taro.tui.widgets import APP_CSS, Section, build_history_metrics, setup_theme
 from runtools.taro.view import instance as view_inst
 
 log = logging.getLogger(__name__)
@@ -77,8 +77,6 @@ class DashboardScreen(Screen):
                 self._history_runs[key] = run
 
     def compose(self) -> ComposeResult:
-        yield ScreenHeader("Dashboard", self._env_name)
-
         # "renderable" lets Rich Text styles (phase colors, etc.) show through the cursor row
         active_table = LinkedTable(cursor_type="row", id="active-table", cursor_foreground_priority="renderable")
         add_columns(active_table, ACTIVE_COLUMNS)
@@ -170,7 +168,7 @@ class DashboardScreen(Screen):
     def _refresh_header(self) -> None:
         self.query_one("#active-section", Section).border_title = self._active_title()
         metrics = build_history_metrics(self._history_runs.values(), active_count=len(self._live_runs))
-        self.query_one(ScreenHeader).update_metrics(metrics)
+        self.query_one("#history-section", Section).border_subtitle = metrics
 
     def _active_render_width(self) -> dict[str, int]:
         active_table = self.query_one("#active-table", LinkedTable)
@@ -272,6 +270,7 @@ class DashboardApp(App):
         self._run_match = run_match
 
     def on_mount(self) -> None:
+        setup_theme(self)
         self.push_screen(DashboardScreen(
             self._conn, self._instances, self._history_runs,
             env_name=self._env_name, run_match=self._run_match,
