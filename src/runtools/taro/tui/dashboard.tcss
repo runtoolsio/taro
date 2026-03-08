@@ -2,7 +2,6 @@
     height: auto;
     min-height: 7;
     max-height: 60%;
-    background: $accent 8%;
     border: round $accent 50%;
     &:focus-within {
         border: round $accent;

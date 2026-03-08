@@ -141,9 +141,7 @@ class DashboardScreen(Screen):
             snap = inst.snap()
             if snap.lifecycle.is_ended:
                 # Instance ended between last refresh and selection — treat as history
-                self._live_runs.pop(key, None)
-                self._instances.pop(key)
-                self._history_runs[key] = snap
+                self._move_to_history(key, snap)
                 self._populate_tables(focus_key=key)
                 self._refresh_header()
                 self.app.push_screen(
@@ -163,17 +161,27 @@ class DashboardScreen(Screen):
 
     def _on_detail_dismissed(self) -> None:
         """Re-snap all live instances and reconcile ended → history, then repaint."""
+        self._reconcile_instances()
+        self._populate_tables(focus_key=self._selected_key)
+        self._refresh_header()
+
+    def _move_to_history(self, key: str, run: JobRun) -> None:
+        """Move a run from active tracking to history."""
+        self._live_runs.pop(key, None)
+        self._instances.pop(key, None)
+        self._history_runs[key] = run
+
+    def _reconcile_instances(self) -> bool:
+        """Re-snap all live instances; move ended ones to history. Returns True if any moved."""
+        moved = False
         for key, inst in list(self._instances.items()):
             snap = inst.snap()
             if snap.lifecycle.is_ended:
-                self._live_runs.pop(key, None)
-                self._instances.pop(key)
-                self._history_runs[key] = snap
+                self._move_to_history(key, snap)
+                moved = True
             else:
                 self._live_runs[key] = snap
-
-        self._populate_tables(focus_key=self._selected_key)
-        self._refresh_header()
+        return moved
 
     def _active_title(self) -> str:
         count = len(self._live_runs)
@@ -207,9 +215,7 @@ class DashboardScreen(Screen):
         key = row_key(iid)
 
         if isinstance(event, InstancePhaseEvent) and event.is_root_phase and event.new_stage == Stage.ENDED:
-            self._live_runs.pop(key, None)
-            self._instances.pop(key, None)
-            self._history_runs[key] = job_run
+            self._move_to_history(key, job_run)
             self._populate_tables()
             self._refresh_header()
             if not self._live_runs:
@@ -267,9 +273,21 @@ class DashboardScreen(Screen):
     def _refresh_active_rows(self) -> None:
         if not self._instances:
             return
-        for key, inst in self._instances.items():
-            self._live_runs[key] = inst.snap()
-        self._populate_tables()
+        moved = self._reconcile_instances()
+        if moved:
+            self._populate_tables()
+            self._refresh_header()
+            if not self._live_runs:
+                self.query_one("#history-table", LinkedTable).focus()
+        else:
+            # In-place update of active rows only — no structural change
+            active_table = self.query_one("#active-table", LinkedTable)
+            rw = self._active_render_width()
+            for key, run in self._live_runs.items():
+                cells = build_cells(run, ACTIVE_COLUMNS, render_width=rw)
+                active_table.update_cell(key, ACTIVE_COLUMNS[0].name, cells[0], update_width=True)
+                for col, cell in zip(ACTIVE_COLUMNS[1:], cells[1:]):
+                    active_table.update_cell(key, col.name, cell)
 
 
 
