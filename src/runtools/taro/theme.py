@@ -1,37 +1,40 @@
 """
-Standard ANSI color names used as the source of truth for the theme.
-Rich/Textual use these names directly; prompt_toolkit requires conversion (see printer._to_pt_style).
+Theme color palette for Rich/Textual styling.
 
-BASE 16 COLOURS:
-    # Low intensity, dark.
-        - black, red, green, yellow, blue, magenta, cyan, gray
-
-    # High intensity, bright.
-        - bright_black, bright_red, bright_green, bright_yellow,
-          bright_blue, bright_magenta, bright_cyan, white
+All colors use hex values matching the TARO_THEME Textual theme for a unified look.
+Rich resolves hex colors to the nearest terminal color on non-truecolor terminals.
 """
+
+# Palette constants — single source of truth
+_PRIMARY = '#5ec4d4'      # teal
+_SECONDARY = '#7b96b0'    # muted steel blue
+_ACCENT = '#e0a84c'       # warm amber
+_SUCCESS = '#73c974'      # green
+_WARNING = '#d49a4e'      # orange
+_ERROR = '#e06c75'        # coral red
+_MUTED = '#5a6577'        # dim gray-blue
 
 
 class Theme:
     highlight = 'bold'
     job = 'bold'
-    instance = 'bright_black'
+    instance = _MUTED
     id_separator = ''
-    success = 'green'
-    error = 'red'
-    warning = 'bright_yellow'
-    subtle = 'bright_black'
-    idle = 'yellow'
-    managed = 'cyan'
-    state_before_execution = 'cyan'
-    state_executing = 'bright_blue'
-    state_discarded = 'yellow'
-    state_incomplete = 'bright_yellow'
-    state_failure = 'bright_red'
-    separator = 'bright_black'
+    success = _SUCCESS
+    error = _ERROR
+    warning = _WARNING
+    subtle = _MUTED
+    idle = _ACCENT
+    managed = _PRIMARY
+    state_before_execution = _PRIMARY
+    state_executing = _PRIMARY
+    state_discarded = _WARNING
+    state_incomplete = _WARNING
+    state_failure = _ERROR
+    separator = _MUTED
 
-    # TUI-specific semantic styles (Rich markup)
-    title = 'bold #5ec4d4'
-    metadata = '#7b96b0'
+    # Semantic styles
+    title = f'bold {_PRIMARY}'
+    metadata = _SECONDARY
     label = 'bold'
     section_heading = 'bold'

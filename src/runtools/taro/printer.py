@@ -11,6 +11,7 @@ from pypager.pager import Pager
 from pypager.source import GeneratorSource
 
 from runtools.runcore.util import iterates
+from runtools.taro.theme import Theme
 
 Column = namedtuple('Column', 'name max_width value_fnc colour_fnc rich_fnc', defaults=(None,))
 
@@ -89,7 +90,7 @@ def output_gen(items, columns: List[Column], show_header: bool, stretch_last_col
     column_formats = [" {:" + str(w - 1) + "} " for w in column_widths]
 
     if show_header:
-        yield [(_to_pt_style('bold cyan'), f.format(c.name)) for c, f in zip(columns, column_formats)]
+        yield [(_to_pt_style(Theme.title), f.format(c.name)) for c, f in zip(columns, column_formats)]
         separator_line = " ".join("-" * w for w in column_widths)
         yield [('bold', separator_line)]
 
