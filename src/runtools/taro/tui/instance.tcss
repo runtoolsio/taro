@@ -6,8 +6,8 @@ InstanceHeader {
     dock: top;      /* Pin to top edge of parent, removed from normal flow */
     height: auto;
     padding: 1 2;
-    background: $surface;
-    border-bottom: solid $primary 30%;
+    background: $primary 8%;
+    border-bottom: solid $primary 50%;
 }
 
 #main-container {
@@ -35,6 +35,8 @@ InstanceHeader {
 
 PhaseTree {
     height: 1fr;
+    background: transparent;
+    padding: 0;
 }
 
 PhaseDetail {

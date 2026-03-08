@@ -16,10 +16,10 @@ class ConfirmDeleteScreen(ModalScreen[bool]):
         background: $background 60%;
     }
     ConfirmDeleteScreen > Vertical {
-        width: auto;
+        max-width: 60;
         height: auto;
         padding: 1 3;
-        border: thick $error;
+        border: round $error;
         background: $surface;
     }
     ConfirmDeleteScreen > Vertical > Label {

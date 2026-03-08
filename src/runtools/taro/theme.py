@@ -29,3 +29,9 @@ class Theme:
     state_incomplete = 'bright_yellow'
     state_failure = 'bright_red'
     separator = 'bright_black'
+
+    # TUI-specific semantic styles (Rich markup)
+    title = 'bold cyan'
+    metadata = 'bright_black'
+    label = 'bold'
+    section_heading = 'bold'

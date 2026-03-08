@@ -38,6 +38,12 @@ from runtools.taro.view.status_render import render_status
 APP_CSS = """
 Screen {
     background: $surface;
+    scrollbar-color: $primary 40%;
+    scrollbar-color-hover: $primary 80%;
+    scrollbar-color-active: $primary;
+    scrollbar-background: $surface-darken-1;
+    scrollbar-background-hover: $surface-darken-1;
+    scrollbar-background-active: $surface-darken-2;
 }
 ConfirmDeleteScreen {
     background: $background 60% !important;
@@ -45,7 +51,7 @@ ConfirmDeleteScreen {
 Footer {
     background: $surface;
     .footer-key--key {
-        background: $surface;
+        background: $primary 15%;
         color: $text;
     }
     .footer-key--description {
@@ -69,8 +75,8 @@ class Section(Vertical):
         background: $surface;
 
         &:focus-within {
-            border: round $primary 70%;
-            border-title-color: $text;
+            border: round $accent;
+            border-title-color: $accent;
             border-title-style: bold;
         }
 
@@ -123,8 +129,8 @@ class ScreenHeader(Static):
         dock: top;
         height: auto;
         padding: 1 2 0 2;
-        background: $surface;
-        border-bottom: solid $primary 30%;
+        background: $primary 8%;
+        border-bottom: solid $primary 50%;
     }
     """
 
@@ -141,7 +147,7 @@ class ScreenHeader(Static):
     def render(self) -> Text:
         width = self.size.width if self.size.width > 0 else 80
         env_part = Text(f"[ {self._env_name} ]", style=Theme.subtle) if self._env_name else Text()
-        title_part = Text(self._title, style="bold cyan")
+        title_part = Text(self._title, style=Theme.title)
         pad = width - title_part.cell_len - env_part.cell_len
         line1 = Text()
         line1.append_text(title_part)
@@ -195,9 +201,9 @@ class InstanceHeader(Static):
 
         # Row 1: job_id @ run_id     STAGE     elapsed: HH:MM:SS
         line1 = Text()
-        line1.append(job_run.job_id, style="bold")
+        line1.append(job_run.job_id, style=Theme.job)
         line1.append(" @ ", style="")
-        line1.append(job_run.run_id, style="bright_black")
+        line1.append(job_run.run_id, style=Theme.metadata)
         line1.append("          ", style="")
 
         if lifecycle.is_ended and lifecycle.termination:
@@ -209,7 +215,7 @@ class InstanceHeader(Static):
         elapsed = lifecycle.elapsed
         elapsed_str = util.format_timedelta(elapsed, show_ms=False, null="--:--:--")
         line1.append("          ", style="")
-        line1.append(f"elapsed: {elapsed_str}", style="bright_black")
+        line1.append(f"elapsed: {elapsed_str}", style=Theme.metadata)
 
         # Row 2: status line with progress bar when available
         line2 = render_status(job_run.status, self.size.width if self.size.width > 0 else 60)
@@ -379,15 +385,15 @@ class PhaseDetail(Static):
                             parts += f"/{fmt_num(op.total)}"
                         if op.unit:
                             parts += f" {op.unit}"
-                        text.append(f" {parts}", style="bright_black")
+                        text.append(f" {parts}", style=Theme.metadata)
                     text.append("\n")
             if visible_ops:
-                text.append("─" * 30 + "\n", style="bright_black")
+                text.append("─" * 30 + "\n", style=Theme.metadata)
 
         # Phase ID and type
-        text.append(phase.phase_id, style="bold")
+        text.append(phase.phase_id, style=Theme.label)
         if phase.phase_type:
-            text.append(f"  ({phase.phase_type})", style="bright_black")
+            text.append(f"  ({phase.phase_type})", style=Theme.metadata)
         text.append("\n")
 
         # Stage / termination status
@@ -396,20 +402,20 @@ class PhaseDetail(Static):
 
         # Timestamps — always show created; show started only when it meaningfully differs (wait time)
         text.append(f"Created:     {format_dt_local_tz(lifecycle.created_at, null='N/A', include_ms=False)}\n",
-                     style="bright_black")
+                     style=Theme.metadata)
         if lifecycle.started_at and int(lifecycle.created_at.timestamp()) != int(lifecycle.started_at.timestamp()):
             text.append(f"Started:     {format_dt_local_tz(lifecycle.started_at, null='N/A', include_ms=False)}\n",
-                         style="bright_black")
+                         style=Theme.metadata)
         if lifecycle.termination:
             text.append(
                 f"Terminated:  {format_dt_local_tz(lifecycle.termination.terminated_at, null='N/A', include_ms=False)}"
                 "\n",
-                style="bright_black",
+                style=Theme.metadata,
             )
 
         # Elapsed / total run time
         elapsed = util.format_timedelta(lifecycle.total_run_time or lifecycle.elapsed, show_ms=False, null="N/A")
-        text.append(f"Elapsed:     {elapsed}\n", style="bright_black")
+        text.append(f"Elapsed:     {elapsed}\n", style=Theme.metadata)
 
         # Stop reason
         if phase.stop_reason:
@@ -421,15 +427,15 @@ class PhaseDetail(Static):
 
         # Attributes
         if phase.attributes:
-            text.append("\nAttributes\n", style="bold")
+            text.append("\nAttributes\n", style=Theme.section_heading)
             for key, value in phase.attributes.items():
-                text.append(f"  {key}: {value}\n", style="bright_black")
+                text.append(f"  {key}: {value}\n", style=Theme.metadata)
 
         # Variables
         if phase.variables:
-            text.append("\nVariables\n", style="bold")
+            text.append("\nVariables\n", style=Theme.section_heading)
             for key, value in phase.variables.items():
-                text.append(f"  {key}: {value}\n", style="bright_black")
+                text.append(f"  {key}: {value}\n", style=Theme.metadata)
 
         # Faults
         if self._job_run.faults:
@@ -447,7 +453,7 @@ class PhaseDetail(Static):
         # Children count
         if phase.children:
             text.append(f"\n{len(phase.children)} {'child' if len(phase.children) == 1 else 'children'}\n",
-                         style="bright_black")
+                         style=Theme.metadata)
 
         return text
 
@@ -549,7 +555,7 @@ class OutputPanel(RichLog):
             )
         except OutputReadError as e:
             if not worker.is_cancelled:
-                self.app.call_from_thread(self.write, Text(f"Error reading output: {e}", style="red"))
+                self.app.call_from_thread(self.write, Text(f"Error reading output: {e}", style=Theme.error))
             return
 
         gen = self._load_generation
@@ -596,11 +602,11 @@ class OutputPanel(RichLog):
         for i, line in enumerate(lines):
             if i > 0:
                 batch.append("\n")
-            batch.append(line.message, style="red" if line.is_error else "")
+            batch.append(line.message, style=Theme.error if line.is_error else "")
         self.write(batch)
 
     def _write_line(self, line: OutputLine) -> None:
-        self.write(Text(line.message, style="red" if line.is_error else ""))
+        self.write(Text(line.message, style=Theme.error if line.is_error else ""))
 
 
 class _OutputObserver:
