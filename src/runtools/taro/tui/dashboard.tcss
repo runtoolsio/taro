@@ -2,11 +2,6 @@
     height: auto;
     min-height: 7;
     max-height: 60%;
-    border: round $accent 50%;
-    &:focus-within {
-        background: $accent 6%;
-        border: round $accent;
-    }
     &.-empty {
         opacity: 30%;
     }
@@ -15,10 +10,10 @@
 #history-section {
     height: 1fr;
     opacity: 60%;
-    border: round $primary 40%;
+    border: round $accent 40%;
     &:focus-within {
         opacity: 100%;
-        border: round $primary 70%;
+        border: round $accent 70%;
     }
 }
 
@@ -34,4 +29,10 @@
 
 #history-table {
     height: 1fr;
+    & > .datatable--cursor {
+        background: $accent 20%;
+    }
+    &:focus > .datatable--cursor {
+        background: $accent 30%;
+    }
 }
