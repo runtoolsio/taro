@@ -191,13 +191,14 @@ class ScreenHeader(Static):
 
 
 class InstanceHeader(Static):
-    """Header widget showing job identity, stage, elapsed time, and status line.
+    """Header widget showing job identity, stage, timestamps, and status line.
 
-    Renders two rows:
-      Row 1: {job_id} @ {run_id}    {STAGE}    elapsed: HH:MM:SS
-      Row 2: Status.__str__() — active operations with progress, warnings
+    Renders two or three rows:
+      Row 1: {job_id} @ {run_id}
+      Row 2: {STAGE}  ·  created {time}  ·  [ended {time}  ·]  elapsed {time}
+      Row 3: Status line (only when active operations/progress exist)
 
-    In live mode, a 1-second timer calls refresh() to keep the elapsed time ticking.
+    In live mode, a 0.25-second timer calls refresh() to keep the elapsed time ticking.
     The timer is stopped when the job ends.
     """
 
@@ -220,36 +221,68 @@ class InstanceHeader(Static):
             self._timer = None
         self.refresh()
 
+    _TIME_LABEL_WIDTH = 9  # "created  ", "ended    ", "elapsed  "
+
     def render(self) -> Text:
         """Build the header as a Rich Text object. Textual renders it directly."""
         job_run = self._job_run
         lifecycle = job_run.lifecycle
+        width = self.size.width if self.size.width > 0 else 80
 
-        # Row 1: job_id @ run_id     STAGE     elapsed: HH:MM:SS
-        line1 = Text()
-        line1.append(job_run.job_id, style=Theme.job)
-        line1.append(" @ ", style="")
-        line1.append(job_run.run_id, style=Theme.metadata)
-        line1.append("          ", style="")
+        # Build right-side time rows (aligned labels)
+        created_str = format_dt_local_tz(lifecycle.created_at, null="N/A", include_ms=False)
+        time_rows = [("created", created_str)]
+
+        if lifecycle.is_ended and lifecycle.termination:
+            ended_str = format_dt_local_tz(lifecycle.termination.terminated_at, null="N/A", include_ms=False)
+            time_rows.append(("ended", ended_str))
+
+        elapsed = lifecycle.elapsed
+        elapsed_str = util.format_timedelta(elapsed, show_ms=False, null="--:--:--")
+        time_rows.append(("elapsed", elapsed_str))
+
+        # Fixed-width right column so labels align vertically
+        max_row_len = max(self._TIME_LABEL_WIDTH + len(v) for _, v in time_rows)
+
+        def _compose_line(left_part: Text, time_label: str, time_value: str) -> Text:
+            right_part = Text()
+            right_part.append(f"{time_label:<{self._TIME_LABEL_WIDTH}}", style="dim")
+            right_part.append(time_value, style=Theme.metadata)
+            pad = width - left_part.cell_len - max_row_len
+            line = Text()
+            line.append_text(left_part)
+            if pad > 0:
+                line.append(" " * pad)
+            line.append_text(right_part)
+            return line
+
+        # Row 1: job_id @ run_id  STAGE                 created  HH:MM:SS
+        id_part = Text()
+        id_part.append(job_run.job_id, style=Theme.job)
+        id_part.append(" @ ", style="")
+        id_part.append(job_run.run_id, style=Theme.metadata)
 
         if lifecycle.is_ended and lifecycle.termination:
             stage_text = lifecycle.termination.status.name
         else:
             stage_text = lifecycle.stage.name
-        line1.append(stage_text, style=_stage_rich_style(job_run))
+        id_part.append("  ")
+        id_part.append(stage_text, style=_stage_rich_style(job_run))
 
-        elapsed = lifecycle.elapsed
-        elapsed_str = util.format_timedelta(elapsed, show_ms=False, null="--:--:--")
-        line1.append("          ", style="")
-        line1.append(f"elapsed: {elapsed_str}", style=Theme.metadata)
+        label, value = time_rows[0]
+        result = _compose_line(id_part, label, value)
 
-        # Row 2: status line with progress bar when available
-        line2 = render_status(job_run.status, self.size.width if self.size.width > 0 else 60)
+        # Remaining time rows: right-aligned under the first
+        for label, value in time_rows[1:]:
+            result.append("\n")
+            result.append_text(_compose_line(Text(), label, value))
 
-        result = Text()
-        result.append(line1)
-        result.append("\n")
-        result.append(line2)
+        # Status line (only when there's something to show)
+        status_line = render_status(job_run.status, width)
+        if status_line.cell_len > 0:
+            result.append("\n")
+            result.append_text(status_line)
+
         return result
 
 

@@ -7,6 +7,9 @@
     &:focus-within {
         border: round $accent;
     }
+    &.-empty {
+        opacity: 30%;
+    }
 }
 
 #history-section {

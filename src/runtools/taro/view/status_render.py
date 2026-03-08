@@ -10,6 +10,7 @@ from datetime import datetime, UTC
 from rich.text import Text
 
 from runtools.runcore.status import Operation, Status
+from runtools.taro.theme import Theme
 
 MAX_BAR = 30
 SEPARATOR = " · "
@@ -148,7 +149,7 @@ def _spinner(op: Operation) -> Text:
     frame = SPINNER_FRAMES[int(time.monotonic() * SPINNER_FPS) % len(SPINNER_FRAMES)]
     text = Text()
     text.append(f"{op.name} ", style="")
-    text.append(frame, style="bright_blue")
+    text.append(frame, style=Theme.success)
     completed_str = _format_number(op.completed) if op.completed is not None else ""
     if completed_str:
         text.append(f" {completed_str}", style="dim")
@@ -219,8 +220,8 @@ def _bar_with_prefix(op: Operation, prefix: str, width: int) -> Text | None:
     text = Text()
     text.append(prefix)
     if bright:
-        text.append(bright, style="bright_blue")
+        text.append(bright, style=Theme.success)
     if dim_bar:
-        text.append(dim_bar, style="bright_black")
+        text.append(dim_bar, style=Theme.metadata)
     text.append(suffix, style="dim")
     return text

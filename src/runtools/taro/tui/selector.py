@@ -29,8 +29,6 @@ COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_i
 TUI_WIDTHS = {
     'JOB ID': 25,
     'RUN ID': 14,
-    'CREATED': 9,
-    'ENDED': 9,
     'TERM': 13,
     'PHASES': 18,
     'TIME': 9,

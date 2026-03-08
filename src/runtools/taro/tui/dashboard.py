@@ -166,7 +166,9 @@ class DashboardScreen(Screen):
         return f"Active ({count})" if count else "Active"
 
     def _refresh_header(self) -> None:
-        self.query_one("#active-section", Section).border_title = self._active_title()
+        active_section = self.query_one("#active-section", Section)
+        active_section.border_title = self._active_title()
+        active_section.set_class(not self._live_runs, "-empty")
         metrics = build_history_metrics(self._history_runs.values(), active_count=len(self._live_runs))
         self.query_one("#history-section", Section).border_subtitle = metrics
 
