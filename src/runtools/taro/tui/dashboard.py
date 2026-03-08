@@ -137,10 +137,24 @@ class DashboardScreen(Screen):
         key = str(event.row_key.value)
         self._selected_key = key
         if key in self._instances:
-            self.app.push_screen(
-                InstanceScreen(instance=self._instances[key], output_reader=self._output_reader.read_output),
-                callback=lambda _: self._on_detail_dismissed(),
-            )
+            inst = self._instances[key]
+            snap = inst.snap()
+            if snap.lifecycle.is_ended:
+                # Instance ended between last refresh and selection — treat as history
+                self._live_runs.pop(key, None)
+                self._instances.pop(key)
+                self._history_runs[key] = snap
+                self._populate_tables(focus_key=key)
+                self._refresh_header()
+                self.app.push_screen(
+                    InstanceScreen(job_run=snap, output_reader=self._output_reader.read_output),
+                    callback=lambda _: self._on_detail_dismissed(),
+                )
+            else:
+                self.app.push_screen(
+                    InstanceScreen(instance=inst, output_reader=self._output_reader.read_output),
+                    callback=lambda _: self._on_detail_dismissed(),
+                )
         elif key in self._history_runs:
             self.app.push_screen(
                 InstanceScreen(job_run=self._history_runs[key], output_reader=self._output_reader.read_output),

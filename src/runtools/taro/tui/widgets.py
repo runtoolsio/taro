@@ -28,6 +28,7 @@ from textual.widgets._tree import TreeNode
 from textual.worker import get_current_worker
 
 from runtools.runcore import util
+from runtools.runcore.client import InstanceCallError
 from runtools.runcore.job import JobInstance, JobRun, InstanceOutputEvent
 from runtools.runcore.output import OutputLine, OutputReadError
 from runtools.runcore.run import Outcome, PhaseRun, Stage
@@ -580,8 +581,13 @@ class OutputPanel(RichLog):
             self._instance.notifications.add_observer_output(self._output_observer)
         # Load output: live tail for active instances (fast, in-memory)
         if self._instance is not None:
-            self._buffer.add_lines(self._instance.output.tail())
-            self._write_batch(self._buffer.get_lines(self._phase_filter))
+            try:
+                self._buffer.add_lines(self._instance.output.tail())
+                self._write_batch(self._buffer.get_lines(self._phase_filter))
+            except InstanceCallError:
+                # Instance may have ended — fall back to storage reader
+                if self._output_reader:
+                    self._reload_history()
         elif self._output_reader:
             self._reload_history()
 
