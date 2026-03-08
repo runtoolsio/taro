@@ -4,6 +4,7 @@
     max-height: 60%;
     border: round $accent 50%;
     &:focus-within {
+        background: $accent 6%;
         border: round $accent;
     }
     &.-empty {

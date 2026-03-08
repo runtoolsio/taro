@@ -274,20 +274,11 @@ class DashboardScreen(Screen):
         if not self._instances:
             return
         moved = self._reconcile_instances()
+        self._populate_tables()
         if moved:
-            self._populate_tables()
             self._refresh_header()
             if not self._live_runs:
                 self.query_one("#history-table", LinkedTable).focus()
-        else:
-            # In-place update of active rows only — no structural change
-            active_table = self.query_one("#active-table", LinkedTable)
-            rw = self._active_render_width()
-            for key, run in self._live_runs.items():
-                cells = build_cells(run, ACTIVE_COLUMNS, render_width=rw)
-                active_table.update_cell(key, ACTIVE_COLUMNS[0].name, cells[0], update_width=True)
-                for col, cell in zip(ACTIVE_COLUMNS[1:], cells[1:]):
-                    active_table.update_cell(key, col.name, cell)
 
 
 
