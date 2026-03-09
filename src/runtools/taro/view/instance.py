@@ -7,8 +7,7 @@ from runtools.runcore.job import JobRun
 from runtools.runcore.run import Outcome, TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
 from runtools.runcore.util import format_dt_local_tz, format_dt_compact
 from runtools.taro.printer import Column
-from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style, \
-    stage_style
+from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style
 from runtools.taro.theme import Theme
 from runtools.taro.view.status_render import render_result, render_status
 
@@ -33,17 +32,11 @@ def mid_ellipsis(text: str, width: int) -> str:
     return text[:head] + "…" + text[-tail:]
 
 
-JOB_ID = Column('JOB ID', 20, lambda j: end_ellipsis(j.job_id, 22 - _CELL_PADDING), job_id_style)
-RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 18 - _CELL_PADDING), run_id_style)
-STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
-INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)  # job_id@run_id varies
-PARAMETERS = Column('PARAMETERS', 23,
-                    lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
+JOB_ID = Column('JOB ID', 25, lambda j: end_ellipsis(j.job_id, 25), job_id_style)
+RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 14), run_id_style)
 _muted_style = lambda _: Theme.metadata
 CREATED = Column('CREATED', 21, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), _muted_style)
 CREATED_COMPACT = Column('CREATED', 12, lambda j: format_dt_compact(j.lifecycle.created_at), _muted_style)
-EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_local_tz(j.lifecycle.started_at, include_ms=False, null='N/A'),
-                  general_style)
 ENDED = Column('ENDED', 21,
                lambda j: format_dt_local_tz(j.lifecycle.termination.terminated_at, include_ms=False, null='N/A'),
                _muted_style)
@@ -102,8 +95,6 @@ RESULT = Column('RESULT', 50,
                 else j.status.finished_ops_summary if j.status else '',
                 general_style, lambda j, w: render_result(j.status, w))
 WARNINGS = Column('WARN', 6, lambda j: str(len(j.status.warnings)) if j.status else '0', warn_count_style)
-
-DEFAULT_COLUMNS = [JOB_ID, RUN_ID, INSTANCE_ID, CREATED, EXEC_TIME, PHASES, WARNINGS, STATUS]
 
 
 def render_cell(run: JobRun, col: Column, *, width: int | None = None, style_override: str = "") -> Text:
