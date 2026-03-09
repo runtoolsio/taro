@@ -32,6 +32,11 @@ def tail(
             help="Instance filter patterns"
         ),
         env: Optional[str] = cli.ENV_OPTION_FIELD,
+        lines: int = typer.Option(
+            100,
+            "-n", "--lines",
+            help="Number of output lines to show (0 for all)"
+        ),
         follow: bool = typer.Option(
             False,
             "-f", "--follow",
@@ -59,7 +64,7 @@ def tail(
     try:
         for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
             print_instance_header(inst)
-            for output_line in inst.output.tail():
+            for output_line in inst.output.tail(max_lines=lines):
                 print_line(output_line, show_ordinal)
                 instance_to_last_line[inst.metadata] = output_line.ordinal
                 last_printed_instance = inst.metadata
