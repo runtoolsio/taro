@@ -82,10 +82,10 @@ def output_gen(items, columns: List[Column], show_header: bool, stretch_last_col
         Columns are separated by one space
         Header/Values separator line is of the same length as the column
     Column Widths:
-        First 50 rows are examined to find optimal width of the columns
+        First 500 rows are examined to find optimal width of the columns
     """
     job_iter = iter(items)
-    first_fifty = list(itertools.islice(job_iter, 50))
+    first_fifty = list(itertools.islice(job_iter, 500))
     column_widths = _calc_widths(first_fifty, columns, stretch_last_column)
     column_formats = [" {:" + str(w - 1) + "} " for w in column_widths]
 

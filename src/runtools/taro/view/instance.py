@@ -34,17 +34,17 @@ def mid_ellipsis(text: str, width: int) -> str:
 
 
 JOB_ID = Column('JOB ID', 25, lambda j: end_ellipsis(j.job_id, 25 - _CELL_PADDING), job_id_style)
-RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 14 - _CELL_PADDING), run_id_style)
+RUN_ID = Column('RUN ID', 18, lambda j: mid_ellipsis(j.run_id, 18 - _CELL_PADDING), run_id_style)
 STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)  # job_id@run_id varies
 PARAMETERS = Column('PARAMETERS', 23,
                     lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
 _muted_style = lambda _: Theme.metadata
-CREATED = Column('CREATED', 19, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), _muted_style)
+CREATED = Column('CREATED', 21, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), _muted_style)
 CREATED_COMPACT = Column('CREATED', 12, lambda j: format_dt_compact(j.lifecycle.created_at), _muted_style)
 EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_local_tz(j.lifecycle.started_at, include_ms=False, null='N/A'),
                   general_style)
-ENDED = Column('ENDED', 19,
+ENDED = Column('ENDED', 21,
                lambda j: format_dt_local_tz(j.lifecycle.termination.terminated_at, include_ms=False, null='N/A'),
                _muted_style)
 ENDED_COMPACT = Column('ENDED', 12,
@@ -64,7 +64,7 @@ EXEC_TIME = Column('TIME', 18,
                    lambda j: util.format_timedelta(j.lifecycle.total_run_time or j.lifecycle.elapsed, show_ms=False,
                                                    null='N/A'),
                    general_style)
-EXEC_TIME_COMPACT = Column('TIME', 10,
+EXEC_TIME_COMPACT = Column('TIME', 11,
                            lambda j: _format_elapsed_compact(j.lifecycle.total_run_time or j.lifecycle.elapsed),
                            general_style)
 PHASES = Column('PHASES', 30, lambda j: j.accept_visitor(PhaseExtractor()).text,
@@ -78,9 +78,12 @@ def _term_display(j: JobRun) -> str:
     return status.name
 
 
+_term_style = lambda j: run_term_style(j) if j.lifecycle.termination else general_style(j)
 TERM_STATUS = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
-                     _term_display,
-                     lambda j: run_term_style(j) if j.lifecycle.termination else general_style(j))
+                     _term_display, _term_style)
+TERM_STATUS_FULL = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
+                          lambda j: j.lifecycle.termination.status.name if j.lifecycle.termination else '',
+                          _term_style)
 STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style, lambda j, w: render_status(j.status, w))
 RESULT = Column('RESULT', 50,
                 lambda j: j.status.result.message if j.status and j.status.result
