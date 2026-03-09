@@ -14,6 +14,7 @@ Textual quick reference for maintainers:
 - Widget class name is used as the CSS selector (InstanceHeader → `InstanceHeader { ... }` in TCSS).
 """
 
+import os
 from bisect import insort
 from typing import Callable, Iterable, Optional
 
@@ -56,10 +57,22 @@ TARO_THEME = TextualTheme(
 )
 
 
+_FALLBACK_THEME = TextualTheme(
+    name="taro-fallback",
+    primary="green",
+    panel="#1e1e1e",
+    dark=True,
+)
+
+
 def setup_theme(app: "App") -> None:
-    """Register and activate the Taro theme."""
-    app.register_theme(TARO_THEME)
-    app.theme = TARO_THEME.name
+    """Register and activate the Taro theme, or a minimal fallback without truecolor."""
+    if os.environ.get("COLORTERM") in ("truecolor", "24bit"):
+        app.register_theme(TARO_THEME)
+        app.theme = TARO_THEME.name
+    else:
+        app.register_theme(_FALLBACK_THEME)
+        app.theme = _FALLBACK_THEME.name
 
 
 APP_CSS = """
