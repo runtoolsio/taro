@@ -22,15 +22,18 @@ InstanceHeader {
 
 #phases-section {
     height: 2fr;
+    border-title-align: right;
 }
 
 #detail-section {
     height: 3fr;
     min-height: 8;
+    border-title-align: right;
 }
 
 #output-section {
     width: 1fr;
+    border-title-align: right;
 }
 
 PhaseTree {
