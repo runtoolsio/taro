@@ -6,18 +6,18 @@ Rich resolves hex colors to the nearest terminal color on non-truecolor terminal
 """
 
 # Palette constants — single source of truth
-_PRIMARY = '#5ec4d4'      # teal
-_SECONDARY = '#7b96b0'    # muted steel blue
-_ACCENT = '#e0a84c'       # warm amber
-_SUCCESS = '#73c974'      # green
-_WARNING = '#d49a4e'      # orange
-_ERROR = '#e06c75'        # coral red
-_MUTED = '#5a6577'        # dim gray-blue
+_PRIMARY = '#3dd6b5'      # electric mint
+_SECONDARY = '#9bb1c8'    # cool blue-gray
+_ACCENT = '#ffb347'       # apricot amber
+_SUCCESS = '#7ee787'      # vivid green
+_WARNING = '#ffb347'      # amber warning
+_ERROR = '#ff6b6b'        # vivid coral red
+_MUTED = '#6f7f96'        # softened slate
 
 
 class Theme:
     highlight = 'bold'
-    job = 'bold'
+    job = f'bold {_PRIMARY}'
     instance = _MUTED
     id_separator = ''
     success = _SUCCESS
@@ -34,7 +34,7 @@ class Theme:
     separator = _MUTED
 
     # Semantic styles
-    title = f'bold {_PRIMARY}'
+    title = f'bold {_ACCENT}'
     metadata = _SECONDARY
-    label = 'bold'
-    section_heading = 'bold'
+    label = f'bold {_PRIMARY}'
+    section_heading = f'bold {_ACCENT}'

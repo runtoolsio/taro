@@ -40,18 +40,18 @@ from runtools.taro.view.status_render import render_status
 
 TARO_THEME = TextualTheme(
     name="taro",
-    primary="#5ec4d4",       # teal — identity color, borders, scrollbars
-    secondary="#7b96b0",     # muted steel blue — secondary info
-    accent="#e0a84c",        # warm amber — active states, attention
-    background="#141820",    # deep navy black
-    surface="#1c2230",       # dark blue-gray
-    panel="#262e3a",         # raised surface
-    success="#73c974",       # green
-    warning="#d49a4e",       # orange (distinct from amber accent)
-    error="#e06c75",         # coral red
+    primary="#3dd6b5",       # electric mint — primary identity
+    secondary="#9bb1c8",     # cool blue-gray — metadata
+    accent="#ffb347",        # apricot amber — focus/selection
+    background="#0f1117",    # charcoal black
+    surface="#171b24",       # slate surface
+    panel="#1f2531",         # raised panel
+    success="#7ee787",       # vivid green
+    warning="#ffb347",       # amber warning
+    error="#ff6b6b",         # coral red
     dark=True,
     variables={
-        "footer-background": "#1c2230",
+        "footer-background": "#171b24",
     },
 )
 
@@ -64,10 +64,10 @@ def setup_theme(app: "App") -> None:
 
 APP_CSS = """
 Screen {
-    background: $surface;
-    scrollbar-color: $primary 40%;
-    scrollbar-color-hover: $primary 80%;
-    scrollbar-color-active: $primary;
+    background: $background;
+    scrollbar-color: $accent 50%;
+    scrollbar-color-hover: $accent 80%;
+    scrollbar-color-active: $accent;
     scrollbar-background: $surface-darken-1;
     scrollbar-background-hover: $surface-darken-1;
     scrollbar-background-active: $surface-darken-2;
@@ -78,7 +78,7 @@ ConfirmDeleteScreen {
 Footer {
     background: $surface;
     .footer-key--key {
-        background: $primary 15%;
+        background: $accent 35%;
         color: $text;
     }
     .footer-key--description {
@@ -94,15 +94,15 @@ class Section(Vertical):
 
     DEFAULT_CSS = """
     Section {
-        border: round $primary 30%;
+        border: round $accent 25%;
         border-title-color: $text-muted;
-        border-title-align: right;
+        border-title-align: left;
         padding: 0 1;
         margin-bottom: 0;
         background: $surface;
 
         &:focus-within {
-            border: round $accent;
+            border: round $accent 80%;
             border-title-color: $accent;
             border-title-style: bold;
         }
