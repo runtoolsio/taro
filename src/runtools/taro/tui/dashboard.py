@@ -30,12 +30,12 @@ from runtools.taro.view import instance as view_inst
 log = logging.getLogger(__name__)
 
 ACTIVE_COLUMNS = [
-    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME_COMPACT,
+    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME,
     view_inst.PHASES, view_inst.WARNINGS, view_inst.STATUS,
 ]
 HISTORY_COLUMNS = [
     view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.ENDED_COMPACT,
-    view_inst.EXEC_TIME_COMPACT, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
+    view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
 ]
 
 

@@ -43,7 +43,7 @@ _RIGHT_ALIGNED = set()
 _COL_WIDTH = {
     view_inst.JOB_ID: 20,
     view_inst.RUN_ID: 14,
-    view_inst.EXEC_TIME: 15,
+    view_inst.EXEC_TIME: 14,
     view_inst.PHASES: 25,
 }
 _COL_RATIO = {

@@ -60,9 +60,21 @@ def _format_elapsed_compact(td) -> str:
     return f"{hours}:{minutes:02d}:{seconds:02d}"
 
 
-EXEC_TIME = Column('TIME', 18,
-                   lambda j: util.format_timedelta(j.lifecycle.total_run_time or j.lifecycle.elapsed, show_ms=False,
-                                                   null='N/A'),
+def _format_elapsed_days(td) -> str:
+    """Format as HH:MM:SS or Nd HH:MM:SS for multi-day durations."""
+    if not td:
+        return 'N/A'
+    total_secs = int(td.total_seconds())
+    hours, remainder = divmod(total_secs, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours >= 24:
+        days, hours = divmod(hours, 24)
+        return f"{days}d {hours:02d}:{minutes:02d}:{seconds:02d}"
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+EXEC_TIME = Column('TIME', 14,
+                   lambda j: _format_elapsed_days(j.lifecycle.total_run_time or j.lifecycle.elapsed),
                    general_style)
 EXEC_TIME_COMPACT = Column('TIME', 11,
                            lambda j: _format_elapsed_compact(j.lifecycle.total_run_time or j.lifecycle.elapsed),
