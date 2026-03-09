@@ -36,42 +36,34 @@ def render_status(status: Status | None, width: int) -> Text:
         return Text("")
 
     now = datetime.now(UTC).replace(tzinfo=None)
-    active_ops = [op for op in status.operations if not op.finished]
-    lingering_ops = [
+    visible_ops = [
         op for op in status.operations
-        if op.finished and max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS
+        if not op.finished or max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS
     ]
-    if not active_ops and not lingering_ops:
+    if not visible_ops:
         return _fallback(status)
 
+    active_ops = [op for op in visible_ops if not op.finished]
     bar_ops = [op for op in active_ops if _has_progress(op)]
 
     # Be conservative: runtime table layout may be a few chars tighter than hints.
     effective_width = max(width - WIDTH_SAFETY_MARGIN, 0)
 
-    # Budget width for active ops only — lingering ops get whatever is left.
+    # Budget width: finished and spinner ops are fixed-size, bars split the remainder.
+    finished_cache = {id(op): _finished(op) for op in visible_ops if op.finished}
     spinner_cache = {id(op): _spinner(op) for op in active_ops if not _has_progress(op)}
-    active_fixed = sum(t.cell_len for t in spinner_cache.values())
-    active_sep = len(SEPARATOR) * max(len(active_ops) - 1, 0)
-    bar_width = effective_width - active_fixed - active_sep
+    fixed = sum(t.cell_len for t in finished_cache.values()) + sum(t.cell_len for t in spinner_cache.values())
+    sep_total = len(SEPARATOR) * max(len(visible_ops) - 1, 0)
+    bar_width = effective_width - fixed - sep_total
     bar_cache = _build_uniform_bars(bar_ops, bar_width)
 
-    # Assemble active ops first, then append lingering ops if space allows.
+    # Render all operations in creation order.
     result = Text()
-    for op in active_ops:
-        text = spinner_cache.get(id(op)) or (bar_cache or {}).get(id(op))
+    for op in visible_ops:
+        text = finished_cache.get(id(op)) or spinner_cache.get(id(op)) or (bar_cache or {}).get(id(op))
         if text is None:
             continue
         if result.cell_len > 0:
-            result.append(SEPARATOR)
-        result.append_text(text)
-
-    for op in lingering_ops:
-        text = _finished(op)
-        sep_len = len(SEPARATOR) if result.cell_len > 0 else 0
-        if result.cell_len + sep_len + text.cell_len > effective_width:
-            break
-        if sep_len:
             result.append(SEPARATOR)
         result.append_text(text)
 
