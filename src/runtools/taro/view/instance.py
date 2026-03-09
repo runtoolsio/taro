@@ -50,10 +50,23 @@ ENDED = Column('ENDED', 19,
 ENDED_COMPACT = Column('ENDED', 12,
                        lambda j: format_dt_compact(j.lifecycle.termination.terminated_at, null='N/A'),
                        _muted_style)
+def _format_elapsed_compact(td) -> str:
+    """Format as H:MM:SS — collapses days into hours."""
+    if not td:
+        return 'N/A'
+    total_secs = int(td.total_seconds())
+    hours, remainder = divmod(total_secs, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}:{minutes:02d}:{seconds:02d}"
+
+
 EXEC_TIME = Column('TIME', 18,
                    lambda j: util.format_timedelta(j.lifecycle.total_run_time or j.lifecycle.elapsed, show_ms=False,
                                                    null='N/A'),
                    general_style)
+EXEC_TIME_COMPACT = Column('TIME', 10,
+                           lambda j: _format_elapsed_compact(j.lifecycle.total_run_time or j.lifecycle.elapsed),
+                           general_style)
 PHASES = Column('PHASES', 30, lambda j: j.accept_visitor(PhaseExtractor()).text,
                 lambda j: j.accept_visitor(PhaseExtractor()).style)
 def _term_display(j: JobRun) -> str:

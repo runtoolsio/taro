@@ -30,12 +30,12 @@ from runtools.taro.view import instance as view_inst
 log = logging.getLogger(__name__)
 
 ACTIVE_COLUMNS = [
-    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME,
+    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME_COMPACT,
     view_inst.PHASES, view_inst.WARNINGS, view_inst.STATUS,
 ]
 HISTORY_COLUMNS = [
     view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.ENDED_COMPACT,
-    view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
+    view_inst.EXEC_TIME_COMPACT, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
 ]
 
 
@@ -81,7 +81,7 @@ class DashboardScreen(Screen):
         active_table = LinkedTable(cursor_type="row", id="active-table", cursor_foreground_priority="renderable")
         add_columns(active_table, ACTIVE_COLUMNS)
         history_table = LinkedTable(cursor_type="row", id="history-table", cursor_foreground_priority="renderable")
-        add_columns(history_table, HISTORY_COLUMNS)
+        add_columns(history_table, HISTORY_COLUMNS, data=self._history_runs.values())
         active_table.next_table = history_table
         history_table.prev_table = active_table
 

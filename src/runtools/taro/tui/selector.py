@@ -25,16 +25,6 @@ from runtools.taro.view.instance import render_cell
 COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.TERM_STATUS, view_inst.PHASES,
            view_inst.STATUS]
 
-# Tight widths for TUI columns (last column = None → auto-expand to fill remaining space)
-TUI_WIDTHS = {
-    'JOB ID': 25,
-    'RUN ID': 14,
-    'TERM': 13,
-    'PHASES': 18,
-    'TIME': 9,
-    'WARN': 6,
-}
-
 
 def row_key(iid: InstanceID) -> str:
     return f"{iid.job_id}@{iid.run_id}"
@@ -48,10 +38,15 @@ def build_cells(run: JobRun, columns: Sequence = COLUMNS, *,
     ]
 
 
-def add_columns(table: DataTable, columns: Sequence = COLUMNS) -> None:
+def add_columns(table: DataTable, columns: Sequence = COLUMNS, *, data: Sequence = ()) -> None:
     for i, col in enumerate(columns):
         is_last = i == len(columns) - 1
-        width = None if is_last else TUI_WIDTHS.get(col.name, col.max_width)
+        if is_last:
+            width = None
+        elif data:
+            width = max(len(col.name), max((len(col.value_fnc(r)) for r in data), default=0))
+        else:
+            width = col.max_width
         table.add_column(col.name, key=col.name, width=width)
 
 
@@ -59,7 +54,7 @@ def last_col_width(table: DataTable, columns: Sequence) -> int:
     """Estimate last column width from table content width minus fixed columns."""
     if table.size.width == 0:
         return columns[-1].max_width
-    fixed = sum(TUI_WIDTHS.get(col.name, col.max_width) for col in columns[:-1])
+    fixed = sum(col.max_width for col in columns[:-1])
     # DataTable adds 2-char cell padding per column
     padding = len(columns) * 2
     return max(table.size.width - fixed - padding, 20)
@@ -216,7 +211,7 @@ class _HistoryApp(App):
                  connector: Optional[EnvironmentConnector] = None, title: str = "History") -> None:
         super().__init__()
         self._runs = {row_key(r.instance_id): r for r in runs}
-        self._columns = columns
+        self._columns = [view_inst.EXEC_TIME_COMPACT if c is view_inst.EXEC_TIME else c for c in columns]
         self._connector = connector
         self._output_reader = (
             MultiSourceOutputReader(connector.output_backends).read_output if connector else None
@@ -234,7 +229,7 @@ class _HistoryApp(App):
     def on_mount(self) -> None:
         setup_theme(self)
         table = self.query_one(DataTable)
-        add_columns(table, self._columns)
+        add_columns(table, self._columns, data=self._runs.values())
         for key, run in self._runs.items():
             table.add_row(*build_cells(run, self._columns), key=key)
         self._refresh_metrics()
