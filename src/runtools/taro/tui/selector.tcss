@@ -1,12 +1,3 @@
 #table-section {
     height: 1fr;
 }
-
-DataTable {
-    & > .datatable--cursor {
-        background: $accent 20%;
-    }
-    &:focus > .datatable--cursor {
-        background: $accent 30%;
-    }
-}

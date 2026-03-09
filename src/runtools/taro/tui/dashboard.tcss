@@ -19,20 +19,8 @@
 
 #active-table {
     height: auto;
-    & > .datatable--cursor {
-        background: $accent 20%;
-    }
-    &:focus > .datatable--cursor {
-        background: $accent 30%;
-    }
 }
 
 #history-table {
     height: 1fr;
-    & > .datatable--cursor {
-        background: $accent 20%;
-    }
-    &:focus > .datatable--cursor {
-        background: $accent 30%;
-    }
 }

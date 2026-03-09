@@ -211,7 +211,7 @@ class _HistoryApp(App):
                  connector: Optional[EnvironmentConnector] = None, title: str = "History") -> None:
         super().__init__()
         self._runs = {row_key(r.instance_id): r for r in runs}
-        self._columns = [view_inst.EXEC_TIME_COMPACT if c is view_inst.EXEC_TIME else c for c in columns]
+        self._columns = columns
         self._connector = connector
         self._output_reader = (
             MultiSourceOutputReader(connector.output_backends).read_output if connector else None

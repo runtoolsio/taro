@@ -86,6 +86,12 @@ Footer {
         background: $surface;
     }
 }
+DataTable > .datatable--cursor {
+    background: $accent 20%;
+}
+DataTable:focus > .datatable--cursor {
+    background: $accent 30%;
+}
 """
 
 

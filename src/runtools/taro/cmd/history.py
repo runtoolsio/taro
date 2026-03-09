@@ -96,11 +96,11 @@ def history(
 
         runs_iter = conn.iter_history_runs(run_match, sort_option, asc=ascending, limit=lines, offset=offset, last=last)
 
-        columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
-                   view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT]
+        printer_columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED,
+                           view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT]
         if no_pager:
             try:
-                printer.print_table(runs_iter, columns, show_header=True, pager=False)
+                printer.print_table(runs_iter, printer_columns, show_header=True, pager=False)
             except BrokenPipeError:
                 cliutil.handle_broken_pipe(exit_code=1)
         else:
@@ -108,7 +108,9 @@ def history(
             if not runs:
                 console.print("No matching runs")
                 return
-            show_history(runs, columns, connector=conn)
+            tui_columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.ENDED_COMPACT,
+                           view_inst.EXEC_TIME_COMPACT, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT]
+            show_history(runs, tui_columns, connector=conn)
 
 
 def _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault):
