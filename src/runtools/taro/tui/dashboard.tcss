@@ -1,7 +1,11 @@
 #active-section {
     height: auto;
-    min-height: 7;
+    min-height: 9;
     max-height: 60%;
+    opacity: 80%;
+    &:focus-within {
+        opacity: 100%;
+    }
     &.-empty {
         opacity: 30%;
     }
@@ -12,7 +16,7 @@
     opacity: 60%;
     border: round $accent 40%;
     &:focus-within {
-        opacity: 100%;
+        opacity: 75%;
         border: round $accent 70%;
     }
 }
