@@ -43,7 +43,7 @@ _RIGHT_ALIGNED = set()
 _COL_WIDTH = {
     view_inst.JOB_ID: 20,
     view_inst.RUN_ID: 14,
-    view_inst.EXEC_TIME: 18,
+    view_inst.EXEC_TIME: 15,
     view_inst.PHASES: 25,
 }
 _COL_RATIO = {
@@ -174,6 +174,7 @@ class LiveView:
         except OSError:
             return view_inst.STATUS.max_width
         fixed = sum(_COL_WIDTH.get(col, 0) for col in COLUMNS)
+        # Each column has (0,1) padding = 2 chars per column
         padding = len(COLUMNS) * 2
         remaining = term_width - fixed - padding
         total_ratio = sum(_COL_RATIO.get(col, 0) for col in COLUMNS)
