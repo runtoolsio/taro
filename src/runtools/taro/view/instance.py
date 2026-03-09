@@ -33,8 +33,8 @@ def mid_ellipsis(text: str, width: int) -> str:
     return text[:head] + "…" + text[-tail:]
 
 
-JOB_ID = Column('JOB ID', 25, lambda j: end_ellipsis(j.job_id, 25 - _CELL_PADDING), job_id_style)
-RUN_ID = Column('RUN ID', 18, lambda j: mid_ellipsis(j.run_id, 18 - _CELL_PADDING), run_id_style)
+JOB_ID = Column('JOB ID', 20, lambda j: end_ellipsis(j.job_id, 22 - _CELL_PADDING), job_id_style)
+RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 18 - _CELL_PADDING), run_id_style)
 STAGE = Column('STAGE', 10, lambda j: j.lifecycle.stage.name, stage_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.metadata.instance_id, run_id_style)  # job_id@run_id varies
 PARAMETERS = Column('PARAMETERS', 23,
@@ -67,7 +67,7 @@ EXEC_TIME = Column('TIME', 18,
 EXEC_TIME_COMPACT = Column('TIME', 11,
                            lambda j: _format_elapsed_compact(j.lifecycle.total_run_time or j.lifecycle.elapsed),
                            general_style)
-PHASES = Column('PHASES', 30, lambda j: j.accept_visitor(PhaseExtractor()).text,
+PHASES = Column('PHASES', 25, lambda j: j.accept_visitor(PhaseExtractor()).text,
                 lambda j: j.accept_visitor(PhaseExtractor()).style)
 def _term_display(j: JobRun) -> str:
     if not j.lifecycle.termination:
