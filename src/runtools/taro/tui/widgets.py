@@ -35,7 +35,7 @@ from runtools.runcore.run import Outcome, PhaseRun, Stage
 from runtools.runcore.util import format_dt_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
-from runtools.taro.view.status_render import render_status
+from runtools.taro.view.status_render import render_result, render_status
 
 
 TARO_THEME = TextualTheme(
@@ -284,8 +284,11 @@ class InstanceHeader(Static):
             result.append("\n")
             result.append_text(_compose_line(Text(), label, value))
 
-        # Status line (only when there's something to show)
-        status_line = render_status(job_run.status, width)
+        # Status line: result summary for ended jobs, live progress otherwise
+        if job_run.lifecycle.is_ended:
+            status_line = render_result(job_run.status, width)
+        else:
+            status_line = render_status(job_run.status, width)
         if status_line.cell_len > 0:
             result.append("\n")
             result.append_text(status_line)
