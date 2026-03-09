@@ -106,7 +106,7 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
     widths = [len(c.name) + 2 for c in columns]  # +2 for left and right padding
     for item in items:
         for i, column in enumerate(columns):
-            widths[i] = max(widths[i], min(len(column.value_fnc(item)) + 2, column.max_width))
+            widths[i] = max(widths[i], len(column.value_fnc(item)) + 2)
 
     # vv Add spare terminal length to the last column vv
     try:
