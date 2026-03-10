@@ -6,7 +6,7 @@ Rich resolves hex colors to the nearest terminal color on non-truecolor terminal
 """
 
 # Palette constants — single source of truth
-_PRIMARY = '#4fa89d'      # dusty teal
+_PRIMARY = '#3dd6b5'      # electric mint
 _SECONDARY = '#9bb1c8'    # cool blue-gray
 _ACCENT = '#ffb347'       # apricot amber
 _SUCCESS = '#7ee787'      # vivid green

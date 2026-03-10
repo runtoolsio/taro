@@ -41,7 +41,7 @@ from runtools.taro.view.status_render import render_result, render_status
 
 TARO_THEME = TextualTheme(
     name="taro",
-    primary="#4fa89d",       # dusty teal — primary identity
+    primary="#3dd6b5",       # electric mint — primary identity
     secondary="#9bb1c8",     # cool blue-gray — metadata
     accent="#ffb347",        # apricot amber — focus/selection
     background="#0f1117",    # charcoal black
