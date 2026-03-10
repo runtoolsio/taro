@@ -34,7 +34,7 @@ def mid_ellipsis(text: str, width: int) -> str:
 
 JOB_ID = Column('JOB ID', 25, lambda j: end_ellipsis(j.job_id, 25), job_id_style)
 RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 14), run_id_style)
-_muted_style = lambda _: Theme.metadata
+_muted_style = lambda _: Theme.subtle
 CREATED = Column('CREATED', 21, lambda j: format_dt_local_tz(j.lifecycle.created_at, include_ms=False), _muted_style)
 CREATED_COMPACT = Column('CREATED', 12, lambda j: format_dt_compact(j.lifecycle.created_at), _muted_style)
 ENDED = Column('ENDED', 21,

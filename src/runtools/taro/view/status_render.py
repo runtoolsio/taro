@@ -85,7 +85,7 @@ def render_result(status: Status | None, width: int) -> Text:
         return Text(status.result.message)
 
     summary = status.finished_ops_summary
-    return Text(summary, style="dim") if summary else Text("")
+    return Text(summary) if summary else Text("")
 
 
 def _finished(op: Operation) -> Text:
