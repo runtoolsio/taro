@@ -15,7 +15,7 @@ InstanceHeader {
 }
 
 #left-panel {
-    width: 1fr;
+    width: 2fr;
     min-width: 36;
     max-width: 72;
 }
@@ -32,7 +32,7 @@ InstanceHeader {
 }
 
 #output-section {
-    width: 1fr;
+    width: 3fr;
     border-title-align: right;
 }
 
