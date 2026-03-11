@@ -89,7 +89,8 @@ TERM_STATUS = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
 TERM_STATUS_FULL = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
                           lambda j: j.lifecycle.termination.status.name if j.lifecycle.termination else '',
                           _term_style)
-STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style, lambda j, w: render_status(j.status, w))
+STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style,
+                lambda j, w: render_status(j.status, w, j.lifecycle.is_ended))
 RESULT = Column('RESULT', 50,
                 lambda j: j.status.result.message if j.status and j.status.result
                 else j.status.finished_ops_summary if j.status else '',

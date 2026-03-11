@@ -20,7 +20,7 @@ SPINNER_FPS = 8
 FINISHED_LINGER_SECONDS = 5
 
 
-def render_status(status: Status | None, width: int) -> Text:
+def render_status(status: Status | None, width: int, is_ended: bool = False) -> Text:
     """Render status as styled Text, with visual progress bars when possible.
 
     Operations with a known total get progress bars (fallback ladder).
@@ -31,6 +31,7 @@ def render_status(status: Status | None, width: int) -> Text:
     Args:
         status: Current job status snapshot (may be None).
         width: Available character width for the cell.
+        is_ended: Whether the owning run has already ended.
     """
     if not status:
         return Text("")
@@ -40,10 +41,9 @@ def render_status(status: Status | None, width: int) -> Text:
         op for op in status.operations
         if not op.finished or max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS
     ]
-    if not visible_ops:
-        return _fallback(status)
-
     active_ops = [op for op in visible_ops if not op.finished]
+    if not visible_ops or (is_ended and not active_ops):
+        return _ended_fallback(status) if is_ended else _live_fallback(status)
     bar_ops = [op for op in active_ops if _has_progress(op)]
 
     # Be conservative: runtime table layout may be a few chars tighter than hints.
@@ -76,10 +76,18 @@ def render_status(status: Status | None, width: int) -> Text:
             result.append(SEPARATOR)
         result.append_text(text)
 
-    return result if result.cell_len > 0 else _fallback(status)
+    if result.cell_len > 0:
+        return result
+    return _ended_fallback(status) if is_ended else _live_fallback(status)
 
 
-def _fallback(status: Status) -> Text:
+def _live_fallback(status: Status) -> Text:
+    if status.last_event:
+        return Text(status.last_event.message)
+    return Text("")
+
+
+def _ended_fallback(status: Status) -> Text:
     if status.result:
         return Text(status.result.message)
     summary = _render_finished_summary(status)
