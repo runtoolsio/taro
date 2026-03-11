@@ -33,7 +33,8 @@ from runtools.runcore.client import InstanceCallError
 from runtools.runcore.job import JobInstance, JobRun, InstanceOutputEvent
 from runtools.runcore.output import OutputLine, OutputReadError
 from runtools.runcore.run import Outcome, PhaseRun, Stage
-from runtools.runcore.util import format_dt_local_tz
+from runtools.runcore.status import format_number
+from runtools.runcore.util import format_dt_local_tz, format_time_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
 from runtools.taro.view.status_render import render_result, render_status
@@ -452,7 +453,6 @@ class PhaseDetail(Static):
             else:
                 phase_ids = collect_phase_ids(phase)
                 visible_ops = [op for op in self._job_run.status.operations if op.source in phase_ids]
-            fmt_num = lambda v: str(int(v)) if v == int(v) else str(v)
             for op in visible_ops:
                 if op.finished:
                     text.append(f"{op.finished_summary}\n", style="dim")
@@ -462,15 +462,15 @@ class PhaseDetail(Static):
                         pct = round(max(0.0, min(op.pct_done, 1.0)) * 100)
                         text.append(f" {pct}%", style=Theme.state_executing)
                     if op.completed is not None:
-                        parts = fmt_num(op.completed)
+                        parts = format_number(op.completed)
                         if op.total is not None:
-                            parts += f"/{fmt_num(op.total)}"
+                            parts += f"/{format_number(op.total)}"
                         if op.unit:
                             parts += f" {op.unit}"
                         text.append(f" {parts}", style=Theme.metadata)
                     text.append("\n")
             if visible_ops:
-                text.append("─" * 30 + "\n", style=Theme.metadata)
+                text.append("─" * max(self.size.width - 2, 10) + "\n", style=Theme.metadata)
 
         # Phase ID and type
         text.append(phase.phase_id, style=Theme.label)
@@ -478,26 +478,33 @@ class PhaseDetail(Static):
             text.append(f"  ({phase.phase_type})", style=Theme.metadata)
         text.append("\n")
 
-        # Stage / termination status
-        text.append(_phase_stage_text(phase), style=style)
+        # Two-column layout: stage+elapsed, then timestamps
+        col2_offset = 20  # column 2 starts here
+
+        # Row 1: stage + elapsed
+        stage_text = _phase_stage_text(phase)
+        text.append(stage_text, style=style)
+        elapsed = util.format_timedelta(lifecycle.total_run_time or lifecycle.elapsed, show_ms=False, null="N/A")
+        pad = max(col2_offset - len(stage_text), 2)
+        text.append(" " * pad)
+        text.append(f"Elapsed: {elapsed}", style=style)
         text.append("\n")
 
-        # Timestamps — always show created; show started only when it meaningfully differs (wait time)
-        text.append(f"Created:     {format_dt_local_tz(lifecycle.created_at, null='N/A', include_ms=False)}\n",
-                     style=Theme.metadata)
-        if lifecycle.started_at and int(lifecycle.created_at.timestamp()) != int(lifecycle.started_at.timestamp()):
-            text.append(f"Started:     {format_dt_local_tz(lifecycle.started_at, null='N/A', include_ms=False)}\n",
-                         style=Theme.metadata)
+        # Row 2: created + terminated (or just created)
+        created_str = format_time_local_tz(lifecycle.created_at, null='N/A', include_ms=False)
+        left = f"Created: {created_str}"
+        text.append(left, style=Theme.metadata)
         if lifecycle.termination:
-            text.append(
-                f"Terminated:  {format_dt_local_tz(lifecycle.termination.terminated_at, null='N/A', include_ms=False)}"
-                "\n",
-                style=Theme.metadata,
-            )
+            terminated_str = format_time_local_tz(lifecycle.termination.terminated_at, null='N/A', include_ms=False)
+            pad = max(col2_offset - len(left), 2)
+            text.append(" " * pad)
+            text.append(f"Ended: {terminated_str}", style=Theme.metadata)
+        text.append("\n")
 
-        # Elapsed / total run time
-        elapsed = util.format_timedelta(lifecycle.total_run_time or lifecycle.elapsed, show_ms=False, null="N/A")
-        text.append(f"Elapsed:     {elapsed}\n", style=Theme.metadata)
+        # Row 3 (optional): started, only when it meaningfully differs from created (wait time)
+        if lifecycle.started_at and int(lifecycle.created_at.timestamp()) != int(lifecycle.started_at.timestamp()):
+            text.append(f"Started: {format_time_local_tz(lifecycle.started_at, null='N/A', include_ms=False)}\n",
+                         style=Theme.metadata)
 
         # Stop reason
         if phase.stop_reason:

@@ -15,9 +15,9 @@ InstanceHeader {
 }
 
 #left-panel {
-    width: 52;
-    min-width: 40;
-    max-width: 65;
+    width: 1fr;
+    min-width: 36;
+    max-width: 72;
 }
 
 #phases-section {
