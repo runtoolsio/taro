@@ -258,9 +258,7 @@ class InstanceHeader(Static):
             ended_str = format_dt_local_tz(lifecycle.termination.terminated_at, null="N/A", include_ms=False)
             time_rows.append(("ended", ended_str))
 
-        elapsed = lifecycle.elapsed
-        elapsed_str = util.format_timedelta(elapsed, show_ms=False, null="--:--:--")
-        time_rows.append(("elapsed", elapsed_str))
+        elapsed_str = util.format_timedelta(lifecycle.elapsed, show_ms=False, null="--:--:--")
 
         # Fixed-width right column so labels align vertically
         max_row_len = max(self._TIME_LABEL_WIDTH + len(v) for _, v in time_rows)
@@ -289,6 +287,7 @@ class InstanceHeader(Static):
             stage_text = lifecycle.stage.name
         id_part.append("  ")
         id_part.append(stage_text, style=_stage_rich_style(job_run))
+        id_part.append(f"  {elapsed_str}", style=_stage_rich_style(job_run))
 
         label, value = time_rows[0]
         result = _compose_line(id_part, label, value)
