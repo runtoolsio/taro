@@ -21,12 +21,14 @@ InstanceHeader {
 }
 
 #phases-section {
-    height: 2fr;
+    height: auto;
+    min-height: 3;
+    max-height: 50%;
     border-title-align: right;
 }
 
 #detail-section {
-    height: 3fr;
+    height: 1fr;
     min-height: 8;
     border-title-align: right;
 }
@@ -37,7 +39,7 @@ InstanceHeader {
 }
 
 PhaseTree {
-    height: 1fr;
+    height: auto;
     background: transparent;
     padding: 0;
 }
