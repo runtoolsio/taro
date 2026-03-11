@@ -47,7 +47,7 @@ class DashboardScreen(Screen):
     BINDINGS = [
         Binding("escape", "quit_app", "Quit", show=True),
         Binding("q", "quit_app", "Quit", show=True),
-        Binding("d", "delete_selected", "Delete", show=True),
+        Binding("D", "delete_selected", "Delete", show=True),
     ]
 
     def __init__(self, conn: EnvironmentConnector, instances: list[JobInstance], history_runs: list[JobRun], *,

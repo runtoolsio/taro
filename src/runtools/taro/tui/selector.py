@@ -204,7 +204,7 @@ class _HistoryApp(App):
     BINDINGS = [
         Binding("escape", "quit", "Quit", show=True),
         Binding("q", "quit", "Quit", show=True),
-        Binding("d", "delete_selected", "Delete", show=True),
+        Binding("D", "delete_selected", "Delete", show=True),
     ]
 
     def __init__(self, runs: Sequence[JobRun], columns: Sequence, *,

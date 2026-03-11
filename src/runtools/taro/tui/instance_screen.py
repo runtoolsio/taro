@@ -45,7 +45,7 @@ class InstanceScreen(Screen):
         Binding("escape", "dismiss", "Back", show=True),
         Binding("q", "dismiss", "Quit", show=True),
         Binding("F", "load_full_output", "Full output", show=True),
-        Binding("E", "toggle_errors", "Errors", show=True),
+        Binding("e", "toggle_errors", "Errors", show=True),
     ]
 
     def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None,
