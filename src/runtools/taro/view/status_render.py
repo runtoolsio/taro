@@ -97,11 +97,13 @@ def _render_finished_summary(status: Status) -> Text:
     for i, op in enumerate(shown):
         if i > 0:
             text.append(SEPARATOR)
-        style = Theme.error if op.failed else "dim"
-        text.append(op.finished_summary, style=style)
+        if op.failed:
+            text.append(op.finished_summary, style=Theme.error)
+        else:
+            text.append(op.finished_summary)
     extra = len(finished) - len(shown)
     if extra > 0:
-        text.append(f" (+{extra} more)", style="dim")
+        text.append(f" (+{extra} more)")
     return text
 
 
