@@ -20,8 +20,10 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
+from textual.widgets import Footer
 
 from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent, InstanceStatusEvent
+from runtools.taro.theme import Theme
 from runtools.taro.tui.widgets import (
     InstanceHeader, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, Section, collect_phase_ids,
 )
@@ -43,6 +45,7 @@ class InstanceScreen(Screen):
         Binding("escape", "dismiss", "Back", show=True),
         Binding("q", "dismiss", "Quit", show=True),
         Binding("F", "load_full_output", "Full output", show=True),
+        Binding("E", "toggle_errors", "Errors", show=True),
     ]
 
     def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None,
@@ -77,8 +80,10 @@ class InstanceScreen(Screen):
                     yield PhaseDetail(self._job_run, live=self._live)
             with Section(id="output-section") as section:
                 section.border_title = "Output"
+                section.border_subtitle = "[dim]☐ Errors[/dim]"
                 yield OutputPanel(self._instance, self._job_run,
                                  output_reader=self._output_reader, live=self._live)
+        yield Footer()
 
     def on_mount(self) -> None:
         """Subscribe to runcore events after the widget tree is ready.
@@ -145,3 +150,9 @@ class InstanceScreen(Screen):
 
     def action_load_full_output(self) -> None:
         self.query_one(OutputPanel).load_full()
+
+    def action_toggle_errors(self) -> None:
+        panel = self.query_one(OutputPanel)
+        panel.toggle_errors_only()
+        section = self.query_one("#output-section", Section)
+        section.border_subtitle = f"[{Theme.error}]☑ Errors[/]" if panel.errors_only else "[dim]☐ Errors[/dim]"
