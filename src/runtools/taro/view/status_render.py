@@ -9,7 +9,7 @@ from datetime import datetime, UTC
 
 from rich.text import Text
 
-from runtools.runcore.status import Operation, Status
+from runtools.runcore.status import Operation, Status, MAX_OPS_IN_SUMMARY
 from runtools.taro.theme import Theme
 
 MAX_BAR = 30
@@ -84,12 +84,31 @@ def render_result(status: Status | None, width: int) -> Text:
     if status.result:
         return Text(status.result.message)
 
-    summary = status.finished_ops_summary
-    return Text(summary) if summary else Text("")
+    return _render_finished_summary(status)
+
+
+def _render_finished_summary(status: Status) -> Text:
+    """Build styled finished-ops summary with per-op error coloring."""
+    finished = [op for op in status.operations if op.finished]
+    if not finished:
+        return Text("")
+    shown = finished[:MAX_OPS_IN_SUMMARY]
+    text = Text()
+    for i, op in enumerate(shown):
+        if i > 0:
+            text.append(SEPARATOR)
+        style = Theme.error if op.failed else "dim"
+        text.append(op.finished_summary, style=style)
+    extra = len(finished) - len(shown)
+    if extra > 0:
+        text.append(f" (+{extra} more)", style="dim")
+    return text
 
 
 def _finished(op: Operation) -> Text:
-    """Dimmed finished indicator: ``name ✓ result``, ``name ✓ 50 files``, or ``name ✓``."""
+    """Dimmed finished indicator: ``name ✓ result`` or error-styled ``name ✗ reason``."""
+    if op.failed:
+        return Text(op.finished_summary, style=Theme.error)
     return Text(op.finished_summary, style="dim")
 
 
