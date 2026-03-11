@@ -240,7 +240,7 @@ class InstanceHeader(Static):
         if self._live and job_run.lifecycle.is_ended and self._timer is not None:
             self._timer.stop()
             self._timer = None
-        self.refresh()
+        self.refresh(layout=True)
 
     _TIME_LABEL_WIDTH = 9  # "created  ", "ended    ", "elapsed  "
 
