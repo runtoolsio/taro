@@ -188,7 +188,7 @@ def _pct_only(op: Operation) -> Text:
 
 def _build_bar(op: Operation, width: int) -> Text | None:
     """Full bar: ``{name} {completed}/{total} {unit} ━━━╸╺━━━ {pct}%``"""
-    completed_str = _format_number(op.completed)
+    completed_str = _format_number(op.completed) if op.completed is not None else "0"
     total_str = _format_number(op.total)
     prefix = f"{op.name} {completed_str}/{total_str}"
     if op.unit:
