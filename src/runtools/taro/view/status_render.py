@@ -9,7 +9,7 @@ from datetime import datetime, UTC
 
 from rich.text import Text
 
-from runtools.runcore.status import Operation, Status, MAX_OPS_IN_SUMMARY
+from runtools.runcore.status import Operation, Status, MAX_OPS_IN_SUMMARY, format_number
 from runtools.taro.theme import Theme
 
 MAX_BAR = 30
@@ -49,18 +49,27 @@ def render_status(status: Status | None, width: int) -> Text:
     # Be conservative: runtime table layout may be a few chars tighter than hints.
     effective_width = max(width - WIDTH_SAFETY_MARGIN, 0)
 
-    # Budget width: finished and spinner ops are fixed-size, bars split the remainder.
-    finished_cache = {id(op): _finished(op) for op in visible_ops if op.finished}
+    # Phase 1 — Allocate: active ops get full width, finished ops use the remainder.
     spinner_cache = {id(op): _spinner(op) for op in active_ops if not _has_progress(op)}
-    fixed = sum(t.cell_len for t in finished_cache.values()) + sum(t.cell_len for t in spinner_cache.values())
-    sep_total = len(SEPARATOR) * max(len(visible_ops) - 1, 0)
-    bar_width = effective_width - fixed - sep_total
-    bar_cache = _build_uniform_bars(bar_ops, bar_width)
+    spinner_width = sum(t.cell_len for t in spinner_cache.values())
+    active_sep = len(SEPARATOR) * max(len(active_ops) - 1, 0)
+    bar_cache = _build_uniform_bars(bar_ops, effective_width - spinner_width - active_sep)
+    active_width = spinner_width + sum(t.cell_len for t in (bar_cache or {}).values()) + active_sep
 
-    # Render all operations in creation order.
+    # Fit lingered finished ops into remaining width, newest kept first.
+    finished_texts = [(op, _finished(op)) for op in visible_ops if op.finished]
+    kept_finished = {}
+    remaining = effective_width - active_width
+    for op, text in reversed(finished_texts):
+        sep = len(SEPARATOR) if (active_width > 0 or kept_finished) else 0
+        if text.cell_len + sep <= remaining:
+            kept_finished[id(op)] = text
+            remaining -= text.cell_len + sep
+
+    # Phase 2 — Display: render in creation order.
     result = Text()
     for op in visible_ops:
-        text = finished_cache.get(id(op)) or spinner_cache.get(id(op)) or (bar_cache or {}).get(id(op))
+        text = kept_finished.get(id(op)) or spinner_cache.get(id(op)) or (bar_cache or {}).get(id(op))
         if text is None:
             continue
         if result.cell_len > 0:
@@ -115,7 +124,7 @@ def _finished(op: Operation) -> Text:
 
 
 def _has_progress(op: Operation) -> bool:
-    return op.pct_done is not None and op.total > 0
+    return op.pct_done is not None
 
 
 def _build_uniform_bars(bar_ops: list[Operation], width: int) -> dict[int, Text] | None:
@@ -152,18 +161,13 @@ def _build_uniform_bars(bar_ops: list[Operation], width: int) -> dict[int, Text]
     return result if result else None
 
 
-def _format_number(value: float) -> str:
-    """Format a number: drop decimal if it's a whole number."""
-    return str(int(value)) if value == int(value) else str(value)
-
-
 def _spinner(op: Operation) -> Text:
     """Spinner representation for ops without a known total: ``name ⠹ count unit``."""
     frame = SPINNER_FRAMES[int(time.monotonic() * SPINNER_FPS) % len(SPINNER_FRAMES)]
     text = Text()
     text.append(f"{op.name} ", style="")
     text.append(frame, style=Theme.success)
-    completed_str = _format_number(op.completed) if op.completed is not None else ""
+    completed_str = format_number(op.completed) if op.completed is not None else ""
     if completed_str:
         text.append(f" {completed_str}", style="dim")
         if op.unit:
@@ -188,8 +192,8 @@ def _pct_only(op: Operation) -> Text:
 
 def _build_bar(op: Operation, width: int) -> Text | None:
     """Full bar: ``{name} {completed}/{total} {unit} ━━━╸╺━━━ {pct}%``"""
-    completed_str = _format_number(op.completed) if op.completed is not None else "0"
-    total_str = _format_number(op.total)
+    completed_str = format_number(op.completed) if op.completed is not None else "0"
+    total_str = format_number(op.total)
     prefix = f"{op.name} {completed_str}/{total_str}"
     if op.unit:
         prefix += f" {op.unit}"
