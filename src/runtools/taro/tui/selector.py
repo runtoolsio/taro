@@ -280,3 +280,56 @@ def show_history(runs: Sequence[JobRun], columns: Sequence, *,
         title: Title displayed in the header.
     """
     _HistoryApp(runs, columns, connector=connector, title=title).run()
+
+
+class _HistoryPickerApp(App[Optional[JobRun]]):
+    """Pick-and-exit selector for historical job runs."""
+
+    CSS = APP_CSS
+    CSS_PATH = "selector.tcss"
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", show=True),
+        Binding("q", "cancel", "Cancel", show=True),
+    ]
+
+    def __init__(self, runs: Sequence[JobRun], columns: Sequence, *, title: str = "Select run") -> None:
+        super().__init__()
+        self._runs = {row_key(r.instance_id): r for r in runs}
+        self._columns = columns
+        self._title = title
+
+    def compose(self) -> ComposeResult:
+        yield ScreenHeader(self._title, "")
+        with Section(id="table-section") as section:
+            section.border_title = "History"
+            yield DataTable(cursor_type="row", cursor_foreground_priority="renderable")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        setup_theme(self)
+        table = self.query_one(DataTable)
+        add_columns(table, self._columns, data=self._runs.values())
+        for key, run in self._runs.items():
+            table.add_row(*build_cells(run, self._columns), key=key)
+
+    def action_cancel(self) -> None:
+        self.exit(None)
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        self.exit(self._runs.get(str(event.row_key.value)))
+
+
+def select_history_run(runs: Sequence[JobRun], columns: Sequence, *,
+                       title: str = "Select run") -> Optional[JobRun]:
+    """Show a pick-and-exit selector over historical job runs.
+
+    Args:
+        runs: Job runs to display.
+        columns: Column definitions for the table.
+        title: Title displayed in the header.
+
+    Returns:
+        Selected JobRun or None on cancel.
+    """
+    return _HistoryPickerApp(runs, columns, title=title).run()
