@@ -224,7 +224,7 @@ class DashboardScreen(Screen):
             return
         elif key in self._live_runs:
             self._live_runs[key] = job_run
-        else:
+        elif key not in self._history_runs:
             inst = self._conn.get_instance(iid)
             if inst is not None:
                 self._instances[key] = inst
