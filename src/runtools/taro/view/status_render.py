@@ -40,9 +40,10 @@ def render_status(status: Status | None, width: int) -> Text:
         op for op in status.operations
         if not op.finished or max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS
     ]
-    active_ops = [op for op in visible_ops if not op.finished]
-    if not active_ops:
+    if not visible_ops:
         return _fallback(status)
+
+    active_ops = [op for op in visible_ops if not op.finished]
     bar_ops = [op for op in active_ops if _has_progress(op)]
 
     # Be conservative: runtime table layout may be a few chars tighter than hints.
