@@ -6,6 +6,7 @@ import typer
 
 from runtools.runcore import connector
 from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
 from runtools.taro.tui.dashboard import DashboardApp
@@ -33,7 +34,10 @@ def dash(
     """
     run_match = JobRunCriteria.parse(pattern, MatchingStrategy.PARTIAL) if pattern else JobRunCriteria()
 
+    history_match = JobRunCriteria.parse(pattern, MatchingStrategy.PARTIAL) if pattern else JobRunCriteria()
+    history_match.add_date_filters(Stage.CREATED, today=True)
+
     with connector.connect(env) as conn:
         instances = list(conn.get_instances(run_match))
-        history_runs = conn.read_history_runs(run_match, asc=False, limit=history)
+        history_runs = conn.read_history_runs(history_match, asc=False, limit=history)
         DashboardApp(conn, instances, history_runs, env_name=conn.env_id, run_match=run_match).run()

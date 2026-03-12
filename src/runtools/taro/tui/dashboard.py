@@ -89,7 +89,7 @@ class DashboardScreen(Screen):
             section.border_title = self._active_title()
             yield active_table
         with Section(id="history-section") as section:
-            section.border_title = "History"
+            section.border_title = "Today"
             yield history_table
         yield Footer()
 
