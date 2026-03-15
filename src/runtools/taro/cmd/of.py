@@ -38,7 +38,7 @@ def of(
         console.print(f"[red]Error:[/] Invalid instance ID format: {e}")
         raise typer.Exit(1)
     with connector.connect(env) as conn:
-        runs: List[JobRun] = conn.read_history_runs(run_match)
+        runs: List[JobRun] = conn.read_history(run_match).job_runs
         if not runs:
             console.print(f"[red]Error:[/] Instance not found: {instance_id}")
             raise typer.Exit(1)
