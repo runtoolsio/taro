@@ -64,7 +64,7 @@ def inspect(
             console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
             return
 
-        runs = conn.read_history(run_match, SortOption.ENDED, asc=False, limit=100).job_runs
+        runs = conn.read_runs(run_match, SortOption.ENDED, asc=False, limit=100)
         if not runs:
             console.print("No matching runs")
             return

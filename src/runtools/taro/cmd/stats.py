@@ -71,7 +71,7 @@ def stats_cmd(
             console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
             return
 
-        job_stats_list = conn.read_history_stats(run_match)
+        job_stats_list = conn.read_run_stats(run_match)
 
     sorted_stats = sort_option.sort_stats(job_stats_list, reverse=descending)
     printer.print_table(sorted_stats, stats.DEFAULT_COLUMNS, show_header=True, pager=True)

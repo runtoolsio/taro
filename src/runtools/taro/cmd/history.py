@@ -94,7 +94,7 @@ def history(
             console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
             return
 
-        runs_iter = conn.iter_history_runs(run_match, sort_option, asc=ascending, limit=lines, offset=offset, last=last)
+        runs_iter = conn.iter_runs(run_match, sort_option, asc=ascending, limit=lines, offset=offset, last=last)
 
         printer_columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED,
                            view_inst.EXEC_TIME_COMPACT, view_inst.TERM_STATUS_FULL, view_inst.WARNINGS, view_inst.RESULT]

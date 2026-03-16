@@ -39,5 +39,5 @@ def dash(
 
     with connector.connect(env) as conn:
         instances = list(conn.get_instances(run_match))
-        history_runs = conn.read_history(history_match, asc=False, limit=history).job_runs
+        history_runs = conn.read_runs(history_match, asc=False, limit=history)
         DashboardApp(conn, instances, history_runs, env_name=conn.env_id, run_match=run_match).run()
