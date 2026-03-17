@@ -31,7 +31,7 @@ def mid_ellipsis(text: str, width: int) -> str:
     return text[:head] + "…" + text[-tail:]
 
 
-N = Column('N', 3, lambda j: str(j.instance_id.ordinal) if j.instance_id.ordinal > 1 else '', general_style)
+N = Column('N', 3, lambda j: str(j.instance_id.ordinal) if j.instance_id.ordinal > 1 else '', run_term_style)
 JOB_ID = Column('JOB ID', 25, lambda j: end_ellipsis(j.job_id, 25), job_id_style)
 RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 14), run_id_style)
 _muted_style = lambda _: Theme.subtle
@@ -95,7 +95,7 @@ RESULT = Column('RESULT', 50,
                 lambda j: j.status.result.message if j.status and j.status.result
                 else j.status.finished_ops_summary if j.status else '',
                 general_style, lambda j, w: render_result(j.status, w))
-WARNINGS = Column('WARN', 6, lambda j: str(len(j.status.warnings)) if j.status else '0', warn_count_style)
+WARNINGS = Column('WARN', 6, lambda j: str(len(j.status.warnings)) if j.status and j.status.warnings else '', warn_count_style)
 
 
 def render_cell(run: JobRun, col: Column, *, width: int | None = None, style_override: str = "") -> Text:

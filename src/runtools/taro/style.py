@@ -64,6 +64,8 @@ def term_style(term_status) -> str:
         return Theme.state_incomplete
     if outcome == Outcome.REJECTED:
         return Theme.state_discarded
+    if outcome == Outcome.IGNORED:
+        return Theme.subtle
 
     return ""
 
