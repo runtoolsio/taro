@@ -22,12 +22,12 @@ from runtools.taro.tui.widgets import APP_CSS, ScreenHeader, Section, build_hist
 from runtools.taro.view import instance as view_inst
 from runtools.taro.view.instance import render_cell
 
-COLUMNS = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.TERM_STATUS, view_inst.PHASES,
-           view_inst.STATUS]
+COLUMNS = [view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.TERM_STATUS,
+           view_inst.PHASES, view_inst.STATUS]
 
 
 def row_key(iid: InstanceID) -> str:
-    return f"{iid.job_id}@{iid.run_id}"
+    return str(iid)
 
 
 def build_cells(run: JobRun, columns: Sequence = COLUMNS, *,

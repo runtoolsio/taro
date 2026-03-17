@@ -2,9 +2,8 @@ from typing import List, Tuple
 
 from rich.text import Text
 
-from runtools.runcore import util
 from runtools.runcore.job import JobRun
-from runtools.runcore.run import Outcome, TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
+from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
 from runtools.runcore.util import format_dt_local_tz, format_dt_compact
 from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style
@@ -32,6 +31,7 @@ def mid_ellipsis(text: str, width: int) -> str:
     return text[:head] + "…" + text[-tail:]
 
 
+N = Column('N', 3, lambda j: str(j.instance_id.ordinal) if j.instance_id.ordinal > 1 else '', general_style)
 JOB_ID = Column('JOB ID', 25, lambda j: end_ellipsis(j.job_id, 25), job_id_style)
 RUN_ID = Column('RUN ID', 14, lambda j: mid_ellipsis(j.run_id, 14), run_id_style)
 _muted_style = lambda _: Theme.subtle

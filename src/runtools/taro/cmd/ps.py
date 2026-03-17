@@ -48,9 +48,8 @@ def ps(
             continue
 
         console.print(Padding(f"[dim]Active instances in [/][ {env_id} ]", pad=(0, 0, 0, 0)))
-        columns = [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.PHASES,
-                   view_inst.WARNINGS,
-                   view_inst.STATUS]
+        columns = [view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.PHASES,
+                   view_inst.WARNINGS, view_inst.STATUS]
         runs_sorted = sort_option.sort_runs(runs, reverse=descending)
         try:
             printer.print_table(runs_sorted, columns, show_header=True, pager=False)

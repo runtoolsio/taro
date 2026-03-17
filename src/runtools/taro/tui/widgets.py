@@ -39,7 +39,6 @@ from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
 from runtools.taro.view.status_render import render_result, render_status
 
-
 TARO_THEME = TextualTheme(
     name="taro",
     primary="#3dd6b5",       # electric mint — primary identity
@@ -275,11 +274,13 @@ class InstanceHeader(Static):
             line.append_text(right_part)
             return line
 
-        # Row 1: job_id @ run_id  STAGE                 created  HH:MM:SS
+        # Row 1: job_id @ run_id[:ordinal]  STAGE         created  HH:MM:SS
         id_part = Text()
         id_part.append(job_run.job_id, style=Theme.job)
         id_part.append(" @ ", style="")
         id_part.append(job_run.run_id, style=Theme.metadata)
+        if job_run.instance_id.ordinal > 1:
+            id_part.append(f":{job_run.instance_id.ordinal}", style=Theme.metadata)
 
         if lifecycle.is_ended and lifecycle.termination:
             stage_text = lifecycle.termination.status.name
