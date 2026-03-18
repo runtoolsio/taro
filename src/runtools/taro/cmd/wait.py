@@ -93,4 +93,5 @@ def watch_for_run(watcher, watched_stage, timeout_sec):
         console.print(
             f"\n[green]✓[/] [bold]{matched_run.instance_id}[/] reached [{stage_color}]{watched_stage.value}[/] stage at {formatted_ts}")
     elif watcher.is_timed_out:
-        console.print(f"\n[yellow]⏱️  Timeout[/] for [bold]{watcher.run_match}[/] after {timeout_sec} seconds")
+        unmatched = [e.criteria for e in watcher.watched_runs if e.matched_run is None]
+        console.print(f"\n[yellow]⏱️  Timeout[/] for [bold]{unmatched}[/] after {timeout_sec} seconds")
