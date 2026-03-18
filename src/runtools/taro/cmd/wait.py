@@ -1,12 +1,10 @@
-from concurrent.futures.thread import ThreadPoolExecutor
 from typing import List, Optional
 
 import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion
-from runtools.runcore.job import JobRun
+from runtools.runcore.criteria import criteria
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy, parse_duration_to_sec, format_dt_local_tz
 from runtools.taro import cli
@@ -42,11 +40,11 @@ def wait(
     """
     Wait for job instances to reach specific stages.
 
-    This command blocks until the specified number of instances reach the
-    target stage, then exits. Useful for scripting and automation.
+    This command blocks until each pattern is matched by a distinct run that
+    reached the target stage, then exits. Useful for scripting and automation.
 
     By default, the command first checks history for matching instances that already
-    reached the target stage. Use --no-history to wait only for future events.
+    reached the target stage. Use --future-only to wait only for future events.
 
     Examples:
         # Wait only for future completions of any run, ignore past matches
@@ -62,36 +60,28 @@ def wait(
         taro wait --stage RUNNING --future-only "batch*"
     """
     patterns = instance_patterns or ["*"]
-    executor = ThreadPoolExecutor(max_workers=len(patterns))
-    watchers = []
+    criteria_list = []
+    for pattern in patterns:
+        criteria_list.append(criteria().pattern(pattern, MatchingStrategy.FN_MATCH).reached_stage(stage).build())
+
+    timeout_sec = parse_duration_to_sec(timeout) if timeout else None
     with connector.connect(env) as conn:
-        for pattern in patterns:
-            run_match = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
-            run_match += LifecycleCriterion().reached_stage(stage)
-            watcher = conn.watcher(run_match, search_past=not future_only)
-            watchers.append(watcher)
-            executor.submit(watch_for_run, watcher, stage, parse_duration_to_sec(timeout) if timeout else None)
+        watcher = conn.watcher(*criteria_list, search_past=not future_only)
         try:
-            executor.shutdown()
-        except KeyboardInterrupt as e:
-            for w in watchers:
-                w.cancel()
-            executor.shutdown()
-            raise e
+            watcher.wait(timeout=timeout_sec)
+        except KeyboardInterrupt:
+            watcher.cancel()
+            raise
 
-    for watcher in watchers:
-        if watcher.is_timed_out:
-            raise typer.Exit(code=124)
+    for entry in watcher.watched_runs:
+        if entry.matched_run:
+            stage_color = "blue" if stage == Stage.ENDED else "green"
+            formatted_ts = format_dt_local_tz(entry.matched_run.lifecycle.transition_at(stage), include_ms=False)
+            console.print(
+                f"[green]✓[/] [bold]{entry.matched_run.instance_id}[/]"
+                f" reached [{stage_color}]{stage.value}[/] stage at {formatted_ts}")
+        elif watcher.is_timed_out:
+            console.print(f"[yellow]⏱️  Timeout[/] for [bold]{entry.criteria}[/] after {timeout_sec} seconds")
 
-
-def watch_for_run(watcher, watched_stage, timeout_sec):
-    watcher.wait(timeout=timeout_sec)
-    if watcher.matched_runs:
-        matched_run: JobRun = watcher.matched_runs[0]
-        stage_color = "blue" if watched_stage == Stage.ENDED else "green"
-        formatted_ts = format_dt_local_tz(matched_run.lifecycle.transition_at(watched_stage), include_ms=False)
-        console.print(
-            f"\n[green]✓[/] [bold]{matched_run.instance_id}[/] reached [{stage_color}]{watched_stage.value}[/] stage at {formatted_ts}")
-    elif watcher.is_timed_out:
-        unmatched = [e.criteria for e in watcher.watched_runs if e.matched_run is None]
-        console.print(f"\n[yellow]⏱️  Timeout[/] for [bold]{unmatched}[/] after {timeout_sec} seconds")
+    if watcher.is_timed_out:
+        raise typer.Exit(code=124)

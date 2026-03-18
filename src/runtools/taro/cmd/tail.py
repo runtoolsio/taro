@@ -50,9 +50,9 @@ def tail(
 ):
     """Print last output from job instances"""
     if instance_patterns:
-        metadata_criteria = [MetadataCriterion.parse(p, MatchingStrategy.PARTIAL) for p in instance_patterns]
+        metadata_criteria = tuple(MetadataCriterion.parse(p, MatchingStrategy.PARTIAL) for p in instance_patterns)
     else:
-        metadata_criteria = [MetadataCriterion.all_match()]
+        metadata_criteria = (MetadataCriterion.all_match(),)
 
     instance_to_last_line = defaultdict(lambda: 0)
     last_printed_instance = None

@@ -4,8 +4,7 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, LifecycleCriterion, TerminationCriterion, \
-    SortOption
+from runtools.runcore.criteria import criteria, JobRunCriteriaBuilder, SortOption
 from runtools.runcore.run import Outcome, Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cliutil, cli
@@ -78,11 +77,10 @@ def history(
                                                 help="Show only jobs created from now N days back"),
 ):
     """Show job runs history"""
-    run_match = JobRunCriteria.parse_all(instance_patterns,
-                                         MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
+    run_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL)
     _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault)
-    run_match.add_date_filters(filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
-                               four_weeks, month, days_back)
+    run_match.during(
+        filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back)
 
     if slowest:
         last = True
@@ -94,7 +92,7 @@ def history(
             console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
             return
 
-        runs_iter = conn.iter_runs(run_match, sort_option, asc=ascending, limit=lines, offset=offset, last=last)
+        runs_iter = conn.iter_runs(run_match.build(), sort_option, asc=ascending, limit=lines, offset=offset, last=last)
 
         printer_columns = [view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED,
                            view_inst.EXEC_TIME_COMPACT, view_inst.TERM_STATUS_FULL, view_inst.WARNINGS,
@@ -115,20 +113,15 @@ def history(
             show_history(runs, tui_columns, connector=conn)
 
 
-def _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault):
-    """Apply outcome filtering options to run_match using OR logic on termination outcome."""
-    outcome_criteria = []
-
+def _apply_outcome_filters(builder: JobRunCriteriaBuilder, success, nonsuccess, aborted, rejected, fault):
+    """Apply outcome filtering options to builder using OR logic on termination outcome."""
     if success:
-        outcome_criteria.append(TerminationCriterion(success=True))
+        builder.success()
     if nonsuccess:
-        outcome_criteria.append(TerminationCriterion(success=False))
+        builder.nonsuccess()
     if aborted:
-        outcome_criteria.append(TerminationCriterion(outcome=Outcome.ABORTED))
+        builder.termination_outcome(Outcome.ABORTED)
     if rejected:
-        outcome_criteria.append(TerminationCriterion(outcome=Outcome.REJECTED))
+        builder.termination_outcome(Outcome.REJECTED)
     if fault:
-        outcome_criteria.append(TerminationCriterion(outcome=Outcome.FAULT))
-
-    for criterion in outcome_criteria:
-        run_match += LifecycleCriterion(termination=criterion)
+        builder.termination_outcome(Outcome.FAULT)

@@ -5,7 +5,7 @@ Handles both pattern-based lookup and interactive selection when no patterns are
 
 from typing import Optional, Callable, Any
 
-from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.criteria import criteria, JobRunCriteriaBuilder
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro.tui.selector import select_instance
 
@@ -14,7 +14,7 @@ def resolve_instances(
         conn,
         patterns: Optional[list[str]],
         *,
-        update_criteria: Callable[[JobRunCriteria], Any] | None = None,
+        update_criteria: Callable[[JobRunCriteriaBuilder], Any] | None = None,
         instance_filter: Callable | None = None,
         select_title: str = "Select instance",
 ) -> list:
@@ -23,7 +23,7 @@ def resolve_instances(
     Args:
         conn: An open EnvironmentConnector.
         patterns: CLI patterns to match. None/empty triggers interactive selector.
-        update_criteria: Optional callback to add criteria (e.g. PhaseCriterion) to each query.
+        update_criteria: Optional callback to add criteria (e.g. PhaseCriterion) to the builder.
         instance_filter: Optional predicate applied to each fetched instance.
         select_title: Title for the interactive selector when multiple instances match.
 
@@ -36,11 +36,11 @@ def resolve_instances(
 
 
 def _resolve_no_patterns(conn, update_criteria, instance_filter, select_title) -> list:
-    criteria = JobRunCriteria()
+    run_match = criteria()
     if update_criteria:
-        update_criteria(criteria)
+        update_criteria(run_match)
 
-    instances = conn.get_instances(criteria)
+    instances = conn.get_instances(run_match.build())
     instances = [i for i in instances if not i.snap().lifecycle.is_ended]
 
     if instance_filter:
@@ -49,7 +49,7 @@ def _resolve_no_patterns(conn, update_criteria, instance_filter, select_title) -
     if len(instances) <= 1:
         return instances
 
-    selected = select_instance(conn, instances, run_match=criteria, title=select_title)
+    selected = select_instance(conn, instances, run_match=(run_match.build()), title=select_title)
     return [selected] if selected else []
 
 
@@ -58,11 +58,11 @@ def _resolve_with_patterns(conn, patterns, update_criteria, instance_filter) -> 
     result = []
 
     for pattern in patterns:
-        criteria = JobRunCriteria.parse(pattern, MatchingStrategy.FN_MATCH)
+        run_match = criteria().pattern(pattern, MatchingStrategy.FN_MATCH)
         if update_criteria:
-            update_criteria(criteria)
+            update_criteria(run_match)
 
-        instances = conn.get_instances(criteria)
+        instances = conn.get_instances(run_match.build())
         if instance_filter:
             instances = [i for i in instances if instance_filter(i)]
 

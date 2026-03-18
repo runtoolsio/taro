@@ -4,7 +4,7 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.criteria import criteria
 from runtools.runcore.job import StatsSortOption
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
@@ -60,18 +60,15 @@ def stats_cmd(
                                                 help="Show only jobs created from now N days back"),
 ):
     """Show job statistics"""
-    run_match = JobRunCriteria.parse_all(instance_patterns,
-                                         MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
-
-    run_match.add_date_filters(filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
-                               four_weeks, month, days_back)
-
+    run_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL)
+    run_match.during(filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
+                         four_weeks, month, days_back)
     with connector.connect(env) as conn:
         if not conn.persistence_enabled:
             console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
             return
 
-        job_stats_list = conn.read_run_stats(run_match)
+        job_stats_list = conn.read_run_stats(run_match.build())
 
     sorted_stats = sort_option.sort_stats(job_stats_list, reverse=descending)
     printer.print_table(sorted_stats, stats.DEFAULT_COLUMNS, show_header=True, pager=True)

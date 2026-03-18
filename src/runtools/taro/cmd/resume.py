@@ -30,9 +30,9 @@ def resume(
     with connector.connect(env) as conn:
         instances = resolve_instances(
             conn, instance_patterns,
-            update_criteria=lambda c: (
-                c.add(PhaseCriterion(phase_id=phase, lifecycle=LifecycleCriterion(stage=Stage.CREATED))),
-                c.add(PhaseCriterion(phase_id=phase, idle=True)),
+            update_criteria=lambda b: (
+                b.phase(PhaseCriterion(phase_id=phase, lifecycle=LifecycleCriterion(stage=Stage.CREATED))),
+                b.phase(PhaseCriterion(phase_id=phase, idle=True)),
             ),
             instance_filter=lambda inst: inst.find_phase_control_by_id(phase),
             select_title="Select instance to resume",
