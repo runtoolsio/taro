@@ -5,7 +5,7 @@ from rich.console import Console
 from rich.padding import Padding
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, SortOption
+from runtools.runcore.matching import JobRunCriteria, SortOption
 from runtools.runcore.env import get_env_configs
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli, cliutil

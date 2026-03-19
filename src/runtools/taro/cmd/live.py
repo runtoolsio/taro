@@ -19,7 +19,7 @@ from rich.text import Text
 
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
-from runtools.runcore.criteria import JobRunCriteria, SortOption
+from runtools.runcore.matching import JobRunCriteria, SortOption
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobRun
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy

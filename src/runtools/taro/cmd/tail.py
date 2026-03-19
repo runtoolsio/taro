@@ -8,7 +8,7 @@ from rich.console import Console
 
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
-from runtools.runcore.criteria import JobRunCriteria, MetadataCriterion
+from runtools.runcore.matching import JobRunCriteria, MetadataCriterion
 from runtools.runcore.job import InstanceOutputObserver, InstanceOutputEvent
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli, cliutil

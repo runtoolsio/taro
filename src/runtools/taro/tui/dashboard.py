@@ -15,7 +15,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer
 
 from runtools.runcore.connector import EnvironmentConnector
-from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.matching import JobRunCriteria
 from runtools.runcore.job import InstancePhaseEvent, JobInstance, JobRun
 from runtools.runcore.output import MultiSourceOutputReader
 from runtools.runcore.run import Stage

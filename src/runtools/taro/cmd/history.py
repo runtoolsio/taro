@@ -4,7 +4,7 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import criteria, JobRunCriteriaBuilder, SortOption
+from runtools.runcore.matching import criteria, JobRunCriteriaBuilder, SortOption
 from runtools.runcore.run import Outcome, Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cliutil, cli

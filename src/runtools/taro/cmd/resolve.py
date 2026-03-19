@@ -5,7 +5,7 @@ Handles both pattern-based lookup and interactive selection when no patterns are
 
 from typing import Optional, Callable, Any
 
-from runtools.runcore.criteria import criteria, JobRunCriteriaBuilder
+from runtools.runcore.matching import criteria, JobRunCriteriaBuilder
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro.tui.selector import select_instance
 

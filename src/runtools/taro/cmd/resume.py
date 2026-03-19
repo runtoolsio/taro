@@ -4,7 +4,7 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import PhaseCriterion, LifecycleCriterion
+from runtools.runcore.matching import PhaseCriterion, LifecycleCriterion
 from runtools.runcore.run import Stage
 from runtools.taro import cli, cliutil, printer
 from runtools.taro.cmd.resolve import resolve_instances

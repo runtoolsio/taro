@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.syntax import Syntax
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria, SortOption
+from runtools.runcore.matching import JobRunCriteria, SortOption
 from runtools.runcore.job import JobRun
 from runtools.runcore.util import MatchingStrategy
 from runtools.runcore.util.dt import format_dt_sql

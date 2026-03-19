@@ -5,7 +5,7 @@ from typing import List, Optional
 import typer
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import criteria
+from runtools.runcore.matching import criteria
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli

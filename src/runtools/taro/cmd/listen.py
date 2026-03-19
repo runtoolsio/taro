@@ -5,7 +5,7 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.matching import JobRunCriteria
 from runtools.runcore.job import InstanceLifecycleEvent
 from runtools.runcore.util import MatchingStrategy, format_dt_local_tz
 from runtools.taro import cli, printer

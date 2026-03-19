@@ -4,7 +4,7 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.criteria import criteria
+from runtools.runcore.matching import criteria
 from runtools.runcore.job import StatsSortOption
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy

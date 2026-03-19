@@ -12,7 +12,7 @@ from textual.binding import Binding
 from textual.widgets import DataTable, Footer
 
 from runtools.runcore.connector import EnvironmentConnector
-from runtools.runcore.criteria import JobRunCriteria
+from runtools.runcore.matching import JobRunCriteria
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobInstance, JobRun
 from runtools.runcore.output import MultiSourceOutputReader
 from runtools.runcore.run import Stage
