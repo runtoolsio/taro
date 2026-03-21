@@ -4,8 +4,8 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.matching import JobRunCriteria
 from runtools.runcore.job import JobRun
+from runtools.runcore.matching import JobRunCriteria
 from runtools.taro import cli
 
 app = typer.Typer(name="of", invoke_without_command=True)
@@ -37,7 +37,8 @@ def of(
     except ValueError as e:
         console.print(f"[red]Error:[/] Invalid instance ID format: {e}")
         raise typer.Exit(1)
-    with connector.connect(env) as conn:
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         runs: List[JobRun] = conn.read_runs(run_match)
         if not runs:
             console.print(f"[red]Error:[/] Instance not found: {instance_id}")

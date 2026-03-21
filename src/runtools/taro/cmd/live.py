@@ -19,8 +19,8 @@ from rich.text import Text
 
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
-from runtools.runcore.matching import JobRunCriteria, SortOption
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobRun
+from runtools.runcore.matching import JobRunCriteria, SortOption
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli
@@ -246,5 +246,6 @@ def live(
         taro live --env production
     """
     run_match = JobRunCriteria.parse_all(instance_patterns, MatchingStrategy.PARTIAL) if instance_patterns else None
-    with connector.connect(env) as conn:
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         LiveView(conn, conn.env_id, run_match, sort_option, descending).run()

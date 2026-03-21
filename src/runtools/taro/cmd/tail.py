@@ -8,8 +8,8 @@ from rich.console import Console
 
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
-from runtools.runcore.matching import JobRunCriteria, MetadataCriterion
 from runtools.runcore.job import InstanceOutputObserver, InstanceOutputEvent
+from runtools.runcore.matching import JobRunCriteria, MetadataCriterion
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli, cliutil
 
@@ -57,7 +57,8 @@ def tail(
     instance_to_last_line = defaultdict(lambda: 0)
     last_printed_instance = None
 
-    conn = connector.connect(env)
+    resolved = cli.select_env(env)
+    conn = connector.connect(resolved)
     tail_print = TailPrint(conn, metadata_criteria, show_ordinal)
     conn.notifications.add_observer_output(tail_print)
     conn.open()

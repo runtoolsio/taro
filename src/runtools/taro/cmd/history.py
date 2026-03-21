@@ -87,11 +87,8 @@ def history(
         sort_option = SortOption.TIME
         ascending = False
 
-    with connector.connect(env) as conn:
-        if not conn.persistence_enabled:
-            console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
-            return
-
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         runs_iter = conn.iter_runs(run_match.build(), sort_option, asc=ascending, limit=lines, offset=offset, last=last)
 
         printer_columns = [view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.ENDED,

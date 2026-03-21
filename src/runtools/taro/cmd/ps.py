@@ -5,8 +5,8 @@ from rich.console import Console
 from rich.padding import Padding
 
 from runtools.runcore import connector
+from runtools.runcore.env import available_environments
 from runtools.runcore.matching import JobRunCriteria, SortOption
-from runtools.runcore.env import get_env_configs
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli, cliutil
 from runtools.taro.view import instance as view_inst
@@ -32,10 +32,11 @@ def ps(
     run_match = JobRunCriteria.parse_all(instance_patterns,
                                          MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
     if all_envs:
-        env_configs = get_env_configs().values()
-        connectors = [(env_config.id, connector.create(env_config)) for env_config in env_configs]
+        entries = available_environments()
+        connectors = [(entry.id, connector.connect(entry)) for entry in entries]
     else:
-        conn = connector.connect(env)
+        entry = cli.select_env(env)
+        conn = connector.connect(entry)
         connectors = [(conn.env_id, conn)]
 
     empty_envs = []

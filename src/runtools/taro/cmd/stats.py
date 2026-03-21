@@ -4,8 +4,8 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.matching import criteria
 from runtools.runcore.job import StatsSortOption
+from runtools.runcore.matching import criteria
 from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import printer, cli
@@ -63,11 +63,8 @@ def stats_cmd(
     run_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL)
     run_match.during(filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks,
                          four_weeks, month, days_back)
-    with connector.connect(env) as conn:
-        if not conn.persistence_enabled:
-            console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
-            return
-
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         job_stats_list = conn.read_run_stats(run_match.build())
 
     sorted_stats = sort_option.sort_stats(job_stats_list, reverse=descending)

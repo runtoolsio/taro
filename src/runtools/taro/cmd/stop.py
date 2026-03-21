@@ -25,7 +25,8 @@ def stop(
         ),
 ):
     """Stop running job instances"""
-    with connector.connect(env) as conn:
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         instances = resolve_instances(conn, instance_patterns, select_title="Select instance to stop")
 
         if not instances:

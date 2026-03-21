@@ -8,8 +8,8 @@ from rich.console import Console
 from rich.syntax import Syntax
 
 from runtools.runcore import connector
-from runtools.runcore.matching import JobRunCriteria, SortOption
 from runtools.runcore.job import JobRun
+from runtools.runcore.matching import JobRunCriteria, SortOption
 from runtools.runcore.util import MatchingStrategy
 from runtools.runcore.util.dt import format_dt_sql
 from runtools.taro import cli
@@ -59,11 +59,8 @@ def inspect(
     run_match = JobRunCriteria.parse_all(instance_patterns,
                                          MatchingStrategy.PARTIAL) if instance_patterns else JobRunCriteria.all()
 
-    with connector.connect(env) as conn:
-        if not conn.persistence_enabled:
-            console.print(f"[yellow]⚠[/] Persistence disabled for environment [cyan]{conn.env_id}[/]")
-            return
-
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         runs = conn.read_runs(run_match, SortOption.ENDED, asc=False, limit=100)
         if not runs:
             console.print("No matching runs")

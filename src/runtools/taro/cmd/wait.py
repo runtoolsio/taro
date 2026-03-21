@@ -65,7 +65,8 @@ def wait(
         criteria_list.append(criteria().pattern(pattern, MatchingStrategy.FN_MATCH).reached_stage(stage).build())
 
     timeout_sec = parse_duration_to_sec(timeout) if timeout else None
-    with connector.connect(env) as conn:
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         watcher = conn.watcher(*criteria_list, search_past=not future_only)
         try:
             watcher.wait(timeout=timeout_sec)

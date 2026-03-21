@@ -5,8 +5,8 @@ import typer
 from rich.console import Console
 
 from runtools.runcore import connector
-from runtools.runcore.matching import JobRunCriteria
 from runtools.runcore.job import InstanceLifecycleEvent
+from runtools.runcore.matching import JobRunCriteria
 from runtools.runcore.util import MatchingStrategy, format_dt_local_tz
 from runtools.taro import cli, printer
 from runtools.taro.view import instance as view_inst
@@ -52,7 +52,8 @@ def listen(
     """
     run_match = JobRunCriteria.parse_all(instance_patterns, MatchingStrategy.PARTIAL) if instance_patterns else None
     event_queue = Queue()
-    with connector.connect(env) as conn:
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         conn.notifications.add_observer_lifecycle(lambda e: event_queue.put(e))  # 1. Register observer first (no events missed)
 
         runs = conn.get_active_runs(run_match)  # 2. Get and display current active instances

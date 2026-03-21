@@ -36,7 +36,8 @@ def dash(
     active_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL).build()
     history_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL).during(Stage.CREATED, today=True).build()
 
-    with connector.connect(env) as conn:
+    resolved = cli.select_env(env)
+    with connector.connect(resolved) as conn:
         instances = list(conn.get_instances(active_match))
         history_runs = conn.read_runs(history_match, asc=False, limit=history_limit)
         DashboardApp(conn, instances, history_runs, env_name=conn.env_id, run_match=active_match).run()
