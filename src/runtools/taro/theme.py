@@ -15,6 +15,20 @@ _ERROR = '#ff6b6b'        # vivid coral red
 _MUTED = '#6f7f96'        # softened slate
 
 
+def prompt_style():
+    """Questionary prompt style matching the Taro palette. Lazy import to avoid top-level dependency."""
+    from questionary import Style as QStyle
+    return QStyle([
+        ('qmark', f'fg:{_PRIMARY} bold'),
+        ('question', 'bold'),
+        ('pointer', f'fg:{_ACCENT} bold'),
+        ('highlighted', f'fg:{_ACCENT} bold'),
+        ('answer', f'fg:{_PRIMARY} bold'),
+        ('instruction', f'fg:{_MUTED}'),
+        ('disabled', f'fg:{_MUTED} italic'),
+    ])
+
+
 class Theme:
     highlight = 'bold'
     job = f'bold {_PRIMARY}'

@@ -16,6 +16,7 @@ dependencies = [
     "textual>=8.0.0",
     "typer>=0.15.4",
     "rich>=14.0.0",
+    "questionary>=2.1.0",
 ]
 
 [project.optional-dependencies]

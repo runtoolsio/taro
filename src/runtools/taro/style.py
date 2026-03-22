@@ -71,6 +71,8 @@ def term_style(term_status) -> str:
 
 
 def run_term_style(job_run) -> str:
+    if not job_run.lifecycle.termination:
+        return ""
     return term_style(job_run.lifecycle.termination.status)
 
 
