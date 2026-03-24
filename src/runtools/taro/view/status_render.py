@@ -39,7 +39,7 @@ def render_status(status: Status | None, width: int, is_ended: bool = False) -> 
     now = datetime.now(UTC).replace(tzinfo=None)
     visible_ops = [
         op for op in status.operations
-        if not op.finished or max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS
+        if not op.scoped and (not op.finished or max(0, (now - op.updated_at).total_seconds()) < FINISHED_LINGER_SECONDS)
     ]
     active_ops = [op for op in visible_ops if not op.finished]
     if not visible_ops or (is_ended and not active_ops):
@@ -111,7 +111,7 @@ def render_result(status: Status | None, width: int) -> Text:
 
 def _render_finished_summary(status: Status) -> Text:
     """Build styled finished-ops summary with per-op error coloring."""
-    finished = [op for op in status.operations if op.finished]
+    finished = [op for op in status.operations if op.finished and not op.scoped]
     if not finished:
         return Text("")
     shown = finished[:MAX_OPS_IN_SUMMARY]

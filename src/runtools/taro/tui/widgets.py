@@ -406,6 +406,48 @@ class PhaseTree(Tree[str]):
             self.select_node(self._node_map[cursor_phase_id])
 
 
+def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = True) -> None:
+    """Append a single operation to a Rich Text block.
+
+    Finished operations render as a one-line summary (``name ✓ result elapsed``).
+    Active operations show name, optional percentage, and progress counts.
+
+    Args:
+        text: Rich Text object to append to.
+        op: Operation snapshot to render.
+        use_display_name: If True (default), use ``display_name`` (includes scope).
+            Set to False when rendering inside a scope group to avoid redundancy.
+    """
+    name = op.display_name if use_display_name else op.name
+    if op.finished:
+        mark = "✗" if op.failed else "✓"
+        parts = []
+        if op.completed is not None:
+            s = format_number(op.completed)
+            if op.unit:
+                s += f" {op.unit}"
+            parts.append(s)
+        if op.result:
+            parts.append(f"({op.result})" if parts else op.result)
+        if op.elapsed:
+            parts.append(op.elapsed)
+        summary = f"{name} {mark} {' '.join(parts)}" if parts else f"{name} {mark}"
+        text.append(f"{summary}\n", style=Theme.error if op.failed else "dim")
+    else:
+        text.append(name, style="")
+        if op.pct_done is not None:
+            pct = round(max(0.0, min(op.pct_done, 1.0)) * 100)
+            text.append(f" {pct}%", style=Theme.state_executing)
+        if op.completed is not None:
+            parts = format_number(op.completed)
+            if op.total is not None:
+                parts += f"/{format_number(op.total)}"
+            if op.unit:
+                parts += f" {op.unit}"
+            text.append(f" {parts}", style=Theme.metadata)
+        text.append("\n")
+
+
 class PhaseDetail(Static):
     """Detail panel showing full information about the currently selected phase.
 
@@ -453,22 +495,24 @@ class PhaseDetail(Static):
             else:
                 phase_ids = collect_phase_ids(phase)
                 visible_ops = [op for op in self._job_run.status.operations if op.source in phase_ids]
-            for op in visible_ops:
-                if op.finished:
-                    text.append(f"{op.finished_summary}\n", style=Theme.error if op.failed else "dim")
-                else:
-                    text.append(f"{op.name}", style="")
-                    if op.pct_done is not None:
-                        pct = round(max(0.0, min(op.pct_done, 1.0)) * 100)
-                        text.append(f" {pct}%", style=Theme.state_executing)
-                    if op.completed is not None:
-                        parts = format_number(op.completed)
-                        if op.total is not None:
-                            parts += f"/{format_number(op.total)}"
-                        if op.unit:
-                            parts += f" {op.unit}"
-                        text.append(f" {parts}", style=Theme.metadata)
-                    text.append("\n")
+            global_ops = [op for op in visible_ops if not op.scoped]
+            scoped_ops = [op for op in visible_ops if op.scoped]
+
+            for op in global_ops:
+                _render_operation(text, op)
+
+            if scoped_ops:
+                scope_groups: dict[str, list] = {}
+                for op in scoped_ops:
+                    scope_groups.setdefault(op.scope, []).append(op)
+                for scope, ops in scope_groups.items():
+                    rule_width = max(self.size.width - len(scope) - 6, 4)
+                    text.append(f"── {scope} ", style=Theme.label)
+                    text.append("─" * rule_width + "\n", style=Theme.metadata)
+                    for op in ops:
+                        text.append("  ")
+                        _render_operation(text, op, use_display_name=False)
+
             if visible_ops:
                 text.append("─" * max(self.size.width - 2, 10) + "\n", style=Theme.metadata)
 
