@@ -30,6 +30,7 @@ InstanceHeader {
 #detail-section {
     height: 1fr;
     min-height: 8;
+    overflow-y: auto;
     border-title-align: right;
 }
 
@@ -45,7 +46,7 @@ PhaseTree {
 }
 
 PhaseDetail {
-    height: 1fr;
+    height: auto;
 }
 
 OutputPanel {

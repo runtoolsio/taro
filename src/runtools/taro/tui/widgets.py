@@ -506,9 +506,7 @@ class PhaseDetail(Static):
                 for op in scoped_ops:
                     scope_groups.setdefault(op.scope, []).append(op)
                 for scope, ops in scope_groups.items():
-                    rule_width = max(self.size.width - len(scope) - 6, 4)
-                    text.append(f"── {scope} ", style=Theme.label)
-                    text.append("─" * rule_width + "\n", style=Theme.metadata)
+                    text.append(f"── {scope}\n", style=Theme.label)
                     for op in ops:
                         text.append("  ")
                         _render_operation(text, op, use_display_name=False)

@@ -2,4 +2,4 @@
 Taro - Command line interface for runtools.
 """
 
-__version__ = "0.1.41"
+__version__ = "0.1.44"
