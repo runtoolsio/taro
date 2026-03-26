@@ -461,10 +461,20 @@ class PhaseDetail(Static):
         self._phase_id = job_run.root_phase.phase_id
         self._live = live
         self._timer = None
+        self._show_details = False
 
     def on_mount(self) -> None:
         if self._live and not self._job_run.lifecycle.is_ended:
             self._timer = self.set_interval(1.0, self.refresh)
+
+    def toggle_details(self) -> None:
+        """Toggle visibility of scoped operations and zero-total operations."""
+        self._show_details = not self._show_details
+        self.refresh(layout=True)
+
+    @property
+    def show_details(self) -> bool:
+        return self._show_details
 
     def update_phase(self, phase_id: str) -> None:
         """Select a different phase to display."""
@@ -496,20 +506,22 @@ class PhaseDetail(Static):
                 phase_ids = collect_phase_ids(phase)
                 visible_ops = [op for op in self._job_run.status.operations if op.source in phase_ids]
             global_ops = [op for op in visible_ops if not op.scoped]
-            scoped_ops = [op for op in visible_ops if op.scoped]
-
             for op in global_ops:
                 _render_operation(text, op)
 
+            scoped_ops = [op for op in visible_ops if op.scoped]
             if scoped_ops:
-                scope_groups: dict[str, list] = {}
-                for op in scoped_ops:
-                    scope_groups.setdefault(op.scope, []).append(op)
-                for scope, ops in scope_groups.items():
-                    text.append(f"── {scope}\n", style=Theme.label)
-                    for op in ops:
-                        text.append("  ")
-                        _render_operation(text, op, use_display_name=False)
+                if self._show_details:
+                    scope_groups: dict[str, list] = {}
+                    for op in scoped_ops:
+                        scope_groups.setdefault(op.scope, []).append(op)
+                    for scope, ops in scope_groups.items():
+                        text.append(f"── {scope}\n", style=Theme.label)
+                        for op in ops:
+                            text.append("  ")
+                            _render_operation(text, op, use_display_name=False)
+                else:
+                    text.append("scoped ops hidden (D for details)\n", style="dim")
 
             if visible_ops:
                 text.append("─" * max(self.size.width - 2, 10) + "\n", style=Theme.metadata)
@@ -556,14 +568,14 @@ class PhaseDetail(Static):
         if lifecycle.termination and lifecycle.termination.message:
             text.append(f"Message:     {lifecycle.termination.message}\n")
 
-        # Attributes
-        if phase.attributes:
+        # Attributes (detail mode only)
+        if self._show_details and phase.attributes:
             text.append("\nAttributes\n", style=Theme.section_heading)
             for key, value in phase.attributes.items():
                 text.append(f"  {key}: {value}\n", style=Theme.metadata)
 
-        # Variables
-        if phase.variables:
+        # Variables (detail mode only)
+        if self._show_details and phase.variables:
             text.append("\nVariables\n", style=Theme.section_heading)
             for key, value in phase.variables.items():
                 text.append(f"  {key}: {value}\n", style=Theme.metadata)
@@ -612,12 +624,15 @@ class OutputBuffer:
         for line in lines:
             self.add_line(line)
 
-    def get_lines(self, phase_ids: set[str] | None = None, errors_only: bool = False) -> list[OutputLine]:
+    def get_lines(self, phase_ids: set[str] | None = None, errors_only: bool = False,
+                   hide_op_updates: bool = False) -> list[OutputLine]:
         lines = self._lines
         if phase_ids is not None:
             lines = [line for line in lines if line.source in phase_ids]
         if errors_only:
             lines = [line for line in lines if line.is_error]
+        if hide_op_updates:
+            lines = [line for line in lines if not line.is_op_update]
         return lines
 
 
@@ -645,6 +660,7 @@ class OutputPanel(RichLog):
         self._buffer = OutputBuffer()
         self._phase_filter: set[str] | None = None  # None = show all
         self._errors_only: bool = False
+        self._hide_op_updates: bool = True
         self._load_generation = 0  # incremented on any reload (filter change or full load)
         self._tail_mode: bool = not live  # history starts in tail mode
         self._output_observer = None
@@ -658,7 +674,8 @@ class OutputPanel(RichLog):
         if self._instance is not None:
             try:
                 self._buffer.add_lines(self._instance.output.tail())
-                self._write_batch(self._buffer.get_lines(self._phase_filter))
+                self._write_batch(self._buffer.get_lines(
+                    self._phase_filter, hide_op_updates=self._hide_op_updates))
             except InstanceCallError:
                 # Instance may have ended — fall back to storage reader
                 if self._output_reader:
@@ -678,6 +695,8 @@ class OutputPanel(RichLog):
         if self._phase_filter is not None and line.source not in self._phase_filter:
             return
         if self._errors_only and not line.is_error:
+            return
+        if self._hide_op_updates and line.is_op_update:
             return
         self._write_line(line)
 
@@ -703,6 +722,8 @@ class OutputPanel(RichLog):
 
         if self._errors_only:
             lines = [line for line in lines if line.is_error]
+        if self._hide_op_updates:
+            lines = [line for line in lines if not line.is_op_update]
         gen = self._load_generation
         truncated = self._tail_mode and len(lines) >= self._DEFAULT_TAIL_LINES
 
@@ -723,28 +744,35 @@ class OutputPanel(RichLog):
         if phase_ids == self._phase_filter:
             return
         self._phase_filter = phase_ids
-        if self._live:
-            # Live mode: filter from in-memory buffer (instant)
-            self._load_generation += 1
-            self.clear()
-            self._write_batch(self._buffer.get_lines(phase_ids, errors_only=self._errors_only))
-        else:
-            # History mode: reload from storage with targeted sources + max_lines
-            self._reload_history()
+        self._refresh_output()
 
     def toggle_errors_only(self) -> None:
-        """Toggle error-only output filter. Returns new state."""
+        """Toggle error-only output filter."""
         self._errors_only = not self._errors_only
+        self._refresh_output()
+
+    def toggle_op_updates(self) -> None:
+        """Toggle visibility of operation status update lines."""
+        self._hide_op_updates = not self._hide_op_updates
+        self._refresh_output()
+
+    def _refresh_output(self) -> None:
+        """Re-render output with current filters."""
         if self._live:
             self._load_generation += 1
             self.clear()
-            self._write_batch(self._buffer.get_lines(self._phase_filter, errors_only=self._errors_only))
+            self._write_batch(self._buffer.get_lines(
+                self._phase_filter, errors_only=self._errors_only, hide_op_updates=self._hide_op_updates))
         else:
             self._reload_history()
 
     @property
     def errors_only(self) -> bool:
         return self._errors_only
+
+    @property
+    def hide_op_updates(self) -> bool:
+        return self._hide_op_updates
 
     def load_full(self) -> None:
         """Switch from tail mode to full output and reload."""

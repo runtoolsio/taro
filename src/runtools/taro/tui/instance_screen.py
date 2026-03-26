@@ -46,6 +46,8 @@ class InstanceScreen(Screen):
         Binding("q", "dismiss", "Quit", show=True),
         Binding("F", "load_full_output", "Full output", show=True),
         Binding("e", "toggle_errors", "Errors", show=True),
+        Binding("v", "toggle_verbose", "Verbose", show=True),
+        Binding("d", "toggle_details", "Details", show=True),
     ]
 
     def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None,
@@ -76,11 +78,11 @@ class InstanceScreen(Screen):
                     section.border_title = "Phases"
                     yield PhaseTree(self._job_run, live=self._live)
                 with Section(id="detail-section") as section:
-                    section.border_title = "Detail"
+                    section.border_title = "Phase Info"
                     yield PhaseDetail(self._job_run, live=self._live)
             with Section(id="output-section") as section:
                 section.border_title = "Output"
-                section.border_subtitle = "[dim]☐ Errors[/dim]"
+                section.border_subtitle = "[dim]☐ Errors[/dim]  [dim]☐ Verbose[/dim]"
                 yield OutputPanel(self._instance, self._job_run,
                                  output_reader=self._output_reader, live=self._live)
         yield Footer()
@@ -152,7 +154,21 @@ class InstanceScreen(Screen):
         self.query_one(OutputPanel).load_full()
 
     def action_toggle_errors(self) -> None:
+        self.query_one(OutputPanel).toggle_errors_only()
+        self._update_output_subtitle()
+
+    def action_toggle_verbose(self) -> None:
+        self.query_one(OutputPanel).toggle_op_updates()
+        self._update_output_subtitle()
+
+    def action_toggle_details(self) -> None:
+        detail = self.query_one(PhaseDetail)
+        detail.toggle_details()
+        section = self.query_one("#detail-section", Section)
+        section.border_title = "Phase Info (detailed)" if detail.show_details else "Phase Info"
+
+    def _update_output_subtitle(self) -> None:
         panel = self.query_one(OutputPanel)
-        panel.toggle_errors_only()
-        section = self.query_one("#output-section", Section)
-        section.border_subtitle = f"[{Theme.error}]☑ Errors[/]" if panel.errors_only else "[dim]☐ Errors[/dim]"
+        errors = f"[{Theme.error}]☑ Errors[/]" if panel.errors_only else "[dim]☐ Errors[/dim]"
+        verbose = "☑ Verbose" if not panel.hide_op_updates else "[dim]☐ Verbose[/dim]"
+        self.query_one("#output-section", Section).border_subtitle = f"{errors}  {verbose}"

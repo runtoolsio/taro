@@ -37,6 +37,7 @@ InstanceHeader {
 #output-section {
     width: 3fr;
     border-title-align: right;
+    border-subtitle-align: right;
 }
 
 PhaseTree {
