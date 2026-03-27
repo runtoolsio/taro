@@ -521,7 +521,8 @@ class PhaseDetail(Static):
                             text.append("  ")
                             _render_operation(text, op, use_display_name=False)
                 else:
-                    text.append("scoped ops hidden (D for details)\n", style="dim")
+                    text.append("scoped ops hidden ", style=Theme.idle)
+                    text.append("(press d for details)\n", style="dim")
 
             if visible_ops:
                 text.append("─" * max(self.size.width - 2, 10) + "\n", style=Theme.metadata)
