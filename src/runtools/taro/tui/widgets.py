@@ -347,6 +347,7 @@ class PhaseTree(Tree[str]):
     def on_mount(self) -> None:
         self._populate_children(self.root, self._job_run.root_phase)
         self.root.expand_all()
+        self.root.allow_expand = False
         if self._live and not self._job_run.lifecycle.is_ended:
             self._timer = self.set_interval(1.0, self._update_labels)
 
@@ -371,7 +372,7 @@ class PhaseTree(Tree[str]):
     def _populate_children(self, parent_node: TreeNode[str], phase: PhaseRun) -> None:
         """Recursively add children to the Textual tree and register them in _node_map."""
         for child in phase.children:
-            child_node = parent_node.add(_phase_label(child), data=child.phase_id)
+            child_node = parent_node.add(_phase_label(child), data=child.phase_id, allow_expand=False)
             self._node_map[child.phase_id] = child_node
             self._populate_children(child_node, child)
 
@@ -400,6 +401,7 @@ class PhaseTree(Tree[str]):
         self.root.data = root_phase.phase_id
         self._populate_children(self.root, root_phase)
         self.root.expand_all()
+        self.root.allow_expand = False
 
         # Restore cursor position if the previously highlighted phase still exists
         if cursor_phase_id and cursor_phase_id in self._node_map:
