@@ -447,6 +447,8 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
             if op.unit:
                 parts += f" {op.unit}"
             text.append(f" {parts}", style=Theme.metadata)
+        elif op.elapsed:
+            text.append(f" {op.elapsed}", style="dim")
         text.append("\n")
 
 
