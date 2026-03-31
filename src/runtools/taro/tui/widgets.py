@@ -439,8 +439,8 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
         text.append(f"{summary}\n", style=Theme.error if op.failed else "dim")
     else:
         text.append(name, style="")
-        if op.completed is not None:
-            parts = format_number(op.completed)
+        if op.completed is not None or op.total is not None:
+            parts = format_number(op.completed) if op.completed is not None else "0"
             if op.total is not None:
                 parts += f"/{format_number(op.total)}"
             if op.unit:
