@@ -16,6 +16,7 @@ Textual quick reference for maintainers:
 
 import os
 from bisect import insort
+from datetime import datetime, UTC
 from typing import Callable, Iterable, Optional
 
 from rich.text import Text
@@ -34,6 +35,7 @@ from runtools.runcore.job import JobInstance, JobRun, InstanceOutputEvent
 from runtools.runcore.output import OutputLine, OutputReadError
 from runtools.runcore.run import Outcome, PhaseRun, Stage
 from runtools.runcore.status import format_number
+from runtools.runcore.util.dt import format_timedelta_compact
 from runtools.runcore.util import format_dt_local_tz, format_time_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
@@ -437,9 +439,6 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
         text.append(f"{summary}\n", style=Theme.error if op.failed else "dim")
     else:
         text.append(name, style="")
-        if op.pct_done is not None:
-            pct = round(max(0.0, min(op.pct_done, 1.0)) * 100)
-            text.append(f" {pct}%", style=Theme.state_executing)
         if op.completed is not None:
             parts = format_number(op.completed)
             if op.total is not None:
@@ -447,8 +446,9 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
             if op.unit:
                 parts += f" {op.unit}"
             text.append(f" {parts}", style=Theme.metadata)
-        elif op.elapsed:
-            text.append(f" {op.elapsed}", style="dim")
+        if op.created_at:
+            running = datetime.now(UTC).replace(tzinfo=None) - op.created_at
+            text.append(f" {format_timedelta_compact(running)}", style="dim")
         text.append("\n")
 
 
