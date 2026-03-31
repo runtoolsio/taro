@@ -517,7 +517,15 @@ class PhaseDetail(Static):
                     scope_groups: dict[str, list] = {}
                     for op in scoped_ops:
                         scope_groups.setdefault(op.scope, []).append(op)
-                    for scope, ops in scope_groups.items():
+                    def _scope_sort_key(item):
+                        ops = item[1]
+                        if any(not o.finished for o in ops):
+                            return 0  # running
+                        if any(o.failed for o in ops):
+                            return 1  # failed
+                        return 2  # completed
+
+                    for scope, ops in sorted(scope_groups.items(), key=_scope_sort_key):
                         text.append(f"── {scope}\n", style=Theme.label)
                         for op in ops:
                             text.append("  ")
