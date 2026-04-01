@@ -27,6 +27,17 @@ InstanceHeader {
     border-title-align: right;
 }
 
+#warnings-section {
+    height: auto;
+    max-height: 10;
+    overflow-y: auto;
+    border-title-align: right;
+}
+
+WarningsPanel {
+    height: auto;
+}
+
 #detail-section {
     height: 1fr;
     min-height: 8;
@@ -34,8 +45,12 @@ InstanceHeader {
     border-title-align: right;
 }
 
-#output-section {
+#right-panel {
     width: 3fr;
+}
+
+#output-section {
+    height: 1fr;
     border-title-align: right;
     border-subtitle-align: right;
 }

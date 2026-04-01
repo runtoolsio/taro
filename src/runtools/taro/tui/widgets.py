@@ -502,13 +502,24 @@ class PhaseDetail(Static):
         lifecycle = phase.lifecycle
         text = Text()
 
+        # Phase identity (always shown)
+        text.append(phase.phase_id, style=Theme.label)
+        text.append(f"  {_phase_stage_text(phase)}", style=style)
+        elapsed = util.format_timedelta(lifecycle.total_run_time or lifecycle.elapsed, show_ms=False, null="")
+        if elapsed:
+            text.append(f"  {elapsed}", style="dim")
+        text.append("\n\n")
+
         # Operations filtered by selected phase + descendants (root shows all)
+        visible_ops = []
         if self._job_run.status and self._job_run.status.operations:
             if self._phase_id == self._job_run.root_phase.phase_id:
                 visible_ops = self._job_run.status.operations
             else:
                 phase_ids = collect_phase_ids(phase)
                 visible_ops = [op for op in self._job_run.status.operations if op.source in phase_ids]
+
+        if visible_ops:
             global_ops = [op for op in visible_ops if not op.scoped]
             for op in global_ops:
                 _render_operation(text, op)
@@ -533,67 +544,15 @@ class PhaseDetail(Static):
                             text.append("  ")
                             _render_operation(text, op, use_display_name=False)
                 else:
-                    text.append("scoped ops hidden ", style=Theme.idle)
-                    text.append("(press d for details)\n", style="dim")
+                    text.append("\n")
+                    text.append("(press d to view scoped ops)\n", style="dim")
+        else:
+            text.append("(no tracked operations)\n", style="dim")
 
-            if visible_ops:
-                text.append("─" * max(self.size.width - 2, 10) + "\n", style=Theme.metadata)
+        if visible_ops and (self._show_details or self._job_run.faults):
+            text.append("─" * max(self.size.width - 2, 10) + "\n", style=Theme.metadata)
 
-        # Phase ID and type
-        text.append(phase.phase_id, style=Theme.label)
-        if phase.phase_type:
-            text.append(f"  ({phase.phase_type})", style=Theme.metadata)
-        text.append("\n")
-
-        # Two-column layout: stage+elapsed, then timestamps
-        col2_offset = 20  # column 2 starts here
-
-        # Row 1: stage + elapsed
-        stage_text = _phase_stage_text(phase)
-        text.append(stage_text, style=style)
-        elapsed = util.format_timedelta(lifecycle.total_run_time or lifecycle.elapsed, show_ms=False, null="N/A")
-        pad = max(col2_offset - len(stage_text), 2)
-        text.append(" " * pad)
-        text.append(f"Elapsed: {elapsed}", style=style)
-        text.append("\n")
-
-        # Row 2: created + terminated (or just created)
-        created_str = format_time_local_tz(lifecycle.created_at, null='N/A', include_ms=False)
-        left = f"Created: {created_str}"
-        text.append(left, style=Theme.metadata)
-        if lifecycle.termination:
-            terminated_str = format_time_local_tz(lifecycle.termination.terminated_at, null='N/A', include_ms=False)
-            pad = max(col2_offset - len(left), 2)
-            text.append(" " * pad)
-            text.append(f"Ended: {terminated_str}", style=Theme.metadata)
-        text.append("\n")
-
-        # Row 3 (optional): started, only when it meaningfully differs from created (wait time)
-        if lifecycle.started_at and int(lifecycle.created_at.timestamp()) != int(lifecycle.started_at.timestamp()):
-            text.append(f"Started: {format_time_local_tz(lifecycle.started_at, null='N/A', include_ms=False)}\n",
-                         style=Theme.metadata)
-
-        # Stop reason
-        if phase.stop_reason:
-            text.append(f"Stop reason: {phase.stop_reason.name}\n", style=Theme.state_incomplete)
-
-        # Termination message
-        if lifecycle.termination and lifecycle.termination.message:
-            text.append(f"Message:     {lifecycle.termination.message}\n")
-
-        # Attributes (detail mode only)
-        if self._show_details and phase.attributes:
-            text.append("\nAttributes\n", style=Theme.section_heading)
-            for key, value in phase.attributes.items():
-                text.append(f"  {key}: {value}\n", style=Theme.metadata)
-
-        # Variables (detail mode only)
-        if self._show_details and phase.variables:
-            text.append("\nVariables\n", style=Theme.section_heading)
-            for key, value in phase.variables.items():
-                text.append(f"  {key}: {value}\n", style=Theme.metadata)
-
-        # Faults
+        # Faults (always shown — critical info)
         if self._job_run.faults:
             text.append("\nFaults\n", style=Theme.state_failure)
             for fault in self._job_run.faults:
@@ -601,16 +560,70 @@ class PhaseDetail(Static):
                 if fault.stack_trace:
                     text.append(f"{fault.stack_trace}\n", style="dim")
 
-        # Termination stack trace
-        if lifecycle.termination and lifecycle.termination.stack_trace:
-            text.append("\nStack trace\n", style=Theme.state_failure)
-            text.append(f"{lifecycle.termination.stack_trace}\n", style="dim")
+        # Phase metadata (detail mode only)
+        if self._show_details:
+            if phase.phase_type:
+                text.append(f"Type: {phase.phase_type}\n", style=Theme.metadata)
 
-        # Children count
-        if phase.children:
-            text.append(f"\n{len(phase.children)} {'child' if len(phase.children) == 1 else 'children'}\n",
-                         style=Theme.metadata)
+            col2_offset = 20
+            created_str = format_time_local_tz(lifecycle.created_at, null='N/A', include_ms=False)
+            left = f"Created: {created_str}"
+            text.append(left, style=Theme.metadata)
+            if lifecycle.termination:
+                terminated_str = format_time_local_tz(lifecycle.termination.terminated_at, null='N/A', include_ms=False)
+                pad = max(col2_offset - len(left), 2)
+                text.append(" " * pad)
+                text.append(f"Ended: {terminated_str}", style=Theme.metadata)
+            text.append("\n")
 
+            if lifecycle.started_at and int(lifecycle.created_at.timestamp()) != int(lifecycle.started_at.timestamp()):
+                text.append(f"Started: {format_time_local_tz(lifecycle.started_at, null='N/A', include_ms=False)}\n",
+                             style=Theme.metadata)
+
+            if phase.stop_reason:
+                text.append(f"Stop reason: {phase.stop_reason.name}\n", style=Theme.state_incomplete)
+
+            if lifecycle.termination and lifecycle.termination.message:
+                text.append(f"Message:     {lifecycle.termination.message}\n")
+
+            if phase.attributes:
+                text.append("\nAttributes\n", style=Theme.section_heading)
+                for key, value in phase.attributes.items():
+                    text.append(f"  {key}: {value}\n", style=Theme.metadata)
+
+            if phase.variables:
+                text.append("\nVariables\n", style=Theme.section_heading)
+                for key, value in phase.variables.items():
+                    text.append(f"  {key}: {value}\n", style=Theme.metadata)
+
+            if lifecycle.termination and lifecycle.termination.stack_trace:
+                text.append("\nStack trace\n", style=Theme.state_failure)
+                text.append(f"{lifecycle.termination.stack_trace}\n", style="dim")
+
+            if phase.children:
+                text.append(f"\n{len(phase.children)} {'child' if len(phase.children) == 1 else 'children'}\n",
+                             style=Theme.metadata)
+
+        return text
+
+
+class WarningsPanel(Static):
+    """Panel showing job-level warnings. Hidden when no warnings exist."""
+
+    def __init__(self, job_run: JobRun) -> None:
+        super().__init__()
+        self._job_run = job_run
+
+    def update_run(self, job_run: JobRun) -> None:
+        self._job_run = job_run
+        self.display = bool(job_run.status and job_run.status.warnings)
+        self.refresh(layout=True)
+
+    def render(self) -> Text:
+        text = Text()
+        if self._job_run.status and self._job_run.status.warnings:
+            for w in self._job_run.status.warnings:
+                text.append(f"⚠ {w.message}\n", style=Theme.warning)
         return text
 
 

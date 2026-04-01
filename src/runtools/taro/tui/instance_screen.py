@@ -25,7 +25,8 @@ from textual.widgets import Footer
 from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent, InstanceStatusEvent
 from runtools.taro.theme import Theme
 from runtools.taro.tui.widgets import (
-    InstanceHeader, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, Section, collect_phase_ids,
+    InstanceHeader, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, Section, WarningsPanel,
+    collect_phase_ids,
 )
 
 
@@ -80,11 +81,16 @@ class InstanceScreen(Screen):
                 with Section(id="detail-section") as section:
                     section.border_title = "Phase Info"
                     yield PhaseDetail(self._job_run, live=self._live)
-            with Section(id="output-section") as section:
-                section.border_title = "Output"
-                section.border_subtitle = "[dim]☐ Errors[/dim]  [dim]☐ Verbose[/dim]"
-                yield OutputPanel(self._instance, self._job_run,
-                                 output_reader=self._output_reader, live=self._live)
+            with Vertical(id="right-panel"):
+                with Section(id="warnings-section") as section:
+                    section.border_title = "Warnings"
+                    section.display = bool(self._job_run.status and self._job_run.status.warnings)
+                    yield WarningsPanel(self._job_run)
+                with Section(id="output-section") as section:
+                    section.border_title = "Output"
+                    section.border_subtitle = "[dim]☐ Errors[/dim]  [dim]☐ Verbose[/dim]"
+                    yield OutputPanel(self._instance, self._job_run,
+                                     output_reader=self._output_reader, live=self._live)
         yield Footer()
 
     def on_mount(self) -> None:
@@ -123,6 +129,7 @@ class InstanceScreen(Screen):
         self._job_run = event.job_run
         self.query_one(InstanceHeader).update_run(event.job_run)
         self.query_one(PhaseDetail).update_run(event.job_run)
+        self._update_warnings(event.job_run)
 
     def _on_lifecycle_event(self, event: InstanceLifecycleEvent) -> None:
         self._update_run(event.job_run)
@@ -140,7 +147,14 @@ class InstanceScreen(Screen):
         self.query_one(InstanceHeader).update_run(job_run)
         self.query_one(PhaseTree).update_run(job_run)
         self.query_one(PhaseDetail).update_run(job_run)
+        self._update_warnings(job_run)
         self._update_output_filter()
+
+    def _update_warnings(self, job_run: JobRun) -> None:
+        warnings_panel = self.query_one(WarningsPanel)
+        warnings_panel.update_run(job_run)
+        self.query_one("#warnings-section", Section).display = bool(
+            job_run.status and job_run.status.warnings)
 
     def _update_output_filter(self) -> None:
         """Recompute the output phase filter from the current snapshot and selected phase."""
