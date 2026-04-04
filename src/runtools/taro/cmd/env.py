@@ -73,27 +73,40 @@ def delete(
 
 
 @app.command()
-def config(
+def show(
         env_id: Optional[str] = cli.ENV_OPTION_FIELD,
-        edit: bool = typer.Option(False, "--edit", help="Edit config in $EDITOR (TOML presentation)"),
 ):
-    """Show or edit DB-stored configuration for an environment."""
+    """Show DB-stored configuration for an environment."""
+    entry = cli.select_env(env_id)
+    env_config = load_env_config(entry)
+    console.print(Padding(f"[dim]Environment:[/] [ {entry.id} ]", pad=(0, 0, 0, 0)))
+    print(format_toml(env_config.model_dump(mode='json')))
+
+
+@app.command()
+def edit(
+        env_id: Optional[str] = cli.ENV_OPTION_FIELD,
+):
+    """Edit DB-stored configuration in $EDITOR."""
     entry = cli.select_env(env_id)
     env_config = load_env_config(entry)
 
-    if not edit:
-        console.print(Padding(f"[dim]Environment:[/] [ {entry.id} ]", pad=(0, 0, 0, 0)))
-        print(format_toml(env_config.model_dump(mode='json')))
-        return
-
-    # Edit mode: dump current config as TOML, open in editor, parse back
     dump = env_config.model_dump(mode='json', exclude={'type', 'id'})
-    toml_content = format_toml(dump)
+    original_content = (
+        "# Environment configuration (TOML format)\n"
+        "# Lines starting with # are comments and ignored.\n"
+        "#\n"
+        "# Example plugin config:\n"
+        "# [[plugins.sns.rules]]\n"
+        '# term_status = "failed"\n'
+        '# topic_arn = "arn:aws:sns:eu-west-1:123:alerts"\n'
+        "\n"
+        + format_toml(dump) + "\n"
+    )
 
     editor = os.environ.get('EDITOR', 'vi')
     with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
-        f.write(toml_content)
-        f.write('\n')
+        f.write(original_content)
         tmp_path = f.name
 
     try:
@@ -103,6 +116,11 @@ def config(
             raise typer.Exit(1)
 
         edited = read_toml_file(tmp_path)
+        original_normalized = tomllib.loads(format_toml(dump))
+        if edited == original_normalized:
+            console.print("[dim]No changes made[/dim]")
+            os.unlink(tmp_path)
+            return
         edited['type'] = 'local'
         edited['id'] = entry.id
         new_config = LocalEnvironmentConfig.model_validate(edited)
@@ -112,6 +130,7 @@ def config(
         raise
     except (tomllib.TOMLDecodeError, ValidationError) as e:
         console.print(f"[red]Invalid configuration:[/] {e}")
+        console.print(f"[dim]Temp file kept at: {tmp_path}[/dim]")
         raise typer.Exit(1)
-    finally:
+    else:
         os.unlink(tmp_path)
