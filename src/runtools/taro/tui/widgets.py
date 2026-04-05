@@ -291,6 +291,8 @@ class InstanceHeader(Static):
         id_part.append("  ")
         id_part.append(stage_text, style=_stage_rich_style(job_run))
         id_part.append(f"  {elapsed_str}", style=_stage_rich_style(job_run))
+        if job_run.metadata.features:
+            id_part.append(f"  [{', '.join(job_run.metadata.features)}]", style="dim")
 
         label, value = time_rows[0]
         result = _compose_line(id_part, label, value)
