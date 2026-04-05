@@ -98,8 +98,10 @@ def edit(
         "#\n"
         "# Example plugin config:\n"
         "# [[plugins.sns.rules]]\n"
-        '# term_status = "failed"\n'
+        '# stage = ["running", "ended"]    # created, running, ended (default: ended)\n'
+        '# term_status = "failed"          # narrows ended: failed, completed, stopped, etc.\n'
         '# topic_arn = "arn:aws:sns:eu-west-1:123:alerts"\n'
+        '# format = "slack"                # json (default) or slack\n'
         "\n"
         + format_toml(dump) + "\n"
     )
