@@ -660,7 +660,7 @@ class OutputBuffer:
         if errors_only:
             lines = [line for line in lines if line.is_error]
         if hide_op_updates:
-            lines = [line for line in lines if not line.is_op_update]
+            lines = [line for line in lines if not line.is_tracking_only]
         return lines
 
 
@@ -724,7 +724,7 @@ class OutputPanel(RichLog):
             return
         if self._errors_only and not line.is_error:
             return
-        if self._hide_op_updates and line.is_op_update:
+        if self._hide_op_updates and line.is_tracking_only:
             return
         self._write_line(line)
 
@@ -751,7 +751,7 @@ class OutputPanel(RichLog):
         if self._errors_only:
             lines = [line for line in lines if line.is_error]
         if self._hide_op_updates:
-            lines = [line for line in lines if not line.is_op_update]
+            lines = [line for line in lines if not line.is_tracking_only]
         gen = self._load_generation
         truncated = self._tail_mode and len(lines) >= self._DEFAULT_TAIL_LINES
 
