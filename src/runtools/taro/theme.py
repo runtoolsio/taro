@@ -52,3 +52,10 @@ class Theme:
     metadata = _SECONDARY
     label = f'bold {_PRIMARY}'
     section_heading = f'bold {_ACCENT}'
+
+    # Output log styles
+    log_timestamp = '#5a6a80'       # dim cool slate — recedes as background reference
+    log_logger = '#7a9ec2'          # soft blue — distinct hue from timestamp gray
+    log_info = '#4dbda8'            # teal mint — clear identity, ties to brand
+    log_debug = '#636b78'           # dim neutral — least prominent level
+    log_field_key = '#8a7f91'       # dusty lavender — warm contrast to cool tones

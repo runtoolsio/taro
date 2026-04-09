@@ -172,7 +172,7 @@ class InstanceScreen(Screen):
         self._update_output_subtitle()
 
     def action_toggle_verbose(self) -> None:
-        self.query_one(OutputPanel).toggle_op_updates()
+        self.query_one(OutputPanel).toggle_verbose()
         self._update_output_subtitle()
 
     def action_toggle_details(self) -> None:
@@ -184,5 +184,5 @@ class InstanceScreen(Screen):
     def _update_output_subtitle(self) -> None:
         panel = self.query_one(OutputPanel)
         errors = f"[{Theme.error}]☑ Errors[/]" if panel.errors_only else "[dim]☐ Errors[/dim]"
-        verbose = "☑ Verbose" if not panel.hide_op_updates else "[dim]☐ Verbose[/dim]"
+        verbose = "☑ Verbose" if panel.verbose else "[dim]☐ Verbose[/dim]"
         self.query_one("#output-section", Section).border_subtitle = f"{errors}  {verbose}"

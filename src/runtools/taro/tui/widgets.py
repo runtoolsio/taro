@@ -652,16 +652,75 @@ class OutputBuffer:
         for line in lines:
             self.add_line(line)
 
-    def get_lines(self, phase_ids: set[str] | None = None, errors_only: bool = False,
-                   hide_op_updates: bool = False) -> list[OutputLine]:
+    def get_lines(self, phase_ids: set[str] | None = None, errors_only: bool = False) -> list[OutputLine]:
         lines = self._lines
         if phase_ids is not None:
             lines = [line for line in lines if line.source in phase_ids]
         if errors_only:
             lines = [line for line in lines if line.is_error]
-        if hide_op_updates:
-            lines = [line for line in lines if not line.is_tracking_only]
-        return lines
+        return [line for line in lines if not line.is_tracking_only]
+
+
+_LEVEL_DISPLAY = {
+    'DEBUG': ('DEBUG', Theme.log_debug),
+    'INFO': ('INFO ', Theme.log_info),
+    'WARNING': ('WARN ', Theme.warning),
+    'WARN': ('WARN ', Theme.warning),
+    'ERROR': ('ERROR', Theme.error),
+    'CRITICAL': ('CRIT ', f'bold {Theme.error}'),
+}
+
+
+def _abbreviate_logger(name: str) -> str:
+    """Abbreviate logger name: 3+ segments → keep last 2."""
+    parts = name.split('.')
+    return '.'.join(parts[-2:]) if len(parts) >= 3 else name
+
+
+def _format_time(timestamp: str) -> str:
+    """Extract HH:MM:SS.mmm from ISO 8601 timestamp."""
+    t = timestamp.split('T')[-1]
+    for i, c in enumerate(t):
+        if c in 'Z+-' and i > 0:
+            t = t[:i]
+            break
+    return t[:12]
+
+
+def _append_fields(text: Text, fields: dict) -> None:
+    text.append("  ")
+    first = True
+    for k, v in fields.items():
+        if not first:
+            text.append(" ")
+        text.append(f"{k}=", style=Theme.log_field_key)
+        text.append(str(v))
+        first = False
+
+
+def _format_line_verbose(line: OutputLine) -> Text:
+    text = Text()
+    if line.timestamp:
+        text.append(_format_time(line.timestamp), style=Theme.log_timestamp)
+        text.append(" ")
+    if line.level:
+        label, style = _LEVEL_DISPLAY.get(line.level, (f'{line.level:<5}', ''))
+        text.append(label, style=style)
+        text.append("  ")
+    if line.logger:
+        text.append(_abbreviate_logger(line.logger), style=Theme.log_logger)
+        text.append("  ")
+    text.append(line.message, style=Theme.error if line.is_error else "")
+    if line.fields:
+        _append_fields(text, line.fields)
+    return text
+
+
+def _format_line_plain(line: OutputLine) -> Text:
+    text = Text(line.message, style=Theme.error if line.is_error else "")
+    if line.fields:
+        _append_fields(text, line.fields)
+    return text
 
 
 class OutputPanel(RichLog):
@@ -688,7 +747,7 @@ class OutputPanel(RichLog):
         self._buffer = OutputBuffer()
         self._phase_filter: set[str] | None = None  # None = show all
         self._errors_only: bool = False
-        self._hide_op_updates: bool = True
+        self._verbose: bool = False
         self._load_generation = 0  # incremented on any reload (filter change or full load)
         self._tail_mode: bool = not live  # history starts in tail mode
         self._output_observer = None
@@ -702,8 +761,7 @@ class OutputPanel(RichLog):
         if self._instance is not None:
             try:
                 self._buffer.add_lines(self._instance.output.tail())
-                self._write_batch(self._buffer.get_lines(
-                    self._phase_filter, hide_op_updates=self._hide_op_updates))
+                self._write_batch([l for l in self._buffer.get_lines(self._phase_filter) if self._should_show(l)])
             except InstanceCallError:
                 # Instance may have ended — fall back to storage reader
                 if self._output_reader:
@@ -716,17 +774,22 @@ class OutputPanel(RichLog):
             self._instance.notifications.remove_observer_output(self._output_observer)
             self._output_observer = None
 
+    def _should_show(self, line: OutputLine) -> bool:
+        if line.is_tracking_only:
+            return False
+        if self._phase_filter is not None and line.source not in self._phase_filter:
+            return False
+        if self._errors_only and not line.is_error:
+            return False
+        if not self._verbose and line.level == 'DEBUG':
+            return False
+        return True
+
     def _on_output(self, event: InstanceOutputEvent) -> None:
         """Handle a live output event — called on Textual's event loop via call_from_thread."""
         self._buffer.add_line(event.output_line)
-        line = event.output_line
-        if self._phase_filter is not None and line.source not in self._phase_filter:
-            return
-        if self._errors_only and not line.is_error:
-            return
-        if self._hide_op_updates and line.is_tracking_only:
-            return
-        self._write_line(line)
+        if self._should_show(event.output_line):
+            self._write_line(event.output_line)
 
     def _reload_history(self) -> None:
         """Clear display and reload history output from storage with current filter/tail settings."""
@@ -748,10 +811,7 @@ class OutputPanel(RichLog):
                 self.app.call_from_thread(self.write, Text(f"Error reading output: {e}", style=Theme.error))
             return
 
-        if self._errors_only:
-            lines = [line for line in lines if line.is_error]
-        if self._hide_op_updates:
-            lines = [line for line in lines if not line.is_tracking_only]
+        lines = [line for line in lines if self._should_show(line)]
         gen = self._load_generation
         truncated = self._tail_mode and len(lines) >= self._DEFAULT_TAIL_LINES
 
@@ -779,9 +839,9 @@ class OutputPanel(RichLog):
         self._errors_only = not self._errors_only
         self._refresh_output()
 
-    def toggle_op_updates(self) -> None:
-        """Toggle visibility of operation status update lines."""
-        self._hide_op_updates = not self._hide_op_updates
+    def toggle_verbose(self) -> None:
+        """Toggle verbose structured output format."""
+        self._verbose = not self._verbose
         self._refresh_output()
 
     def _refresh_output(self) -> None:
@@ -789,8 +849,7 @@ class OutputPanel(RichLog):
         if self._live:
             self._load_generation += 1
             self.clear()
-            self._write_batch(self._buffer.get_lines(
-                self._phase_filter, errors_only=self._errors_only, hide_op_updates=self._hide_op_updates))
+            self._write_batch([l for l in self._buffer.get_lines(self._phase_filter) if self._should_show(l)])
         else:
             self._reload_history()
 
@@ -799,8 +858,8 @@ class OutputPanel(RichLog):
         return self._errors_only
 
     @property
-    def hide_op_updates(self) -> bool:
-        return self._hide_op_updates
+    def verbose(self) -> bool:
+        return self._verbose
 
     def load_full(self) -> None:
         """Switch from tail mode to full output and reload."""
@@ -808,6 +867,9 @@ class OutputPanel(RichLog):
             return
         self._tail_mode = False
         self._reload_history()
+
+    def _format_line(self, line: OutputLine) -> Text:
+        return _format_line_verbose(line) if self._verbose else _format_line_plain(line)
 
     def _write_batch(self, lines: list[OutputLine]) -> None:
         """Write multiple lines as a single Text object to minimize DOM updates."""
@@ -817,11 +879,11 @@ class OutputPanel(RichLog):
         for i, line in enumerate(lines):
             if i > 0:
                 batch.append("\n")
-            batch.append(line.message, style=Theme.error if line.is_error else "")
+            batch.append_text(self._format_line(line))
         self.write(batch)
 
     def _write_line(self, line: OutputLine) -> None:
-        self.write(Text(line.message, style=Theme.error if line.is_error else ""))
+        self.write(self._format_line(line))
 
 
 class _OutputObserver:
