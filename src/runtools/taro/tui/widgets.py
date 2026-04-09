@@ -813,18 +813,15 @@ class OutputPanel(RichLog):
         """Write multiple lines as a single Text object to minimize DOM updates."""
         if not lines:
             return
-        verbose = not self._hide_op_updates
         batch = Text()
         for i, line in enumerate(lines):
             if i > 0:
                 batch.append("\n")
-            msg = line.verbose_message if verbose else line.message
-            batch.append(msg, style=Theme.error if line.is_error else "")
+            batch.append(line.message, style=Theme.error if line.is_error else "")
         self.write(batch)
 
     def _write_line(self, line: OutputLine) -> None:
-        msg = line.verbose_message if not self._hide_op_updates else line.message
-        self.write(Text(msg, style=Theme.error if line.is_error else ""))
+        self.write(Text(line.message, style=Theme.error if line.is_error else ""))
 
 
 class _OutputObserver:
