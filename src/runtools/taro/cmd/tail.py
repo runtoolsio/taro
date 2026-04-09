@@ -5,13 +5,16 @@ from typing import List, Optional
 
 import typer
 from rich.console import Console
+from rich.text import Text
 
 from runtools.runcore import connector
 from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.job import InstanceOutputObserver, InstanceOutputEvent
 from runtools.runcore.matching import JobRunCriteria, MetadataCriterion
+from runtools.runcore.output import OutputLine
 from runtools.runcore.util import MatchingStrategy
 from runtools.taro import cli, cliutil
+from runtools.taro.view.output_render import format_line_verbose, format_line_plain
 
 app = typer.Typer(name="tail", invoke_without_command=True)
 console = Console()
@@ -47,6 +50,11 @@ def tail(
             "-o", "--ordinal",
             help="Show line numbers (ordinals) for each output line"
         ),
+        verbose: bool = typer.Option(
+            False,
+            "-v", "--verbose",
+            help="Show timestamp, level, logger, and DEBUG lines"
+        ),
 ):
     """Print last output from job instances"""
     if instance_patterns:
@@ -59,16 +67,17 @@ def tail(
 
     resolved = cli.select_env(env)
     conn = connector.connect(resolved)
-    tail_print = TailPrint(conn, metadata_criteria, show_ordinal)
+    tail_print = TailPrint(conn, metadata_criteria, show_ordinal, verbose)
     conn.notifications.add_observer_output(tail_print)
     conn.open()
     try:
         for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
             print_instance_header(inst)
             for output_line in inst.output.tail(max_lines=lines):
-                print_line(output_line, show_ordinal)
-                instance_to_last_line[inst.metadata] = output_line.ordinal
-                last_printed_instance = inst.metadata
+                if _should_show(output_line, verbose):
+                    print_line(output_line, show_ordinal, verbose)
+                    instance_to_last_line[inst.metadata] = output_line.ordinal
+                    last_printed_instance = inst.metadata
     finally:
         if not follow:
             conn.close()
@@ -85,10 +94,11 @@ def tail(
 
 class TailPrint(InstanceOutputObserver):
 
-    def __init__(self, conn, metadata_criteria, show_ordinal):
+    def __init__(self, conn, metadata_criteria, show_ordinal, verbose):
         self.connector = conn
         self.metadata_criteria = metadata_criteria
         self.show_ordinal = show_ordinal
+        self.verbose = verbose
         self.last_printed_instance = None
         self.print_lock = Lock()
         self.latch = Event()
@@ -104,24 +114,35 @@ class TailPrint(InstanceOutputObserver):
         last_line = self.instance_to_last_line[event.instance]
         if event.output_line.ordinal <= last_line or not any(1 for c in self.metadata_criteria if c(event.instance)):
             return
+        if not _should_show(event.output_line, self.verbose):
+            return
         try:
             with self.print_lock:
                 if self.last_printed_instance != event.instance:
                     print_instance_header(event.instance)
                 self.last_printed_instance = event.instance
-                print_line(event.output_line, self.show_ordinal)
+                print_line(event.output_line, self.show_ordinal, self.verbose)
         except BrokenPipeError:
             self.connector.close()
             cliutil.handle_broken_pipe(exit_code=1)
+
+
+def _should_show(line: OutputLine, verbose: bool) -> bool:
+    if line.is_tracking_only:
+        return False
+    if not verbose and line.level == 'DEBUG':
+        return False
+    return True
 
 
 def print_instance_header(inst):
     console.print(f"\n[bold cyan]{'─' * 20}[/] [bold]{inst.job_id}@{inst.run_id}[/] [bold cyan]{'─' * 20}[/]")
 
 
-def print_line(output_line, show_ordinal):
-    text = f"{output_line.ordinal}: {output_line.message}" if show_ordinal else output_line.message
-    if output_line.is_error:
-        console.print(f"[red]{text}[/]", highlight=False)
-    else:
-        console.print(text, highlight=False)
+def print_line(output_line, show_ordinal, verbose):
+    formatted = format_line_verbose(output_line) if verbose else format_line_plain(output_line)
+    if show_ordinal:
+        text = Text(f"{output_line.ordinal}: ")
+        text.append_text(formatted)
+        formatted = text
+    console.print(formatted, highlight=False)
