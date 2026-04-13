@@ -1,0 +1,30 @@
+#active-section {
+    height: auto;
+    min-height: 3;
+    max-height: 40%;
+    opacity: 80%;
+    &:focus-within {
+        opacity: 100%;
+    }
+    &.-empty {
+        opacity: 30%;
+    }
+}
+
+#history-section {
+    height: 1fr;
+    opacity: 60%;
+    border: round $accent 40%;
+    &:focus-within {
+        opacity: 75%;
+        border: round $accent 70%;
+    }
+}
+
+#active-table {
+    height: auto;
+}
+
+#history-table {
+    height: 1fr;
+}

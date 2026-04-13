@@ -136,7 +136,7 @@ class Section(Vertical):
     """
 
 
-_METRIC_SEP = "  ·  "
+METRIC_SEP = "  ·  "
 
 
 def build_history_metrics(runs: Iterable[JobRun], *, active_count: int | None = None) -> Text:
@@ -156,12 +156,12 @@ def build_history_metrics(runs: Iterable[JobRun], *, active_count: int | None = 
     text = Text()
     if active_count is not None:
         text.append(f"{active_count} active", style=Theme.state_executing if active_count else "dim")
-        text.append(_METRIC_SEP, style="dim")
+        text.append(METRIC_SEP, style="dim")
     text.append(f"{succeeded} completed", style="dim")
-    text.append(_METRIC_SEP, style="dim")
+    text.append(METRIC_SEP, style="dim")
     text.append(f"{failed} failed", style=Theme.state_failure if failed else "dim")
     if other:
-        text.append(_METRIC_SEP, style="dim")
+        text.append(METRIC_SEP, style="dim")
         text.append(f"{other} other", style="dim")
     return text
 

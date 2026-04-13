@@ -6,7 +6,7 @@ from rich.text import Text
 
 from runtools.runcore.err import RuntoolsException
 from runtools.taro import __version__
-from runtools.taro.cmd import approve, clean, dash, env, history, inspect, listen, live, of, ps, resume, stats, stop, tail, wait
+from runtools.taro.cmd import approve, clean, dash, env, history, inspect, jobs, listen, live, of, ps, resume, stats, stop, tail, wait
 
 console = Console(stderr=True)
 
@@ -30,6 +30,7 @@ app.add_typer(clean.app, name="clean")
 app.add_typer(dash.app, name="dash")
 app.add_typer(env.app, name="env")
 app.add_typer(history.app, name="history")
+app.add_typer(jobs.app, name="jobs")
 app.add_typer(inspect.app, name="inspect")
 app.add_typer(listen.app, name="listen")
 app.add_typer(live.app, name="live")
@@ -44,6 +45,7 @@ app.add_typer(wait.app, name="wait")
 # Single-char aliases for frequently used commands
 app.add_typer(dash.app, name="d", hidden=True)
 app.add_typer(history.app, name="h", hidden=True)
+app.add_typer(jobs.app, name="j", hidden=True)
 app.add_typer(live.app, name="l", hidden=True)
 app.add_typer(stats.app, name="s", hidden=True)
 app.add_typer(tail.app, name="t", hidden=True)

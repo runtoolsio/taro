@@ -1,0 +1,10 @@
+#jobs-section {
+    height: 1fr;
+    &:focus-within {
+        border: round $accent 70%;
+    }
+}
+
+#jobs-table {
+    height: 1fr;
+}
