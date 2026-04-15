@@ -22,6 +22,7 @@ from typing import Callable, Iterable, Optional
 from rich.text import Text
 from textual import work
 from textual.app import App
+from textual.binding import Binding
 from textual.containers import Vertical
 from textual.message import Message
 from textual.theme import Theme as TextualTheme
@@ -676,6 +677,18 @@ class OutputPanel(RichLog):
     _WRITE_BATCH_SIZE = 500
     _DEFAULT_TAIL_LINES = 1000
 
+    BINDINGS = [
+        Binding("j", "scroll_down", "Down", show=False),
+        Binding("k", "scroll_up", "Up", show=False),
+        Binding("g", "scroll_home", "Top", show=False),
+        Binding("G", "scroll_end", "Bottom", show=False),
+        Binding("ctrl+d", "scroll_half_down", "Half Page Down", show=False),
+        Binding("ctrl+u", "scroll_half_up", "Half Page Up", show=False),
+        Binding("slash", "search", "Search", show=True),
+        Binding("n", "search_next", "Next Match", show=False),
+        Binding("N", "search_prev", "Prev Match", show=False),
+    ]
+
     def __init__(self, instance: Optional[JobInstance], job_run: JobRun, *,
                  output_reader: Optional[Callable] = None, live: bool = False) -> None:
         super().__init__(wrap=True, highlight=False, markup=False)
@@ -690,6 +703,9 @@ class OutputPanel(RichLog):
         self._load_generation = 0  # incremented on any reload (filter change or full load)
         self._tail_mode: bool = not live  # history starts in tail mode
         self._output_observer = None
+        self._search_query: str = ""
+        self._search_matches: list[int] = []  # y-coordinates (strip indices) of matching lines
+        self._search_index: int = 0
 
     def on_mount(self) -> None:
         # Subscribe to live events BEFORE fetching tail (dedup handles overlap)
@@ -733,6 +749,7 @@ class OutputPanel(RichLog):
     def _reload_history(self) -> None:
         """Clear display and reload history output from storage with current filter/tail settings."""
         self._load_generation += 1
+        self._reset_search()
         self.clear()
         self._load_history_output()
 
@@ -787,6 +804,7 @@ class OutputPanel(RichLog):
         """Re-render output with current filters."""
         if self._live:
             self._load_generation += 1
+            self._reset_search()
             self.clear()
             self._write_batch([l for l in self._buffer.get_lines(self._phase_filter) if self._should_show(l)])
         else:
@@ -823,6 +841,60 @@ class OutputPanel(RichLog):
 
     def _write_line(self, line: OutputLine) -> None:
         self.write(self._format_line(line))
+
+    # -- Vim-inspired navigation ----------------------------------------------
+
+    def action_scroll_half_down(self) -> None:
+        self.scroll_relative(y=max(self.size.height // 2, 1), animate=False)
+
+    def action_scroll_half_up(self) -> None:
+        self.scroll_relative(y=-max(self.size.height // 2, 1), animate=False)
+
+    def action_search(self) -> None:
+        """Prompt for a search query and jump to the first match."""
+        from runtools.taro.tui.search_modal import SearchModal
+
+        def on_submit(query: str | None) -> None:
+            if query:
+                self._run_search(query)
+
+        self.app.push_screen(SearchModal(self._search_query), callback=on_submit)
+
+    def action_search_next(self) -> None:
+        if not self._search_matches:
+            return
+        self._search_index = (self._search_index + 1) % len(self._search_matches)
+        self._goto_match()
+
+    def action_search_prev(self) -> None:
+        if not self._search_matches:
+            return
+        self._search_index = (self._search_index - 1) % len(self._search_matches)
+        self._goto_match()
+
+    def _run_search(self, query: str) -> None:
+        """Find all matching strips and jump to the first one."""
+        self._search_query = query
+        needle = query.lower()
+        self._search_matches = [y for y, strip in enumerate(self.lines) if needle in strip.text.lower()]
+        if not self._search_matches:
+            self.app.notify(f"No matches for {query!r}", severity="warning", timeout=2)
+            return
+        self._search_index = 0
+        self._goto_match()
+
+    def _goto_match(self) -> None:
+        """Scroll to the current search match and announce its position."""
+        y = self._search_matches[self._search_index]
+        self.scroll_to(y=y, animate=False)
+        total = len(self._search_matches)
+        self.app.notify(f"Match {self._search_index + 1}/{total}  ({self._search_query!r})",
+                        timeout=1, severity="information")
+
+    def _reset_search(self) -> None:
+        """Clear match indices when the buffer content changes."""
+        self._search_matches = []
+        self._search_index = 0
 
 
 class _OutputObserver:
