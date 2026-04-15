@@ -6,7 +6,7 @@ from rich.text import Text
 
 from runtools.runcore.err import RuntoolsException
 from runtools.taro import __version__
-from runtools.taro.cmd import approve, clean, dash, env, history, inspect, jobs, listen, live, of, ps, resume, stop, tail, wait
+from runtools.taro.cmd import approve, clean, dash, env, history, inspect, jobs, listen, live, output, ps, resume, stop, tail, wait
 
 console = Console(stderr=True)
 
@@ -34,7 +34,7 @@ app.add_typer(jobs.app, name="jobs")
 app.add_typer(inspect.app, name="inspect")
 app.add_typer(listen.app, name="listen")
 app.add_typer(live.app, name="live")
-app.add_typer(of.app, name="output")
+app.add_typer(output.app, name="output")
 app.add_typer(ps.app, name="ps")
 app.add_typer(resume.app, name="resume")
 app.add_typer(stop.app, name="stop")
@@ -47,7 +47,7 @@ app.add_typer(history.app, name="h", hidden=True)
 app.add_typer(jobs.app, name="j", hidden=True)
 app.add_typer(live.app, name="l", hidden=True)
 app.add_typer(tail.app, name="t", hidden=True)
-app.add_typer(of.app, name="o", hidden=True)
+app.add_typer(output.app, name="o", hidden=True)
 app.add_typer(stop.app, name="x", hidden=True)
 
 
