@@ -2,19 +2,23 @@ import os
 import subprocess
 import tempfile
 import tomllib
-from typing import Optional
+from datetime import datetime, timedelta, UTC
+from typing import List, Optional
 
 import typer
 from pydantic import ValidationError
 from rich.console import Console
 from rich.padding import Padding
 
+from runtools.runcore import connector
 from runtools.runcore.env import (
     LocalEnvironmentConfig, EnvironmentEntry,
     available_environments, load_env_config, save_env_config, lookup,
     create_environment, delete_environment,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
 )
+from runtools.runcore.matching import criteria
+from runtools.runcore.util import MatchingStrategy
 from runtools.runcore.util.files import format_toml, read_toml_file
 from runtools.taro import cli
 
@@ -137,3 +141,60 @@ def edit(
         raise typer.Exit(1)
     else:
         os.unlink(tmp_path)
+
+
+@app.command()
+def clear(
+        pattern: str = typer.Argument(..., metavar="PATTERN",
+                                      help="Job pattern to clear ('*' for all)"),
+        keep_days: int = typer.Option(..., "--keep-days", "-k",
+                                      help="Keep runs newer than N days (0 = remove all matched)"),
+        env_id: Optional[str] = cli.ENV_OPTION_FIELD,
+        force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
+):
+    """Remove old run history and output files.
+
+    Both PATTERN and --keep-days are required to prevent accidental data loss.
+
+    Examples:
+        taro env clear "*" --keep-days 0              # wipe all history
+        taro env clear "*" --keep-days 7              # keep last week
+        taro env clear "test_*" --keep-days 0         # wipe all test runs
+        taro env clear "backup" --keep-days 30 -e dev # prune old backup runs
+    """
+    if keep_days < 0:
+        console.print("[red]Error:[/] --keep-days must be >= 0")
+        raise typer.Exit(2)
+
+    resolved = cli.select_env(env_id)
+
+    if keep_days == 0:
+        match = criteria().pattern(pattern, MatchingStrategy.FN_MATCH).build()
+        desc = f"runs matching '{pattern}'"
+    else:
+        cutoff = datetime.now(UTC) - timedelta(days=keep_days)
+        match = (criteria()
+                 .pattern(pattern, MatchingStrategy.FN_MATCH)
+                 .ended(until=cutoff)
+                 .build())
+        desc = f"runs matching '{pattern}' older than {keep_days} days"
+
+    with connector.connect(resolved) as conn:
+        # Preview: count matching runs
+        preview = conn.read_runs(match, asc=False)
+        if not preview:
+            console.print("[dim]No matching runs to remove[/]")
+            return
+
+        n_preview = len(preview)
+        console.print(f"Currently matching: [bold]{n_preview}[/] {desc} in [bold]{resolved.id}[/]")
+
+        if not force:
+            confirm = input("Proceed? [y/N] ").strip().lower()
+            if confirm != 'y':
+                console.print("Cancelled")
+                raise typer.Exit()
+
+        removed = conn.remove_history_runs(match)
+        n = len(removed)
+        console.print(f"[green]Removed {n} {'run' if n == 1 else 'runs'} and output files[/]")
