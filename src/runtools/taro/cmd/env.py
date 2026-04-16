@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.padding import Padding
 
 from runtools.runcore import connector
+from runtools.runcore.connector import resolve_env_dir, clean_stale_component_dirs
 from runtools.runcore.env import (
     LocalEnvironmentConfig, EnvironmentEntry,
     available_environments, load_env_config, save_env_config, lookup,
@@ -144,9 +145,25 @@ def edit(
 
 
 @app.command()
-def clear(
+def clean(env_id: Optional[str] = cli.ENV_OPTION_FIELD):
+    """Remove stale component directories left by dead processes."""
+    entry = cli.select_env(env_id)
+    env_config = load_env_config(entry)
+    env_dir = resolve_env_dir(env_config.id, env_config.layout.root_dir)
+
+    removed = clean_stale_component_dirs(env_dir)
+    if removed:
+        console.print(f"Cleaned {len(removed)} stale component directories:")
+        for d in removed:
+            console.print(f"  {d}")
+    else:
+        console.print(f"No stale component directories found in {env_dir}")
+
+
+@app.command()
+def prune(
         pattern: str = typer.Argument(..., metavar="PATTERN",
-                                      help="Job pattern to clear ('*' for all)"),
+                                      help="Job pattern to prune ('*' for all)"),
         keep_days: int = typer.Option(..., "--keep-days", "-k",
                                       help="Keep runs newer than N days (0 = remove all matched)"),
         env_id: Optional[str] = cli.ENV_OPTION_FIELD,
@@ -157,10 +174,10 @@ def clear(
     Both PATTERN and --keep-days are required to prevent accidental data loss.
 
     Examples:
-        taro env clear "*" --keep-days 0              # wipe all history
-        taro env clear "*" --keep-days 7              # keep last week
-        taro env clear "test_*" --keep-days 0         # wipe all test runs
-        taro env clear "backup" --keep-days 30 -e dev # prune old backup runs
+        taro env prune "*" --keep-days 0              # wipe all history
+        taro env prune "*" --keep-days 7              # keep last week
+        taro env prune "test_*" --keep-days 0         # wipe all test runs
+        taro env prune "backup" --keep-days 30 -e dev # prune old backup runs
     """
     if keep_days < 0:
         console.print("[red]Error:[/] --keep-days must be >= 0")
