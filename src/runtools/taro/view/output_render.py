@@ -35,7 +35,8 @@ def format_time(timestamp: str) -> str:
 
 
 def _append_fields(text: Text, fields: dict) -> None:
-    text.append("  ")
+    if text.plain:
+        text.append("  ")
     first = True
     for k, v in fields.items():
         if not first:
