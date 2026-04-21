@@ -3,6 +3,8 @@
 Provides plain and verbose renderers that produce Rich Text objects.
 """
 
+from datetime import datetime
+
 from rich.text import Text
 
 from runtools.runcore.output import OutputLine
@@ -24,14 +26,10 @@ def abbreviate_logger(name: str) -> str:
     return '.'.join(parts[-2:]) if len(parts) >= 3 else name
 
 
-def format_time(timestamp: str) -> str:
-    """Extract HH:MM:SS.mmm from ISO 8601 timestamp."""
-    t = timestamp.split('T')[-1]
-    for i, c in enumerate(t):
-        if c in 'Z+-' and i > 0:
-            t = t[:i]
-            break
-    return t[:12]
+def format_time(timestamp: datetime) -> str:
+    """Format a datetime as local HH:MM:SS.mmm for display."""
+    local = timestamp.astimezone()
+    return local.strftime('%H:%M:%S.') + f'{local.microsecond // 1000:03d}'
 
 
 def _append_fields(text: Text, fields: dict) -> None:
