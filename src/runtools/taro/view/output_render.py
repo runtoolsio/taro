@@ -32,8 +32,8 @@ def format_time(timestamp: datetime) -> str:
     return local.strftime('%H:%M:%S.') + f'{local.microsecond // 1000:03d}'
 
 
-def _append_fields(text: Text, fields: dict) -> None:
-    if text.plain:
+def _append_fields(text: Text, fields: dict, *, has_message: bool = True) -> None:
+    if has_message:
         text.append("  ")
     first = True
     for k, v in fields.items():
@@ -56,14 +56,17 @@ def format_line_verbose(line: OutputLine) -> Text:
     if line.logger:
         text.append(abbreviate_logger(line.logger), style=Theme.log_logger)
         text.append("  ")
+    if line.thread:
+        text.append(line.thread, style=Theme.log_timestamp)
+        text.append("  ")
     text.append(line.message, style=Theme.error if line.is_error else "")
     if line.fields:
-        _append_fields(text, line.fields)
+        _append_fields(text, line.fields, has_message=bool(line.message))
     return text
 
 
 def format_line_plain(line: OutputLine) -> Text:
     text = Text(line.message, style=Theme.error if line.is_error else "")
     if line.fields:
-        _append_fields(text, line.fields)
+        _append_fields(text, line.fields, has_message=bool(line.message))
     return text
