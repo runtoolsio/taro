@@ -32,7 +32,7 @@ def format_time(timestamp: datetime) -> str:
     return local.strftime('%H:%M:%S.') + f'{local.microsecond // 1000:03d}'
 
 
-def _append_fields(text: Text, fields: dict, *, has_message: bool = True) -> None:
+def _append_fields(text: Text, fields: dict, *, has_message: bool = True, error: bool = False) -> None:
     if has_message:
         text.append("  ")
     first = True
@@ -40,7 +40,7 @@ def _append_fields(text: Text, fields: dict, *, has_message: bool = True) -> Non
         if not first:
             text.append(" ")
         text.append(f"{k}=", style=Theme.log_field_key)
-        text.append(str(v))
+        text.append(str(v), style=Theme.error if error else "")
         first = False
 
 
@@ -61,12 +61,12 @@ def format_line_verbose(line: OutputLine) -> Text:
         text.append("  ")
     text.append(line.message, style=Theme.error if line.is_error else "")
     if line.fields:
-        _append_fields(text, line.fields, has_message=bool(line.message))
+        _append_fields(text, line.fields, has_message=bool(line.message), error=line.is_error)
     return text
 
 
 def format_line_plain(line: OutputLine) -> Text:
     text = Text(line.message, style=Theme.error if line.is_error else "")
     if line.fields:
-        _append_fields(text, line.fields, has_message=bool(line.message))
+        _append_fields(text, line.fields, has_message=bool(line.message), error=line.is_error)
     return text
