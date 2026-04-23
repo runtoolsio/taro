@@ -703,15 +703,20 @@ class OutputPanel(RichLog):
         self._load_generation = 0  # incremented on any reload (filter change or full load)
         self._tail_mode: bool = not live  # history starts in tail mode
         self._output_observer = None
+        self._live_pending: list[OutputLine] = []  # buffered live lines awaiting batch write
+        self._flush_timer = None
         self._search_query: str = ""
         self._search_matches: list[int] = []  # y-coordinates (strip indices) of matching lines
         self._search_index: int = 0
+
+    _LIVE_FLUSH_INTERVAL = 0.1  # seconds — batch live output writes
 
     def on_mount(self) -> None:
         # Subscribe to live events BEFORE fetching tail (dedup handles overlap)
         if self._live and self._instance is not None:
             self._output_observer = _OutputObserver(self)
             self._instance.notifications.add_observer_output(self._output_observer)
+            self._flush_timer = self.set_interval(self._LIVE_FLUSH_INTERVAL, self._flush_live_output)
         # Load output: live tail for active instances (fast, in-memory)
         if self._instance is not None:
             try:
@@ -744,7 +749,14 @@ class OutputPanel(RichLog):
         """Handle a live output event — called on Textual's event loop via call_from_thread."""
         self._buffer.add_line(event.output_line)
         if self._should_show(event.output_line):
-            self._write_line(event.output_line)
+            self._live_pending.append(event.output_line)
+
+    def _flush_live_output(self) -> None:
+        """Batch-write buffered live output lines to the RichLog. Called by timer."""
+        if not self._live_pending:
+            return
+        lines, self._live_pending = self._live_pending, []
+        self._write_batch(lines)
 
     def _reload_history(self) -> None:
         """Clear display and reload history output from storage with current filter/tail settings."""
@@ -804,6 +816,7 @@ class OutputPanel(RichLog):
         """Re-render output with current filters."""
         if self._live:
             self._load_generation += 1
+            self._live_pending.clear()
             self._reset_search()
             self.clear()
             self._write_batch([l for l in self._buffer.get_lines(self._phase_filter) if self._should_show(l)])
