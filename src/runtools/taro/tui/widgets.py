@@ -414,17 +414,11 @@ class PhaseTree(Tree[str]):
             self.select_node(self._node_map[cursor_phase_id])
 
 
-def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = True) -> None:
+def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = True, run_ended: bool = False) -> None:
     """Append a single operation to a Rich Text block.
 
     Finished operations render as a one-line summary (``name ✓ result elapsed``).
     Active operations show name, optional percentage, and progress counts.
-
-    Args:
-        text: Rich Text object to append to.
-        op: Operation snapshot to render.
-        use_display_name: If True (default), use ``display_name`` (includes scope).
-            Set to False when rendering inside a scope group to avoid redundancy.
     """
     name = op.display_name if use_display_name else op.name
     if op.finished:
@@ -450,7 +444,7 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
             if op.unit:
                 parts += f" {op.unit}"
             text.append(f" {parts}", style=Theme.metadata)
-        if op.created_at:
+        if op.created_at and not run_ended:
             running = datetime.now(UTC).replace(tzinfo=None) - op.created_at
             text.append(f" {format_timedelta_compact(running)}", style="dim")
         text.append("\n")
@@ -524,9 +518,10 @@ class PhaseDetail(Static):
                 visible_ops = [op for op in self._job_run.status.operations if op.source in phase_ids]
 
         if visible_ops:
+            ended = self._job_run.lifecycle.is_ended
             global_ops = [op for op in visible_ops if not op.scoped]
             for op in global_ops:
-                _render_operation(text, op)
+                _render_operation(text, op, run_ended=ended)
 
             scoped_ops = [op for op in visible_ops if op.scoped]
             if scoped_ops:
@@ -546,7 +541,7 @@ class PhaseDetail(Static):
                         text.append(f"── {scope}\n", style=Theme.label)
                         for op in ops:
                             text.append("  ")
-                            _render_operation(text, op, use_display_name=False)
+                            _render_operation(text, op, use_display_name=False, run_ended=ended)
                 else:
                     text.append("\n")
                     text.append("(press d to view scoped ops)\n", style="dim")
