@@ -22,7 +22,7 @@ from runtools.runcore.run import Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
-    LinkedTable, add_columns, build_cells, last_col_width, row_key,
+    LinkedTable, add_columns, build_cells, last_col_width, reset_auto_widths, row_key,
 )
 from runtools.taro.tui.widgets import APP_CSS, Section, build_history_metrics, setup_theme
 from runtools.taro.view import instance as view_inst
@@ -249,10 +249,12 @@ class DashboardScreen(Screen):
 
         rw = self._active_render_width()
         active_table.clear()
+        reset_auto_widths(active_table)
         sorted_active = sorted(self._live_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_active:
             active_table.add_row(*build_cells(run, ACTIVE_COLUMNS, render_width=rw), key=key)
         history_table.clear()
+        reset_auto_widths(history_table)
         sorted_history = sorted(self._history_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_history:
             history_table.add_row(*build_cells(run, HISTORY_COLUMNS), key=key)

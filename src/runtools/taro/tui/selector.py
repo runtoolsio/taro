@@ -41,14 +41,25 @@ def build_cells(run: JobRun, columns: Sequence = COLUMNS, *,
 def add_columns(table: DataTable, columns: Sequence = COLUMNS, *, data: Sequence = ()) -> None:
     for i, col in enumerate(columns):
         is_last = i == len(columns) - 1
-        if is_last:
+        if is_last or col.auto_width:
             width = None
         elif data:
-            data_width = max(len(col.name), max((len(col.value_fnc(r)) for r in data), default=0))
-            width = max(col.min_width or 0, data_width)
+            width = max(len(col.name), max((len(col.value_fnc(r)) for r in data), default=0))
         else:
             width = col.max_width
         table.add_column(col.name, key=col.name, width=width)
+
+
+def reset_auto_widths(table: DataTable) -> None:
+    """Reset content_width on auto_width columns to label width.
+
+    Textual grows ``content_width`` when rows are added but never shrinks it on
+    ``clear()`` or row removal. Call before re-populating so columns shrink back
+    when the new content is narrower than what was there before.
+    """
+    for col in table.columns.values():
+        if col.auto_width:
+            col.content_width = col.label.cell_len
 
 
 def last_col_width(table: DataTable, columns: Sequence) -> int:

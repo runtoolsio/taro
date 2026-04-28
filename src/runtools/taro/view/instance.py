@@ -84,12 +84,11 @@ def _term_display(j: JobRun) -> str:
 
 
 _term_style = lambda j: run_term_style(j) if j.lifecycle.termination else general_style(j)
-_term_min_width = max(len(s.name) for s in TerminationStatus)
-TERM_STATUS = Column('TERM', _term_min_width + 2,
-                     _term_display, _term_style, None, _term_min_width)
-TERM_STATUS_FULL = Column('TERM', _term_min_width + 2,
+TERM_STATUS = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
+                     _term_display, _term_style, None, True)
+TERM_STATUS_FULL = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
                           lambda j: j.lifecycle.termination.status.name if j.lifecycle.termination else '',
-                          _term_style, None, _term_min_width)
+                          _term_style, None, True)
 STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style,
                 lambda j, w: render_status(j.status, w, j.lifecycle.is_ended))
 RESULT = Column('RESULT', 50,
