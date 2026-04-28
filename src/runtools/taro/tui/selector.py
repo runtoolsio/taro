@@ -44,7 +44,8 @@ def add_columns(table: DataTable, columns: Sequence = COLUMNS, *, data: Sequence
         if is_last:
             width = None
         elif data:
-            width = max(len(col.name), max((len(col.value_fnc(r)) for r in data), default=0))
+            data_width = max(len(col.name), max((len(col.value_fnc(r)) for r in data), default=0))
+            width = max(col.max_width, data_width)
         else:
             width = col.max_width
         table.add_column(col.name, key=col.name, width=width)
