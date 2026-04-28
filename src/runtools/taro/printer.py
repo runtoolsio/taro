@@ -13,7 +13,7 @@ from pypager.source import GeneratorSource
 from runtools.runcore.util import iterates
 from runtools.taro.theme import Theme
 
-Column = namedtuple('Column', 'name max_width value_fnc colour_fnc rich_fnc', defaults=(None,))
+Column = namedtuple('Column', 'name max_width value_fnc colour_fnc rich_fnc min_width', defaults=(None, None))
 
 _ANSI_COLORS = {'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'gray', 'white'}
 
