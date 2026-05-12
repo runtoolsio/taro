@@ -42,6 +42,12 @@ def history(
         # Filter options
         last: bool = typer.Option(False, "--last", "-L", help="Show last execution of each job"),
         slowest: bool = typer.Option(False, "--slowest", "-O", help="Show slowest run from each job"),
+        tags: List[str] = typer.Option(
+            None, "--tag", metavar="TAG",
+            help="Filter by tag (repeatable; ALL must be present). Combines with patterns as AND."),
+        tags_any: List[str] = typer.Option(
+            None, "--tag-any", metavar="TAG",
+            help="Filter by tag — at least one must be present (repeatable; OR set)."),
 
         # - Temporal filtering
         filter_by: Stage = typer.Option(
@@ -79,6 +85,10 @@ def history(
     """Show job runs history"""
     run_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL)
     _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault)
+    if tags:
+        run_match.tag_all(*tags)
+    if tags_any:
+        run_match.tag_any(*tags_any)
     run_match.during(
         filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back)
 
