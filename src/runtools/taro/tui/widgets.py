@@ -19,6 +19,7 @@ from bisect import insort
 from datetime import datetime, UTC
 from typing import Callable, Iterable, Optional
 
+from rich.table import Table
 from rich.text import Text
 from textual import work
 from textual.app import App
@@ -215,12 +216,18 @@ class ScreenHeader(Static):
 
 
 class InstanceHeader(Static):
-    """Header widget showing job identity, stage, timestamps, and status line.
+    """Header widget showing job identity, stage, timestamps, tags, and status line.
 
-    Renders two or three rows:
-      Row 1: {job_id} @ {run_id}
-      Row 2: {STAGE}  ·  created {time}  ·  [ended {time}  ·]  elapsed {time}
-      Row 3: Status line (only when active operations/progress exist)
+    Layout (right column is right-aligned to the widget width):
+
+        {job_id} @ {run_id}[:{ordinal}]  STAGE  elapsed  [features]    created HH:MM:SS
+        #tag1 #tag2 ...                                                ended   HH:MM:SS
+        {status line — operations/progress for live, result summary for ended}
+
+    Optional rows render only when their content exists:
+      - tags row (and/or ``ended`` time row) only when present; paired on one line
+        when both exist so neither side is left blank.
+      - status line only when there's active operations/progress or a final result.
 
     In live mode, a 0.25-second timer calls refresh() to keep the elapsed time ticking.
     The timer is stopped when the job ends.
@@ -278,7 +285,8 @@ class InstanceHeader(Static):
             line.append_text(right_part)
             return line
 
-        # Row 1: job_id @ run_id[:ordinal]  STAGE         created  HH:MM:SS
+        # Row 1 left:  job_id @ run_id[:ordinal]  STAGE  elapsed  [features]
+        # Row 1 right: created  HH:MM:SS  (padded to the right edge by _compose_line)
         id_part = Text()
         id_part.append(job_run.job_id, style=Theme.job)
         id_part.append(" @ ", style="")
@@ -299,10 +307,25 @@ class InstanceHeader(Static):
         label, value = time_rows[0]
         result = _compose_line(id_part, label, value)
 
-        # Remaining time rows: right-aligned under the first
-        for label, value in time_rows[1:]:
+        # Tags: paired with the first remaining time row (e.g., ``ended``) when one
+        # exists, so we don't render a whitespace-only left half. If there are no
+        # remaining time rows, tags get their own line.
+        tags_text: Optional[Text] = None
+        if job_run.metadata.tags:
+            tags_text = Text(" ".join(f"#{t}" for t in job_run.metadata.tags),
+                             style=Theme.metadata)
+
+        for i, (label, value) in enumerate(time_rows[1:]):
             result.append("\n")
-            result.append_text(_compose_line(Text(), label, value))
+            left = tags_text if (i == 0 and tags_text is not None) else Text()
+            if i == 0:
+                tags_text = None  # consumed (or stays None if no tags)
+            result.append_text(_compose_line(left, label, value))
+
+        if tags_text is not None:
+            # No time row was available to pair with — tags own a line.
+            result.append("\n")
+            result.append_text(tags_text)
 
         # Status line: result summary for ended jobs, live progress otherwise
         if job_run.lifecycle.is_ended:
@@ -837,18 +860,26 @@ class OutputPanel(RichLog):
         return format_line_verbose(line) if self._verbose else format_line_plain(line)
 
     def _write_batch(self, lines: list[OutputLine]) -> None:
-        """Write multiple lines as a single Text object to minimize DOM updates."""
+        """Write a batch as a single two-column grid.
+
+        Column 1 is the line ordinal (right-aligned, ``Theme.subtle``); column 2
+        is the formatted message. The grid renders the ordinal only on the first
+        wrap-line of each row — so a wrapped message shows a blank gutter on its
+        continuation lines, giving a hanging-indent effect without any manual
+        wrap math. One ``self.write()`` call per batch keeps DOM updates cheap.
+        """
         if not lines:
             return
-        batch = Text()
-        for i, line in enumerate(lines):
-            if i > 0:
-                batch.append("\n")
-            batch.append_text(self._format_line(line))
-        self.write(batch)
-
-    def _write_line(self, line: OutputLine) -> None:
-        self.write(self._format_line(line))
+        grid = Table.grid(padding=(0, 1, 0, 0))
+        # Fixed gutter width keeps the message column aligned across batches —
+        # each batch is its own Table.grid() and would otherwise auto-size to
+        # its widest ordinal. Width 4 covers up to 9999 tightly; for runs
+        # exceeding that, Rich expands the column for those specific batches.
+        grid.add_column(style=Theme.subtle, justify="right", no_wrap=True, width=4)
+        grid.add_column(overflow="fold")
+        for line in lines:
+            grid.add_row(str(line.ordinal), self._format_line(line))
+        self.write(grid)
 
     # -- Vim-inspired navigation ----------------------------------------------
 
