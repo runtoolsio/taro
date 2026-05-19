@@ -20,6 +20,10 @@ def dash(
                                                       help="Instance ID patterns to filter results"),
         env: Optional[str] = cli.ENV_OPTION_FIELD,
         history_limit: int = typer.Option(50, "--history", "-n", help="Maximum number of history rows to display"),
+        tags: List[str] = typer.Option(
+            None, "--tag", "-t", metavar="TAG",
+            help="Filter by tag (label) — exact match, repeatable; ALL must be present. "
+                 "Combines with positional patterns as AND."),
 ):
     """Open a persistent dashboard TUI with active instances and history.
 
@@ -32,9 +36,20 @@ def dash(
         taro dash "backup*" "sync*"
         taro dash --env production
         taro dash -n 100
+        taro dash -t prod
     """
-    active_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL).build()
-    history_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL).during(Stage.CREATED, today=True).build()
+    include_tag = not tags
+    active_builder = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL,
+                                                include_tag=include_tag)
+    history_builder = (criteria()
+                       .patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL,
+                                        include_tag=include_tag)
+                       .during(Stage.CREATED, today=True))
+    if tags:
+        active_builder.tags(*tags)
+        history_builder.tags(*tags)
+    active_match = active_builder.build()
+    history_match = history_builder.build()
 
     resolved = cli.select_env(env)
     with connector.connect(resolved) as conn:
