@@ -32,22 +32,24 @@ def history(
                                                help="Sorting criteria (created/ended/time/job_id/run_id)"),
 
         # - Outcome based filtering
-        success: bool = typer.Option(False, "--success", "-S", help="Show only successfully completed jobs"),
-        nonsuccess: bool = typer.Option(False, "--nonsuccess", "-X",
+        success: bool = typer.Option(False, "--success", help="Show only successfully completed jobs"),
+        nonsuccess: bool = typer.Option(False, "--nonsuccess",
                                         help="Show only jobs without successful completion"),
-        aborted: bool = typer.Option(False, "--aborted", "-A", help="Show only jobs which were aborted by user"),
-        rejected: bool = typer.Option(False, "--rejected", "-R", help="Show only jobs rejected at some phase"),
-        fault: bool = typer.Option(False, "--fault", "-E", help="Show only failed jobs"),
+        aborted: bool = typer.Option(False, "--aborted", help="Show only jobs which were aborted by user"),
+        rejected: bool = typer.Option(False, "--rejected", help="Show only jobs rejected at some phase"),
+        fault: bool = typer.Option(False, "--fault", help="Show only failed jobs"),
 
         # Filter options
         last: bool = typer.Option(False, "--last", "-L", help="Show last execution of each job"),
         slowest: bool = typer.Option(False, "--slowest", "-O", help="Show slowest run from each job"),
         tags: List[str] = typer.Option(
-            None, "--tag", metavar="TAG",
-            help="Filter by tag (repeatable; ALL must be present). Combines with patterns as AND."),
-        tags_any: List[str] = typer.Option(
-            None, "--tag-any", metavar="TAG",
-            help="Filter by tag — at least one must be present (repeatable; OR set)."),
+            None, "--tag", "-t", metavar="TAG",
+            help="Filter by tag (label) — exact match by default, repeatable; ALL must be present. "
+                 "Combines with positional patterns as AND. "
+                 "For OR semantics across distinct tags, pass them as positional search "
+                 "tokens (e.g. `taro h prod staging`) which match any of: job_id, run_id, tag."),
+        exact: bool = typer.Option(False, "--exact", "-x",
+                                   help="Use EXACT match strategy for positional patterns (default: PARTIAL)."),
 
         # - Temporal filtering
         filter_by: Stage = typer.Option(
@@ -58,15 +60,15 @@ def history(
         ),
         from_date: Optional[str] = typer.Option(
             None,
-            "--from",
-            "-f",
+            "--start",
+            "-S",
             metavar="DATETIME",
             help="Start date/time. Formats: YYYY-MM-DD or YYYY-MM-DD[ |T]HH:MM[:SS][.ms][Z|+HHMM]",
         ),
         to_date: Optional[str] = typer.Option(
             None,
-            "--to",
-            "-t",
+            "--end",
+            "-E",
             metavar="DATETIME",
             help="End date/time. Formats: YYYY-MM-DD or YYYY-MM-DD[ |T]HH:MM[:SS][.ms][Z|+HHMM]",
         ),
@@ -83,12 +85,15 @@ def history(
                                                 help="Show only jobs created from now N days back"),
 ):
     """Show job runs history"""
-    run_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.PARTIAL)
+    strategy = MatchingStrategy.EXACT if exact else MatchingStrategy.PARTIAL
+    # When --tag is given, positional patterns search identity (job/run) only;
+    # tag filtering comes solely from --tag. Without --tag, positional patterns
+    # are bare-token searches that also fan into the tag axis (OR).
+    run_match = criteria().patterns_or_all(instance_patterns, strategy,
+                                           include_tag=not tags)
     _apply_outcome_filters(run_match, success, nonsuccess, aborted, rejected, fault)
     if tags:
-        run_match.tag_all(*tags)
-    if tags_any:
-        run_match.tag_any(*tags_any)
+        run_match.tags(*tags)
     run_match.during(
         filter_by, from_date, to_date, today, yesterday, week, fortnight, three_weeks, four_weeks, month, days_back)
 
