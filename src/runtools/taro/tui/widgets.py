@@ -19,6 +19,7 @@ from bisect import insort
 from datetime import datetime, UTC
 from typing import Callable, Iterable, Optional
 
+from rich import box
 from rich.table import Table
 from rich.text import Text
 from textual import work
@@ -216,21 +217,24 @@ class ScreenHeader(Static):
 
 
 class InstanceHeader(Static):
-    """Header widget showing job identity, stage, timestamps, tags, and status line.
+    """Header widget: job identity, a borderless color grid of metric cells, then the status line.
 
-    Layout (right column is right-aligned to the widget width):
+    Layout:
 
-        {job_id} @ {run_id}[:{ordinal}]  STAGE  elapsed  [features]    created HH:MM:SS
-        #tag1 #tag2 ...                                                ended   HH:MM:SS
+        {job_id} @ {run_id}[:{ordinal}]
+        STAGE      ELAPSED    CREATED          ENDED         (colored labels)
+        RUNNING    00:00:12   05-25 16:00:32   —             (bright values)
+        TAGS       FEATURES
+        #a #b      json
         {status line — operations/progress for live, result summary for ended}
 
-    Optional rows render only when their content exists:
-      - tags row (and/or ``ended`` time row) only when present; paired on one line
-        when both exist so neither side is left blank.
-      - status line only when there's active operations/progress or a final result.
+    Each metric cell is a colored label over a bright value; the Stage value keeps its
+    state color. Cells render only when they have content (ended/tags/features are
+    optional) and wrap into rows that fit the width. The status line renders only when
+    there's active progress or a final result.
 
-    In live mode, a 0.25-second timer calls refresh() to keep the elapsed time ticking.
-    The timer is stopped when the job ends.
+    In live mode, a 0.25-second timer calls refresh() to keep elapsed ticking; it stops
+    when the job ends.
     """
 
     def __init__(self, job_run: JobRun, *, live: bool = False) -> None:
@@ -252,91 +256,82 @@ class InstanceHeader(Static):
             self._timer = None
         self.refresh(layout=True)
 
-    _TIME_LABEL_WIDTH = 9  # "created  ", "ended    ", "elapsed  "
+    # Mono-tone gridline color for the unified header grid.
+    _GRID_BORDER = "#46505f"
 
-    def render(self) -> Text:
-        """Build the header as a Rich Text object. Textual renders it directly."""
+    def render(self):
+        """Build the header as a unified two-row grid split static / dynamic:
+
+            col0      col1     col2      col3      col4 (flexible)
+          ┌ job     ┬ run    ┬ ordinal ┬ tags    ┬ features          ┐   ← static: identity & config
+          └ created ┴ ended  ┴ status  ┴ elapsed ┴ result/last-event ┘   ← dynamic: lifecycle & progress
+
+        Row 1 holds values fixed for the run's lifetime; row 2 holds the ones that move
+        while it runs. The last column stretches (and shrinks first when narrow); features
+        and result/last-event live there so both get room. The result cell shows the final
+        result when ended, else the current/last event — the full ops breakdown lives in the
+        Operations panel. Ordinal is a dim dash for the default (1), else the number. Values
+        are tinted per field; gridlines stay a single muted tone; absent optional values
+        (ended/tags/features) leave their cell blank.
+        """
         job_run = self._job_run
         lifecycle = job_run.lifecycle
-        width = self.size.width if self.size.width > 0 else 80
-
-        # Build right-side time rows (aligned labels)
-        created_str = format_dt_local_tz(lifecycle.created_at, null="N/A", include_ms=False)
-        time_rows = [("created", created_str)]
-
-        if lifecycle.is_ended and lifecycle.termination:
-            ended_str = format_dt_local_tz(lifecycle.termination.terminated_at, null="N/A", include_ms=False)
-            time_rows.append(("ended", ended_str))
-
-        elapsed_str = util.format_timedelta(lifecycle.elapsed, show_ms=False, null="--:--:--")
-
-        # Fixed-width right column so labels align vertically
-        max_row_len = max(self._TIME_LABEL_WIDTH + len(v) for _, v in time_rows)
-
-        def _compose_line(left_part: Text, time_label: str, time_value: str) -> Text:
-            right_part = Text()
-            right_part.append(f"{time_label:<{self._TIME_LABEL_WIDTH}}", style="dim")
-            right_part.append(time_value, style=Theme.metadata)
-            pad = width - left_part.cell_len - max_row_len
-            line = Text()
-            line.append_text(left_part)
-            if pad > 0:
-                line.append(" " * pad)
-            line.append_text(right_part)
-            return line
-
-        # Row 1 left:  job_id @ run_id[:ordinal]  STAGE  elapsed  [features]
-        # Row 1 right: created  HH:MM:SS  (padded to the right edge by _compose_line)
-        id_part = Text()
-        id_part.append(job_run.job_id, style=Theme.job)
-        id_part.append(" @ ", style="")
-        id_part.append(job_run.run_id, style=Theme.metadata)
-        if job_run.instance_id.ordinal > 1:
-            id_part.append(f":{job_run.instance_id.ordinal}", style=Theme.metadata)
 
         if lifecycle.is_ended and lifecycle.termination:
             stage_text = lifecycle.termination.status.name
         else:
             stage_text = lifecycle.stage.name
-        id_part.append("  ")
-        id_part.append(stage_text, style=_stage_rich_style(job_run))
-        id_part.append(f"  {elapsed_str}", style=_stage_rich_style(job_run))
-        if job_run.metadata.features:
-            id_part.append(f"  [{', '.join(job_run.metadata.features)}]", style="dim")
 
-        label, value = time_rows[0]
-        result = _compose_line(id_part, label, value)
+        # Result when ended, else the current/last event — the at-a-glance "what".
+        status = job_run.status
+        event_val, event_tone = "", ""
+        if status and status.result:
+            event_val, event_tone = status.result.message, Theme.log_message
+        elif status and status.last_event:
+            event_val, event_tone = status.last_event.message, "#9bb1c8"
 
-        # Tags: paired with the first remaining time row (e.g., ``ended``) when one
-        # exists, so we don't render a whitespace-only left half. If there are no
-        # remaining time rows, tags get their own line.
-        tags_text: Optional[Text] = None
+        # Ordinal: dim dash for the implicit first run, the number for re-runs.
+        ordinal = job_run.instance_id.ordinal
+        ord_cell = (str(ordinal), "#7a9ec2") if ordinal > 1 else ("–", "#5a6a80")
+
+        features_val = ", ".join(job_run.metadata.features) if job_run.metadata.features else ""
+        has_last = bool(event_val or features_val)   # whether the flexible 5th column exists
+        n_cols = 5 if has_last else 4
+
+        # Fixed column slots; None renders as an empty cell.
+        # Row 1 — static: identity & config.
+        row1 = [None] * n_cols
+        row1[0] = (job_run.job_id, "#3dd6b5")
+        row1[1] = (job_run.run_id, "#7a9ec2")
+        row1[2] = ord_cell
         if job_run.metadata.tags:
-            tags_text = Text(" ".join(f"#{t}" for t in job_run.metadata.tags),
-                             style=Theme.metadata)
+            row1[3] = (" ".join(f"#{t}" for t in job_run.metadata.tags), "#7ee787")
+        if has_last and features_val:
+            row1[4] = (features_val, "#8a7f91")
 
-        for i, (label, value) in enumerate(time_rows[1:]):
-            result.append("\n")
-            left = tags_text if (i == 0 and tags_text is not None) else Text()
-            if i == 0:
-                tags_text = None  # consumed (or stays None if no tags)
-            result.append_text(_compose_line(left, label, value))
+        # Row 2 — dynamic: lifecycle & progress.
+        row2 = [None] * n_cols
+        row2[0] = (format_dt_local_tz(lifecycle.created_at, null="N/A", include_ms=False), "#6f7f96")
+        if lifecycle.is_ended and lifecycle.termination:
+            row2[1] = (format_dt_local_tz(lifecycle.termination.terminated_at, null="N/A", include_ms=False), "#9bb1c8")
+        row2[2] = (stage_text, _stage_rich_style(job_run))
+        row2[3] = (util.format_timedelta(lifecycle.elapsed, show_ms=False, null="--:--:--"), "#ffb347")
+        if has_last and event_val:
+            row2[4] = (event_val, event_tone)
 
-        if tags_text is not None:
-            # No time row was available to pair with — tags own a line.
-            result.append("\n")
-            result.append_text(tags_text)
+        def to_cells(row):
+            return [Text(cell[0], style=cell[1]) if cell else Text("") for cell in row]
 
-        # Status line: result summary for ended jobs, live progress otherwise
-        if job_run.lifecycle.is_ended:
-            status_line = render_result(job_run.status, width)
-        else:
-            status_line = render_status(job_run.status, width)
-        if status_line.cell_len > 0:
-            result.append("\n")
-            result.append_text(status_line)
-
-        return result
+        grid = Table(box=box.SQUARE, show_header=False, show_lines=True, expand=has_last,
+                     padding=(0, 1), border_style=self._GRID_BORDER)
+        for c in range(n_cols):
+            if c == 4 and has_last:
+                grid.add_column(no_wrap=True, overflow="ellipsis", ratio=1)
+            else:
+                grid.add_column(no_wrap=True)
+        grid.add_row(*to_cells(row1))
+        grid.add_row(*to_cells(row2))
+        return grid
 
 
 class PhaseSelected(Message):
