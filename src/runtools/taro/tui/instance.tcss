@@ -27,6 +27,22 @@ InstanceHeader {
     border-title-align: right;
 }
 
+#tabs-section {
+    height: 1fr;
+}
+
+#lower-left-tabs {
+    height: 1fr;
+}
+
+#lower-left-tabs TabPane {
+    overflow-y: auto;
+}
+
+OperationsPanel, PhaseDetail {
+    height: auto;
+}
+
 #warnings-section {
     height: auto;
     max-height: 10;
@@ -36,13 +52,6 @@ InstanceHeader {
 
 WarningsPanel {
     height: auto;
-}
-
-#detail-section {
-    height: 1fr;
-    min-height: 8;
-    overflow-y: auto;
-    border-title-align: right;
 }
 
 #right-panel {

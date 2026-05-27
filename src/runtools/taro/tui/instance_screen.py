@@ -20,13 +20,13 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Footer
+from textual.widgets import Footer, TabbedContent, TabPane
 
 from runtools.runcore.job import JobInstance, JobRun, InstancePhaseEvent, InstanceLifecycleEvent, InstanceStatusEvent
 from runtools.taro.theme import Theme
 from runtools.taro.tui.widgets import (
-    InstanceHeader, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, Section, WarningsPanel,
-    collect_phase_ids,
+    InstanceHeader, OperationsPanel, OutputPanel, PhaseDetail, PhaseSelected, PhaseTree, Section,
+    WarningsPanel, collect_phase_ids,
 )
 
 
@@ -48,7 +48,10 @@ class InstanceScreen(Screen):
         Binding("F", "load_full_output", "Full output", show=True),
         Binding("e", "toggle_errors", "Errors", show=True),
         Binding("v", "toggle_verbose", "Verbose", show=True),
-        Binding("d", "toggle_details", "Details", show=True),
+        Binding("s", "toggle_scoped_ops", "Scoped ops", show=True),
+        Binding("tab", "switch_tab", "Switch tab", show=True),
+        Binding("o", "show_operations", "Operations", show=False),
+        Binding("d", "show_details", "Details", show=False),
     ]
 
     def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None,
@@ -78,9 +81,12 @@ class InstanceScreen(Screen):
                 with Section(id="phases-section") as section:
                     section.border_title = "Phases"
                     yield PhaseTree(self._job_run, live=self._live)
-                with Section(id="detail-section") as section:
-                    section.border_title = "Phase Info"
-                    yield PhaseDetail(self._job_run, live=self._live)
+                with Section(id="tabs-section"):
+                    with TabbedContent(initial="operations-tab", id="lower-left-tabs"):
+                        with TabPane("Operations", id="operations-tab"):
+                            yield OperationsPanel(self._job_run, live=self._live)
+                        with TabPane(self._details_tab_label(), id="details-tab"):
+                            yield PhaseDetail(self._job_run, live=self._live)
             with Vertical(id="right-panel"):
                 with Section(id="warnings-section") as section:
                     section.border_title = "Warnings"
@@ -129,6 +135,8 @@ class InstanceScreen(Screen):
         self._job_run = event.job_run
         self.query_one(InstanceHeader).update_run(event.job_run)
         self.query_one(PhaseDetail).update_run(event.job_run)
+        self.query_one(OperationsPanel).update_run(event.job_run)
+        self._update_details_badge()
         self._update_warnings(event.job_run)
 
     def _on_lifecycle_event(self, event: InstanceLifecycleEvent) -> None:
@@ -140,6 +148,9 @@ class InstanceScreen(Screen):
         """Handle phase selection from the tree — update the detail and output panels."""
         self._selected_phase_id = event.phase_id
         self.query_one(PhaseDetail).update_phase(event.phase_id)
+        self.query_one(OperationsPanel).update_phase(event.phase_id)
+        # The badge reflects the selected phase's diagnostics, so refresh it on selection.
+        self._update_details_badge()
         self._update_output_filter()
 
     def _update_run(self, job_run: JobRun) -> None:
@@ -147,8 +158,31 @@ class InstanceScreen(Screen):
         self.query_one(InstanceHeader).update_run(job_run)
         self.query_one(PhaseTree).update_run(job_run)
         self.query_one(PhaseDetail).update_run(job_run)
+        self.query_one(OperationsPanel).update_run(job_run)
+        self._update_details_badge()
         self._update_warnings(job_run)
         self._update_output_filter()
+
+    def _has_details_diagnostic(self) -> bool:
+        """Whether the Details pane currently holds failure info worth badging:
+        a job-level fault, or the selected phase's own termination stack trace."""
+        if self._job_run.faults:
+            return True
+        phase = self._job_run.find_phase_by_id(self._selected_phase_id)
+        termination = phase.lifecycle.termination if phase else None
+        return bool(termination and termination.stack_trace)
+
+    def _details_tab_label(self) -> str:
+        """Details tab label, badged with a warning glyph (Textual markup) when the
+        Details pane holds failure info for the run or the selected phase."""
+        if self._has_details_diagnostic():
+            return f"Details [{Theme.error}]⚠[/]"
+        return "Details"
+
+    def _update_details_badge(self) -> None:
+        """Refresh the Details tab badge to reflect current diagnostic state."""
+        tab = self.query_one("#lower-left-tabs", TabbedContent).get_tab("details-tab")
+        tab.label = self._details_tab_label()
 
     def _update_warnings(self, job_run: JobRun) -> None:
         warnings_panel = self.query_one(WarningsPanel)
@@ -175,11 +209,21 @@ class InstanceScreen(Screen):
         self.query_one(OutputPanel).toggle_verbose()
         self._update_output_subtitle()
 
-    def action_toggle_details(self) -> None:
-        detail = self.query_one(PhaseDetail)
-        detail.toggle_details()
-        section = self.query_one("#detail-section", Section)
-        section.border_title = "Phase Info (detailed)" if detail.show_details else "Phase Info"
+    def action_toggle_scoped_ops(self) -> None:
+        # Scoped-ops toggle only applies inside the Operations tab.
+        if self.query_one("#lower-left-tabs", TabbedContent).active != "operations-tab":
+            return
+        self.query_one(OperationsPanel).toggle_details()
+
+    def action_show_operations(self) -> None:
+        self.query_one("#lower-left-tabs", TabbedContent).active = "operations-tab"
+
+    def action_show_details(self) -> None:
+        self.query_one("#lower-left-tabs", TabbedContent).active = "details-tab"
+
+    def action_switch_tab(self) -> None:
+        tabs = self.query_one("#lower-left-tabs", TabbedContent)
+        tabs.active = "details-tab" if tabs.active == "operations-tab" else "operations-tab"
 
     def _update_output_subtitle(self) -> None:
         panel = self.query_one(OutputPanel)

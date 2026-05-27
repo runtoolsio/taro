@@ -444,6 +444,9 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
     Active operations show name, optional percentage, and progress counts.
     """
     name = op.display_name if use_display_name else op.name
+    # Name is the primary element (bright); progress/result/elapsed recede.
+    name_style = Theme.error if op.failed else Theme.op_name
+    rest_style = Theme.error if op.failed else "dim"
     if op.finished:
         mark = "✗" if op.failed else "✓"
         parts = []
@@ -456,10 +459,11 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
             parts.append(f"({op.result})" if parts else op.result)
         if op.elapsed:
             parts.append(op.elapsed)
-        summary = f"{name} {mark} {' '.join(parts)}" if parts else f"{name} {mark}"
-        text.append(f"{summary}\n", style=Theme.error if op.failed else "dim")
+        text.append(name, style=name_style)
+        suffix = f" {mark} {' '.join(parts)}" if parts else f" {mark}"
+        text.append(f"{suffix}\n", style=rest_style)
     else:
-        text.append(name, style="")
+        text.append(name, style=name_style)
         if op.completed is not None or op.total is not None:
             parts = format_number(op.completed) if op.completed is not None else "0"
             if op.total is not None:
@@ -473,11 +477,13 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
         text.append("\n")
 
 
-class PhaseDetail(Static):
-    """Detail panel showing full information about the currently selected phase.
+class OperationsPanel(Static):
+    """Panel showing tracked operations for the currently selected phase.
 
-    Renders a Rich Text block with phase metadata, lifecycle timestamps, and diagnostics.
-    Updated when the user navigates the PhaseTree or when a new snapshot arrives.
+    Operations are filtered to the selected phase and its descendants (the root phase
+    shows all). Unscoped operations are always listed; scoped operations are grouped by
+    scope and shown only when the scoped-ops toggle is on (the screen's 's' key). Lives
+    in the Operations tab; when there are no operations it renders an empty-state line.
     """
 
     def __init__(self, job_run: JobRun, *, live: bool = False) -> None:
@@ -493,13 +499,92 @@ class PhaseDetail(Static):
             self._timer = self.set_interval(1.0, self.refresh)
 
     def toggle_details(self) -> None:
-        """Toggle visibility of scoped operations and zero-total operations."""
+        """Toggle visibility of scoped operations."""
         self._show_details = not self._show_details
         self.refresh(layout=True)
 
     @property
     def show_details(self) -> bool:
         return self._show_details
+
+    def update_phase(self, phase_id: str) -> None:
+        """Select a different phase to display."""
+        self._phase_id = phase_id
+        self.refresh()
+
+    def update_run(self, job_run: JobRun) -> None:
+        """Replace the snapshot and refresh."""
+        self._job_run = job_run
+        if self._live and job_run.lifecycle.is_ended and self._timer is not None:
+            self._timer.stop()
+            self._timer = None
+        self.refresh()
+
+    def _visible_ops(self) -> list:
+        """Operations for the selected phase + descendants (root shows all)."""
+        phase = self._job_run.find_phase_by_id(self._phase_id)
+        if phase is None or not (self._job_run.status and self._job_run.status.operations):
+            return []
+        if self._phase_id == self._job_run.root_phase.phase_id:
+            return list(self._job_run.status.operations)
+        phase_ids = collect_phase_ids(phase)
+        return [op for op in self._job_run.status.operations if op.source in phase_ids]
+
+    def render(self) -> Text:
+        text = Text()
+        visible_ops = self._visible_ops()
+        if not visible_ops:
+            text.append("(no tracked operations)\n", style="dim")
+            return text
+
+        ended = self._job_run.lifecycle.is_ended
+        global_ops = [op for op in visible_ops if not op.scoped]
+        for op in global_ops:
+            _render_operation(text, op, run_ended=ended)
+
+        scoped_ops = [op for op in visible_ops if op.scoped]
+        if scoped_ops:
+            if self._show_details:
+                scope_groups: dict[str, list] = {}
+                for op in scoped_ops:
+                    scope_groups.setdefault(op.scope, []).append(op)
+
+                def _scope_sort_key(item):
+                    ops = item[1]
+                    if any(not o.finished for o in ops):
+                        return 0  # running
+                    if any(o.failed for o in ops):
+                        return 1  # failed
+                    return 2  # completed
+
+                for scope, ops in sorted(scope_groups.items(), key=_scope_sort_key):
+                    text.append(f"── {scope}\n", style=Theme.label)
+                    for op in ops:
+                        text.append("  ")
+                        _render_operation(text, op, use_display_name=False, run_ended=ended)
+            else:
+                text.append("\n")
+                text.append("(press s to view scoped ops)\n", style="dim")
+        return text
+
+
+class PhaseDetail(Static):
+    """Detail panel showing full information about the currently selected phase.
+
+    Renders a Rich Text block with phase metadata, lifecycle timestamps, and diagnostics.
+    Updated when the user navigates the PhaseTree or when a new snapshot arrives.
+    """
+
+    def __init__(self, job_run: JobRun, *, live: bool = False) -> None:
+        super().__init__()
+        self._job_run = job_run
+        self._phase_id = job_run.root_phase.phase_id
+        self._live = live
+        self._timer = None
+
+    def on_mount(self) -> None:
+        if self._live and not self._job_run.lifecycle.is_ended:
+            self._timer = self.set_interval(1.0, self.refresh)
 
     def update_phase(self, phase_id: str) -> None:
         """Select a different phase to display."""
@@ -523,108 +608,68 @@ class PhaseDetail(Static):
         lifecycle = phase.lifecycle
         text = Text()
 
-        # Phase identity (always shown)
-        text.append(phase.phase_id, style=Theme.label)
-        text.append(f"  {_phase_stage_text(phase)}", style=style)
+        # Header: status · type · elapsed on a single line (name lives in the border title)
+        text.append(_phase_stage_text(phase), style=style)
+        if phase.phase_type:
+            text.append(f"  {phase.phase_type}", style=Theme.metadata)
         elapsed = util.format_timedelta(lifecycle.total_run_time or lifecycle.elapsed, show_ms=False, null="")
         if elapsed:
             text.append(f"  {elapsed}", style="dim")
-        text.append("\n\n")
+        text.append("\n")
 
-        # Operations filtered by selected phase + descendants (root shows all)
-        visible_ops = []
-        if self._job_run.status and self._job_run.status.operations:
-            if self._phase_id == self._job_run.root_phase.phase_id:
-                visible_ops = self._job_run.status.operations
-            else:
-                phase_ids = collect_phase_ids(phase)
-                visible_ops = [op for op in self._job_run.status.operations if op.source in phase_ids]
-
-        if visible_ops:
-            ended = self._job_run.lifecycle.is_ended
-            global_ops = [op for op in visible_ops if not op.scoped]
-            for op in global_ops:
-                _render_operation(text, op, run_ended=ended)
-
-            scoped_ops = [op for op in visible_ops if op.scoped]
-            if scoped_ops:
-                if self._show_details:
-                    scope_groups: dict[str, list] = {}
-                    for op in scoped_ops:
-                        scope_groups.setdefault(op.scope, []).append(op)
-                    def _scope_sort_key(item):
-                        ops = item[1]
-                        if any(not o.finished for o in ops):
-                            return 0  # running
-                        if any(o.failed for o in ops):
-                            return 1  # failed
-                        return 2  # completed
-
-                    for scope, ops in sorted(scope_groups.items(), key=_scope_sort_key):
-                        text.append(f"── {scope}\n", style=Theme.label)
-                        for op in ops:
-                            text.append("  ")
-                            _render_operation(text, op, use_display_name=False, run_ended=ended)
-                else:
-                    text.append("\n")
-                    text.append("(press d to view scoped ops)\n", style="dim")
-        else:
-            text.append("(no tracked operations)\n", style="dim")
-
-        if visible_ops and (self._show_details or self._job_run.faults):
-            text.append("─" * max(self.size.width - 2, 10) + "\n", style=Theme.metadata)
-
-        # Faults (always shown — critical info)
+        # Faults (job-level, critical — shown first; each carries its own trace).
+        # The selected phase's own termination trace is added below, de-duped.
         if self._job_run.faults:
             text.append("\nFaults\n", style=Theme.state_failure)
             for fault in self._job_run.faults:
                 text.append(f"  [{fault.category}] {fault.reason}\n", style=Theme.error)
                 if fault.stack_trace:
                     text.append(f"{fault.stack_trace}\n", style="dim")
-
-        # Phase metadata (detail mode only)
-        if self._show_details:
-            if phase.phase_type:
-                text.append(f"Type: {phase.phase_type}\n", style=Theme.metadata)
-
-            col2_offset = 20
-            created_str = format_time_local_tz(lifecycle.created_at, null='N/A', include_ms=False)
-            left = f"Created: {created_str}"
-            text.append(left, style=Theme.metadata)
-            if lifecycle.termination:
-                terminated_str = format_time_local_tz(lifecycle.termination.terminated_at, null='N/A', include_ms=False)
-                pad = max(col2_offset - len(left), 2)
-                text.append(" " * pad)
-                text.append(f"Ended: {terminated_str}", style=Theme.metadata)
             text.append("\n")
 
-            if lifecycle.started_at and int(lifecycle.created_at.timestamp()) != int(lifecycle.started_at.timestamp()):
-                text.append(f"Started: {format_time_local_tz(lifecycle.started_at, null='N/A', include_ms=False)}\n",
-                             style=Theme.metadata)
+        # Phase metadata (always shown; panel scrolls for long attributes/variables)
+        col2_offset = 20
+        created_str = format_time_local_tz(lifecycle.created_at, null='N/A', include_ms=False)
+        left = f"Created: {created_str}"
+        text.append(left, style=Theme.metadata)
+        if lifecycle.termination:
+            terminated_str = format_time_local_tz(lifecycle.termination.terminated_at, null='N/A', include_ms=False)
+            pad = max(col2_offset - len(left), 2)
+            text.append(" " * pad)
+            text.append(f"Ended: {terminated_str}", style=Theme.metadata)
+        text.append("\n")
 
-            if phase.stop_reason:
-                text.append(f"Stop reason: {phase.stop_reason.name}\n", style=Theme.state_incomplete)
+        if lifecycle.started_at and int(lifecycle.created_at.timestamp()) != int(lifecycle.started_at.timestamp()):
+            text.append(f"Started: {format_time_local_tz(lifecycle.started_at, null='N/A', include_ms=False)}\n",
+                         style=Theme.metadata)
 
-            if lifecycle.termination and lifecycle.termination.message:
-                text.append(f"Message:     {lifecycle.termination.message}\n")
+        if phase.stop_reason:
+            text.append(f"Stop reason: {phase.stop_reason.name}\n", style=Theme.state_incomplete)
 
-            if phase.attributes:
-                text.append("\nAttributes\n", style=Theme.section_heading)
-                for key, value in phase.attributes.items():
-                    text.append(f"  {key}: {value}\n", style=Theme.metadata)
+        if lifecycle.termination and lifecycle.termination.message:
+            text.append(f"Message:     {lifecycle.termination.message}\n")
 
-            if phase.variables:
-                text.append("\nVariables\n", style=Theme.section_heading)
-                for key, value in phase.variables.items():
-                    text.append(f"  {key}: {value}\n", style=Theme.metadata)
-
-            if lifecycle.termination and lifecycle.termination.stack_trace:
+        # Selected phase's own termination stack trace — shown unless a job-level
+        # fault above already carries the identical trace (avoids double-render).
+        if lifecycle.termination and lifecycle.termination.stack_trace:
+            fault_traces = {f.stack_trace for f in self._job_run.faults if f.stack_trace}
+            if lifecycle.termination.stack_trace not in fault_traces:
                 text.append("\nStack trace\n", style=Theme.state_failure)
                 text.append(f"{lifecycle.termination.stack_trace}\n", style="dim")
 
-            if phase.children:
-                text.append(f"\n{len(phase.children)} {'child' if len(phase.children) == 1 else 'children'}\n",
-                             style=Theme.metadata)
+        if phase.attributes:
+            text.append("\nAttributes\n", style=Theme.section_heading)
+            for key, value in phase.attributes.items():
+                text.append(f"  {key}: {value}\n", style=Theme.metadata)
+
+        if phase.variables:
+            text.append("\nVariables\n", style=Theme.section_heading)
+            for key, value in phase.variables.items():
+                text.append(f"  {key}: {value}\n", style=Theme.metadata)
+
+        if phase.children:
+            text.append(f"\n{len(phase.children)} {'child' if len(phase.children) == 1 else 'children'}\n",
+                         style=Theme.metadata)
 
         return text
 
@@ -970,7 +1015,7 @@ def _phase_label(phase: PhaseRun) -> Text:
     lifecycle = phase.lifecycle
 
     label = Text()
-    label.append(phase.phase_id, style=style)
+    label.append(phase.phase_id, style=Theme.phase_name)
     label.append(f"  {_phase_tree_stage_text(phase)}", style=style)
 
     elapsed_str = util.format_timedelta(lifecycle.elapsed, show_ms=False, null="")

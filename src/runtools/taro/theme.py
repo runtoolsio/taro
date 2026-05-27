@@ -13,6 +13,7 @@ _SUCCESS = '#7ee787'      # vivid green
 _WARNING = '#ffb347'      # amber warning
 _ERROR = '#ff6b6b'        # vivid coral red
 _MUTED = '#6f7f96'        # softened slate
+_BRIGHT = '#e8edf2'       # near-white — the brightest "primary" text element
 
 
 def prompt_style():
@@ -60,4 +61,6 @@ class Theme:
     log_debug = '#636b78'           # dim neutral — least prominent level
     log_field_key = '#8a7f91'       # dusty lavender — warm contrast to cool tones
     log_field_value = '#aab4c0'     # mid slate — gives values a defined tone so the white message reads as primary
-    log_message = '#e8edf2'         # near-white — brightest element, the main event text
+    log_message = _BRIGHT           # the main event text — brightest element on an output line
+    op_name = _BRIGHT               # operation name as primary element
+    phase_name = _BRIGHT            # phase name in the tree
