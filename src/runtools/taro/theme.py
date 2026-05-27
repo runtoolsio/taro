@@ -59,3 +59,5 @@ class Theme:
     log_info = '#4dbda8'            # teal mint — clear identity, ties to brand
     log_debug = '#636b78'           # dim neutral — least prominent level
     log_field_key = '#8a7f91'       # dusty lavender — warm contrast to cool tones
+    log_field_value = '#aab4c0'     # mid slate — gives values a defined tone so the white message reads as primary
+    log_message = '#e8edf2'         # near-white — brightest element, the main event text
