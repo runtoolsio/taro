@@ -43,7 +43,7 @@ from runtools.runcore.util import format_dt_local_tz, format_time_local_tz
 from runtools.taro.style import stage_style, run_term_style, term_style
 from runtools.taro.theme import Theme
 from runtools.taro.view.output_render import format_line_verbose, format_line_plain
-from runtools.taro.view.status_render import render_result, render_status
+from runtools.taro.view.status_render import progress_bar, render_result, render_status
 
 TARO_THEME = TextualTheme(
     name="taro",
@@ -263,15 +263,16 @@ class InstanceHeader(Static):
     def render(self):
         """Build the header as a unified two-row grid split static / dynamic:
 
-            col0      col1     col2      col3      col4 (flexible)
-          ┌ job     ┬ run    ┬ ordinal ┬ tags    ┬ features          ┐   ← static: identity & config
-          └ created ┴ ended  ┴ status  ┴ elapsed ┴ result/last-event ┘   ← dynamic: lifecycle & progress
+            col0      col1     col2      col3       col4 (flexible)
+          ┌ job     ┬ run    ┬ ordinal ┬ features ┬ tags              ┐   ← static: identity & config
+          └ created ┴ ended  ┴ status  ┴ elapsed  ┴ result/last-event ┘   ← dynamic: lifecycle & progress
 
         Row 1 holds values fixed for the run's lifetime; row 2 holds the ones that move
-        while it runs. The last column stretches (and shrinks first when narrow); features
+        while it runs. The last column stretches (and shrinks first when narrow); tags
         and result/last-event live there so both get room. The result cell shows the final
-        result when ended, else the current/last event — the full ops breakdown lives in the
-        Operations panel. Ordinal is dim for the default (1), brighter for re-runs. Values
+        result when ended, else the current/last event, plus a parenthetical op roll-up
+        "(N active · M ✓ · K ✗)" (error-toned on failure) — the full per-op breakdown with
+        bars lives in the Operations panel. Ordinal is dim for the default (1), brighter for re-runs. Values
         are tinted per field; gridlines stay a single muted tone; absent optional values
         (ended/tags/features/status) show a dim parenthesized placeholder, e.g. "(no tags)".
         """
@@ -283,13 +284,32 @@ class InstanceHeader(Static):
         else:
             stage_text = lifecycle.stage.name
 
-        # Result when ended, else the current/last event — the at-a-glance "what".
+        # Result when ended, else the current/last event — the narrative "what".
         status = job_run.status
         event_val, event_tone = "", ""
         if status and status.result:
             event_val, event_tone = status.result.message, Theme.log_message
         elif status and status.last_event:
             event_val, event_tone = status.last_event.message, "#9bb1c8"
+
+        # Aggregate op roll-up — counts only (per-op detail with bars lives in the Operations panel).
+        # Rendered as a parenthetical alongside the narrative; the whole cell turns error-toned on failure.
+        ops = status.operations if status else ()
+        op_badge, any_failed = "", False
+        if ops:
+            active = sum(1 for o in ops if not o.finished)
+            done = sum(1 for o in ops if o.finished and not o.failed)
+            failed = sum(1 for o in ops if o.finished and o.failed)
+            any_failed = failed > 0
+            parts = []
+            if active:
+                parts.append(f"{active} active")
+            if done:
+                parts.append(f"{done} ✓")
+            if failed:
+                parts.append(f"{failed} ✗")
+            if parts:
+                op_badge = f"({' · '.join(parts)})"
 
         # Ordinal: dim for the implicit first run, brighter for re-runs.
         ordinal = job_run.instance_id.ordinal
@@ -305,14 +325,14 @@ class InstanceHeader(Static):
         row1[0] = (job_run.job_id, "#3dd6b5")
         row1[1] = (job_run.run_id, "#7a9ec2")
         row1[2] = ord_cell
-        if job_run.metadata.tags:
-            row1[3] = (" ".join(f"#{t}" for t in job_run.metadata.tags), "#7ee787")
-        else:
-            row1[3] = ("(no tags)", self._EMPTY_CELL_STYLE)
         if features_val:
-            row1[4] = (features_val, "#8a7f91")
+            row1[3] = (features_val, "#8a7f91")
         else:
-            row1[4] = ("(no features)", self._EMPTY_CELL_STYLE)
+            row1[3] = ("(no features)", self._EMPTY_CELL_STYLE)
+        if job_run.metadata.tags:
+            row1[4] = (" ".join(f"#{t}" for t in job_run.metadata.tags), "#7ee787")
+        else:
+            row1[4] = ("(no tags)", self._EMPTY_CELL_STYLE)
 
         # Row 2 — dynamic: lifecycle & progress.
         row2 = [None] * n_cols
@@ -323,8 +343,15 @@ class InstanceHeader(Static):
             row2[1] = ("(not ended)", self._EMPTY_CELL_STYLE)
         row2[2] = (stage_text, _stage_rich_style(job_run))
         row2[3] = (util.format_timedelta(lifecycle.elapsed, show_ms=False, null="--:--:--"), "#ffb347")
-        if event_val:
-            row2[4] = (event_val, event_tone)
+        status_cell = "  ".join(p for p in (event_val, op_badge) if p)
+        if status_cell:
+            if any_failed:
+                tone = Theme.error
+            elif event_val:
+                tone = event_tone
+            else:
+                tone = "#9bb1c8"
+            row2[4] = (status_cell, tone)
         else:
             row2[4] = ("(no status)", self._EMPTY_CELL_STYLE)
 
@@ -441,11 +468,14 @@ class PhaseTree(Tree[str]):
             self.select_node(self._node_map[cursor_phase_id])
 
 
-def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = True, run_ended: bool = False) -> None:
+def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = True, run_ended: bool = False,
+                      width: int = 0) -> None:
     """Append a single operation to a Rich Text block.
 
     Finished operations render as a one-line summary (``name ✓ result elapsed``).
-    Active operations show name, optional percentage, and progress counts.
+    Active operations show name and counts, plus a progress bar when the total is known and
+    ``width`` leaves room; otherwise the running time. ``width`` is the available line width
+    (0 disables the bar).
     """
     name = op.display_name if use_display_name else op.name
     # Name is the primary element (bright); progress/result/elapsed recede.
@@ -468,14 +498,22 @@ def _render_operation(text: Text, op: 'Operation', *, use_display_name: bool = T
         text.append(f"{suffix}\n", style=rest_style)
     else:
         text.append(name, style=name_style)
+        counts = ""
         if op.completed is not None or op.total is not None:
-            parts = format_number(op.completed) if op.completed is not None else "0"
+            counts = format_number(op.completed) if op.completed is not None else "0"
             if op.total is not None:
-                parts += f"/{format_number(op.total)}"
+                counts += f"/{format_number(op.total)}"
             if op.unit:
-                parts += f" {op.unit}"
-            text.append(f" {parts}", style=Theme.metadata)
-        if op.created_at and not run_ended:
+                counts += f" {op.unit}"
+            text.append(f" {counts}", style=Theme.metadata)
+        bar = None
+        if width > 0:
+            used = len(name) + (1 + len(counts) if counts else 0) + 1  # +1 for the space before the bar
+            bar = progress_bar(op, width - used)
+        if bar is not None:
+            text.append(" ")
+            text.append(bar)
+        elif op.created_at and not run_ended:
             running = datetime.now(UTC).replace(tzinfo=None) - op.created_at
             text.append(f" {format_timedelta_compact(running)}", style="dim")
         text.append("\n")
@@ -541,10 +579,11 @@ class OperationsPanel(Static):
             text.append("(no tracked operations)\n", style="dim")
             return text
 
+        width = self.content_size.width
         ended = self._job_run.lifecycle.is_ended
         global_ops = [op for op in visible_ops if not op.scoped]
         for op in global_ops:
-            _render_operation(text, op, run_ended=ended)
+            _render_operation(text, op, run_ended=ended, width=width)
 
         scoped_ops = [op for op in visible_ops if op.scoped]
         if scoped_ops:
@@ -565,7 +604,7 @@ class OperationsPanel(Static):
                     text.append(f"── {scope}\n", style=Theme.label)
                     for op in ops:
                         text.append("  ")
-                        _render_operation(text, op, use_display_name=False, run_ended=ended)
+                        _render_operation(text, op, use_display_name=False, run_ended=ended, width=width - 2)
             else:
                 text.append("\n")
                 text.append("(press s to view scoped ops)\n", style="dim")

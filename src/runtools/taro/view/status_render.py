@@ -255,3 +255,14 @@ def _bar_with_prefix(op: Operation, prefix: str, width: int) -> Text | None:
         text.append(dim_bar, style=Theme.metadata)
     text.append(suffix, style="dim")
     return text
+
+
+def progress_bar(op: Operation, width: int) -> Text | None:
+    """Standalone progress bar ``━━━╸╺━━ {pct}%`` for an op with a known total.
+
+    No name/counts prefix — the caller renders those. Returns None when the op has no
+    known total (``pct_done`` is None) or ``width`` is too small for a meaningful bar.
+    """
+    if op.pct_done is None:
+        return None
+    return _bar_with_prefix(op, "", width)
