@@ -258,6 +258,7 @@ class InstanceHeader(Static):
 
     # Mono-tone gridline color for the unified header grid.
     _GRID_BORDER = "#46505f"
+    _EMPTY_CELL_STYLE = "#4f5b6c"
 
     def render(self):
         """Build the header as a unified two-row grid split static / dynamic:
@@ -270,9 +271,9 @@ class InstanceHeader(Static):
         while it runs. The last column stretches (and shrinks first when narrow); features
         and result/last-event live there so both get room. The result cell shows the final
         result when ended, else the current/last event — the full ops breakdown lives in the
-        Operations panel. Ordinal is a dim dash for the default (1), else the number. Values
+        Operations panel. Ordinal is dim for the default (1), brighter for re-runs. Values
         are tinted per field; gridlines stay a single muted tone; absent optional values
-        (ended/tags/features) leave their cell blank.
+        (ended/tags/features/status) show a dim parenthesized placeholder, e.g. "(no tags)".
         """
         job_run = self._job_run
         lifecycle = job_run.lifecycle
@@ -290,13 +291,13 @@ class InstanceHeader(Static):
         elif status and status.last_event:
             event_val, event_tone = status.last_event.message, "#9bb1c8"
 
-        # Ordinal: dim dash for the implicit first run, the number for re-runs.
+        # Ordinal: dim for the implicit first run, brighter for re-runs.
         ordinal = job_run.instance_id.ordinal
-        ord_cell = (str(ordinal), "#7a9ec2") if ordinal > 1 else ("–", "#5a6a80")
+        ord_cell = (str(ordinal), "#7a9ec2" if ordinal > 1 else "#5a6a80")
 
         features_val = ", ".join(job_run.metadata.features) if job_run.metadata.features else ""
-        has_last = bool(event_val or features_val)   # whether the flexible 5th column exists
-        n_cols = 5 if has_last else 4
+        has_last = True   # keep optional columns visible with dim placeholders
+        n_cols = 5
 
         # Fixed column slots; None renders as an empty cell.
         # Row 1 — static: identity & config.
@@ -306,18 +307,26 @@ class InstanceHeader(Static):
         row1[2] = ord_cell
         if job_run.metadata.tags:
             row1[3] = (" ".join(f"#{t}" for t in job_run.metadata.tags), "#7ee787")
-        if has_last and features_val:
+        else:
+            row1[3] = ("(no tags)", self._EMPTY_CELL_STYLE)
+        if features_val:
             row1[4] = (features_val, "#8a7f91")
+        else:
+            row1[4] = ("(no features)", self._EMPTY_CELL_STYLE)
 
         # Row 2 — dynamic: lifecycle & progress.
         row2 = [None] * n_cols
         row2[0] = (format_dt_local_tz(lifecycle.created_at, null="N/A", include_ms=False), "#6f7f96")
         if lifecycle.is_ended and lifecycle.termination:
             row2[1] = (format_dt_local_tz(lifecycle.termination.terminated_at, null="N/A", include_ms=False), "#9bb1c8")
+        else:
+            row2[1] = ("(not ended)", self._EMPTY_CELL_STYLE)
         row2[2] = (stage_text, _stage_rich_style(job_run))
         row2[3] = (util.format_timedelta(lifecycle.elapsed, show_ms=False, null="--:--:--"), "#ffb347")
-        if has_last and event_val:
+        if event_val:
             row2[4] = (event_val, event_tone)
+        else:
+            row2[4] = ("(no status)", self._EMPTY_CELL_STYLE)
 
         def to_cells(row):
             return [Text(cell[0], style=cell[1]) if cell else Text("") for cell in row]
