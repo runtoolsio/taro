@@ -285,10 +285,12 @@ class InstanceHeader(Static):
             stage_text = lifecycle.stage.name
 
         # Result when ended, else the current/last event — the narrative "what".
+        # Failed results render in the error tone so the failure status is glanceable.
         status = job_run.status
         event_val, event_tone = "", ""
         if status and status.result:
-            event_val, event_tone = status.result.message, Theme.log_message
+            event_val = status.result.message
+            event_tone = Theme.error if status.result.failed else Theme.log_message
         elif status and status.last_event:
             event_val, event_tone = status.last_event.message, "#9bb1c8"
 

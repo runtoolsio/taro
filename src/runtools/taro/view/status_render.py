@@ -89,7 +89,7 @@ def _live_fallback(status: Status) -> Text:
 
 def _ended_fallback(status: Status) -> Text:
     if status.result:
-        return Text(status.result.message)
+        return Text(status.result.message, style=Theme.error if status.result.failed else "")
     summary = _render_finished_summary(status)
     if summary.cell_len > 0:
         return summary
@@ -104,7 +104,7 @@ def render_result(status: Status | None, width: int) -> Text:
         return Text("")
 
     if status.result:
-        return Text(status.result.message)
+        return Text(status.result.message, style=Theme.error if status.result.failed else "")
 
     return _render_finished_summary(status)
 
