@@ -13,7 +13,7 @@ from rich.padding import Padding
 from runtools.runcore import connector
 from runtools.runcore.connector import resolve_env_dir, clean_stale_component_dirs
 from runtools.runcore.env import (
-    LocalEnvironmentConfig, EnvironmentEntry,
+    EnvironmentConfig, EnvironmentEntry,
     available_environments, load_env_config, save_env_config, lookup,
     create_environment, delete_environment,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
@@ -35,7 +35,7 @@ def create(
     """Create a new local environment (SQLite DB + registry entry)."""
     try:
         entry = EnvironmentEntry(id=name, driver='sqlite', location=path)  # TODO: creation wizard for driver selection
-        create_environment(entry, LocalEnvironmentConfig(id=name))
+        create_environment(entry, EnvironmentConfig.default_local(name))
         console.print(f"[green]Created environment '[bold]{name}[/bold]'[/]")
     except EnvironmentAlreadyExistsError:
         console.print(f"[red]Environment '{name}' already exists[/]")
@@ -96,7 +96,7 @@ def edit(
     entry = cli.select_env(env_id)
     env_config = load_env_config(entry)
 
-    dump = env_config.model_dump(mode='json', exclude={'type', 'id'})
+    dump = env_config.model_dump(mode='json', exclude={'id'})
     original_content = (
         "# Environment configuration (TOML format)\n"
         "# Lines starting with # are comments and ignored.\n"
@@ -129,9 +129,8 @@ def edit(
             console.print("[dim]No changes made[/dim]")
             os.unlink(tmp_path)
             return
-        edited['type'] = 'local'
         edited['id'] = entry.id
-        new_config = LocalEnvironmentConfig.model_validate(edited)
+        new_config = EnvironmentConfig.model_validate(edited)
         save_env_config(entry, new_config)
         console.print(f"[green]Configuration saved for '{entry.id}'[/]")
     except typer.Exit:
@@ -149,7 +148,7 @@ def clean(env_id: Optional[str] = cli.ENV_OPTION_FIELD):
     """Remove stale component directories left by dead processes."""
     entry = cli.select_env(env_id)
     env_config = load_env_config(entry)
-    env_dir = resolve_env_dir(env_config.id, env_config.layout.root_dir)
+    env_dir = resolve_env_dir(env_config.id, env_config.transport.root_dir)
 
     removed = clean_stale_component_dirs(env_dir)
     if removed:
