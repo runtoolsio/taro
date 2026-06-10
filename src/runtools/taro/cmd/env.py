@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 import tomllib
 from datetime import datetime, timedelta, UTC
-from typing import List, Optional
+from typing import Optional
 
 import typer
 from pydantic import ValidationError
@@ -11,9 +11,9 @@ from rich.console import Console
 from rich.padding import Padding
 
 from runtools.runcore import connector
-from runtools.runcore.connector import resolve_env_dir, clean_stale_component_dirs
+from runtools.runcore.transport.unix_socket import resolve_env_dir, clean_stale_component_dirs
 from runtools.runcore.env import (
-    EnvironmentConfig, EnvironmentEntry,
+    EnvironmentConfig, EnvironmentEntry, UnixSocketTransportConfig,
     available_environments, load_env_config, save_env_config, lookup,
     create_environment, delete_environment,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
@@ -148,8 +148,15 @@ def clean(env_id: Optional[str] = cli.ENV_OPTION_FIELD):
     """Remove stale component directories left by dead processes."""
     entry = cli.select_env(env_id)
     env_config = load_env_config(entry)
-    env_dir = resolve_env_dir(env_config.id, env_config.transport.root_dir)
 
+    if not isinstance(env_config.transport, UnixSocketTransportConfig):
+        console.print(
+            f"[dim]No filesystem state to clean for transport "
+            f"[bold]{type(env_config.transport).__name__}[/bold][/dim]"
+        )
+        return
+
+    env_dir = resolve_env_dir(env_config.id, env_config.transport.root_dir)
     removed = clean_stale_component_dirs(env_dir)
     if removed:
         console.print(f"Cleaned {len(removed)} stale component directories:")
