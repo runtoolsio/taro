@@ -168,28 +168,36 @@ def clean(env_id: Optional[str] = cli.ENV_OPTION_FIELD):
 
 @app.command()
 def prune(
-        pattern: str = typer.Argument(..., metavar="PATTERN",
+        pattern: str = typer.Argument("*", metavar="PATTERN",
                                       help="Job pattern to prune ('*' for all)"),
-        keep_days: int = typer.Option(..., "--keep-days", "-k",
-                                      help="Keep runs newer than N days (0 = remove all matched)"),
+        keep_days: Optional[int] = typer.Option(None, "--keep-days", "-k",
+                                      help="Keep runs newer than N days (0 = remove all matched). "
+                                           "Defaults to the environment's configured retention."),
         env_id: Optional[str] = cli.ENV_OPTION_FIELD,
         force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
 ):
     """Remove old run history and output files.
 
-    Both PATTERN and --keep-days are required to prevent accidental data loss.
+    With no --keep-days, applies the environment's configured retention
+    (``retention.keep_days``); a flag overrides it. The preview + confirmation
+    guard against accidental loss (skip with --force).
 
     Examples:
+        taro env prune                                # apply the env's configured retention
         taro env prune "*" --keep-days 0              # wipe all history
         taro env prune "*" --keep-days 7              # keep last week
         taro env prune "test_*" --keep-days 0         # wipe all test runs
         taro env prune "backup" --keep-days 30 -e dev # prune old backup runs
     """
+    resolved = cli.select_env(env_id)
+    if keep_days is None:
+        keep_days = load_env_config(resolved).retention.keep_days
+    if keep_days is None:
+        console.print("[red]Error:[/] no retention configured for this environment; pass --keep-days")
+        raise typer.Exit(2)
     if keep_days < 0:
         console.print("[red]Error:[/] --keep-days must be >= 0")
         raise typer.Exit(2)
-
-    resolved = cli.select_env(env_id)
 
     if keep_days == 0:
         match = criteria().pattern(pattern, MatchingStrategy.FN_MATCH).build()
