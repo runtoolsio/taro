@@ -13,7 +13,7 @@ from rich.padding import Padding
 from runtools.runcore import connector
 from runtools.runcore.transport.unix_socket import resolve_env_dir, clean_stale_component_dirs
 from runtools.runcore.env import (
-    EnvironmentConfig, EnvironmentEntry, UnixSocketTransportConfig,
+    EnvironmentEntry, EnvironmentKind, LocalEnvironmentConfig,
     available_environments, load_env_config, save_env_config, lookup,
     create_environment, delete_environment,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
@@ -34,8 +34,9 @@ def create(
 ):
     """Create a new local environment (SQLite DB + registry entry)."""
     try:
-        entry = EnvironmentEntry(id=name, driver='sqlite', location=path)  # TODO: creation wizard for driver selection
-        create_environment(entry, EnvironmentConfig.default_local(name))
+        # TODO: creation wizard for kind selection
+        entry = EnvironmentEntry(id=name, kind=EnvironmentKind.LOCAL, location=path)
+        create_environment(entry, LocalEnvironmentConfig())
         console.print(f"[green]Created environment '[bold]{name}[/bold]'[/]")
     except EnvironmentAlreadyExistsError:
         console.print(f"[red]Environment '{name}' already exists[/]")
@@ -50,7 +51,7 @@ def list_envs():
         console.print("No environments available. Run [bold]taro env create <name>[/] to create one.")
         return
     for entry in envs:
-        label = "[dim](built-in)[/]" if entry.is_builtin_local else f"[dim]{entry.driver}[/]"
+        label = "[dim](built-in)[/]" if entry.is_builtin_local else f"[dim]{entry.kind}[/]"
         path_info = entry.location or "(default)"
         console.print(f"  [bold]{entry.id}[/]  {label}  {path_info}")
 
@@ -96,7 +97,7 @@ def edit(
     entry = cli.select_env(env_id)
     env_config = load_env_config(entry)
 
-    dump = env_config.model_dump(mode='json', exclude={'id'})
+    dump = env_config.model_dump(mode='json')
     original_content = (
         "# Environment configuration (TOML format)\n"
         "# Lines starting with # are comments and ignored.\n"
@@ -129,8 +130,7 @@ def edit(
             console.print("[dim]No changes made[/dim]")
             os.unlink(tmp_path)
             return
-        edited['id'] = entry.id
-        new_config = EnvironmentConfig.model_validate(edited)
+        new_config = type(env_config).model_validate(edited)
         save_env_config(entry, new_config)
         console.print(f"[green]Configuration saved for '{entry.id}'[/]")
     except typer.Exit:
@@ -147,16 +147,13 @@ def edit(
 def clean(env_id: Optional[str] = cli.ENV_OPTION_FIELD):
     """Remove stale component directories left by dead processes."""
     entry = cli.select_env(env_id)
-    env_config = load_env_config(entry)
 
-    if not isinstance(env_config.transport, UnixSocketTransportConfig):
-        console.print(
-            f"[dim]No filesystem state to clean for transport "
-            f"[bold]{type(env_config.transport).__name__}[/bold][/dim]"
-        )
+    if entry.kind is not EnvironmentKind.LOCAL:
+        console.print(f"[dim]No filesystem state to clean for a [bold]{entry.kind}[/bold] environment[/dim]")
         return
 
-    env_dir = resolve_env_dir(env_config.id, env_config.transport.root_dir)
+    env_config = load_env_config(entry)
+    env_dir = resolve_env_dir(entry.id, env_config.root_dir)
     removed = clean_stale_component_dirs(env_dir)
     if removed:
         console.print(f"Cleaned {len(removed)} stale component directories:")
