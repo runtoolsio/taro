@@ -1,8 +1,8 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from rich.text import Text
 
-from runtools.runcore.job import JobRun
+from runtools.runcore.job import InstanceLiveness, JobRun
 from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
 from runtools.runcore.util import format_dt_local_tz, format_dt_compact
 from runtools.taro.printer import Column
@@ -30,6 +30,48 @@ def mid_ellipsis(text: str, width: int) -> str:
     head = width - 1 - tail
     return text[:head] + "…" + text[-tail:]
 
+
+class ActiveInstanceRow:
+    """A JobRun table item enriched with the consumer-side liveness verdict (transport doc
+    point 8). Delegates everything else to the run, so all JobRun columns render unchanged."""
+
+    def __init__(self, run: JobRun, liveness: InstanceLiveness):
+        self.run = run
+        self.liveness = liveness
+
+    def __getattr__(self, name):
+        return getattr(self.run, name)
+
+
+def _format_age(seconds) -> str:
+    if seconds is None:
+        return '?'
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}m"
+    return f"{int(seconds // 3600)}h"
+
+
+def _lost_badge(j) -> Optional[str]:
+    """The verdict as text — must survive pipes and NO_COLOR; row colour is reinforcement only."""
+    liveness = getattr(j, 'liveness', None)
+    if liveness and liveness.is_lost:
+        return f"LOST {_format_age(liveness.heartbeat_age)}"
+    return None
+
+
+def lost_aware(columns: List[Column]) -> List[Column]:
+    """Copies of ``columns`` that dim a lost run's whole row (plain ``JobRun`` items are
+    unaffected — they carry no liveness)."""
+    def dimmed(colour_fnc):
+        def style(j):
+            liveness = getattr(j, 'liveness', None)
+            if liveness and liveness.is_lost:
+                return Theme.subtle
+            return colour_fnc(j)
+        return style
+    return [col._replace(colour_fnc=dimmed(col.colour_fnc)) for col in columns]
 
 N = Column('N', 3, lambda j: str(j.instance_id.ordinal) if j.instance_id.ordinal > 1 else '', run_term_style)
 JOB_ID = Column('JOB ID', 25, lambda j: end_ellipsis(j.job_id, 25), job_id_style)
@@ -89,8 +131,23 @@ TERM_STATUS = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
 TERM_STATUS_FULL = Column('TERM', max(len(s.name) for s in TerminationStatus) + 2,
                           lambda j: j.lifecycle.termination.status.name if j.lifecycle.termination else '',
                           _term_style, None, True)
-STATUS = Column('STATUS', 50, lambda j: str(j.status or ''), general_style,
-                lambda j, w: render_status(j.status, w, j.lifecycle.is_ended))
+def _status_value(j) -> str:
+    badge = _lost_badge(j)
+    text = str(j.status or '')
+    return f"{badge} · {text}" if badge and text else (badge or text)
+
+
+def _status_rich(j, w):
+    badge = _lost_badge(j)
+    if not badge:
+        return render_status(j.status, w, j.lifecycle.is_ended)
+    cell = Text(badge + ' ', style=Theme.error)
+    # is_ended=True: a lost run's status is frozen — no spinners on stale data
+    cell.append_text(render_status(j.status, max(w - len(badge) - 1, 10), True))
+    return cell
+
+
+STATUS = Column('STATUS', 50, _status_value, general_style, _status_rich)
 RESULT = Column('RESULT', 50,
                 lambda j: j.status.result.message if j.status and j.status.result
                 else j.status.finished_ops_summary if j.status else '',

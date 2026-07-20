@@ -42,16 +42,16 @@ def ps(
     empty_envs = []
     for env_id, conn in connectors:
         with conn:
-            runs = conn.get_active_runs(run_match)
+            rows = [view_inst.ActiveInstanceRow(i.snap(), i.liveness) for i in conn.get_instances(run_match)]
 
-        if not runs:
+        if not rows:
             empty_envs.append(env_id)
             continue
 
         console.print(Padding(f"[dim]Active instances in [/][ {env_id} ]", pad=(0, 0, 0, 0)))
-        columns = [view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME, view_inst.PHASES,
-                   view_inst.WARNINGS, view_inst.STATUS]
-        runs_sorted = sort_option.sort_runs(runs, reverse=descending)
+        columns = view_inst.lost_aware([view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.EXEC_TIME,
+                                        view_inst.PHASES, view_inst.WARNINGS, view_inst.STATUS])
+        runs_sorted = sort_option.sort_runs(rows, reverse=descending)
         try:
             printer.print_table(runs_sorted, columns, show_header=True, pager=False)
             console.print()
