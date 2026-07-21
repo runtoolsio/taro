@@ -7,6 +7,7 @@ import typer
 from runtools.runcore import connector
 from runtools.taro import cli
 from runtools.taro.tui.jobs import JobsApp
+from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(invoke_without_command=True)
 
@@ -28,5 +29,5 @@ def jobs(
     resolved = cli.select_env(env)
     with connector.connect(resolved) as conn:
         job_stats = conn.read_run_stats()
-        active_runs = conn.get_active_runs()
+        active_runs = [view_inst.ActiveInstanceRow(i.snap(), i.liveness) for i in conn.get_instances()]
         JobsApp(conn, job_stats, active_runs, env_name=conn.env_id).run()

@@ -26,15 +26,17 @@ from runtools.taro.style import job_id_stats_style, stats_state_style
 from runtools.taro.theme import Theme
 from runtools.taro.tui.selector import add_columns
 from runtools.taro.tui.widgets import APP_CSS, METRIC_SEP, ScreenHeader, Section, setup_theme
+from runtools.taro.view import instance as view_inst
 
 log = logging.getLogger(__name__)
 
 _DRILL_DOWN_DAYS = 7
 
 class JobRow(NamedTuple):
-    """Row data for the jobs table — stats plus current running instance count."""
+    """Row data for the jobs table — stats plus current running/lost instance counts."""
     stats: JobStats
     running: int
+    lost: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +44,12 @@ class JobRow(NamedTuple):
 # ---------------------------------------------------------------------------
 
 _muted = lambda _: Theme.subtle
+
+
+def _is_lost(r) -> bool:
+    """Liveness verdict of an active-run row; rows without one count as live (presumed)."""
+    liveness = getattr(r, 'liveness', None)
+    return liveness is not None and liveness.is_lost
 
 
 def _last_status_display(r: JobRow) -> str:
@@ -54,10 +62,14 @@ def _format_last_time(r: JobRow) -> str:
 
 
 def _running_display(r: JobRow) -> str:
+    if r.lost:
+        return f"{r.running} +{r.lost} lost" if r.running else f"{r.lost} lost"
     return str(r.running) if r.running else ''
 
 
 def _running_style(r: JobRow) -> str:
+    if r.lost:
+        return Theme.error
     return Theme.state_executing if r.running else Theme.subtle
 
 
@@ -99,7 +111,8 @@ def build_jobs_metrics(stats_list: list[JobStats], active_runs: list[JobRun]) ->
     # total_jobs matches the table (historical jobs only).  Active-only jobs
     # are surfaced via the separate "running" count, not added to the catalog.
     total_jobs = len(stats_list)
-    running_count = len({r.job_id for r in active_runs})
+    running_count = len({r.job_id for r in active_runs if not _is_lost(r)})
+    lost_count = len({r.job_id for r in active_runs if _is_lost(r)})
 
     success_jobs = 0
     non_success_jobs = 0
@@ -115,6 +128,9 @@ def build_jobs_metrics(stats_list: list[JobStats], active_runs: list[JobRun]) ->
     text.append(f"{total_jobs} jobs", style="bold" if total_jobs else "dim")
     text.append(METRIC_SEP, style="dim")
     text.append(f"{running_count} running", style=Theme.state_executing if running_count else "dim")
+    if lost_count:
+        text.append(METRIC_SEP, style="dim")
+        text.append(f"{lost_count} lost", style=Theme.error)
     text.append(METRIC_SEP, style="dim")
     text.append("Last runs: ", style="dim")
     text.append(f"{success_jobs} success", style=Theme.success if success_jobs else "dim")
@@ -203,14 +219,20 @@ class JobsScreen(Screen):
     def _do_refresh(self) -> None:
         """Re-query stats and active runs, then repaint."""
         self._stats_list = self._conn.read_run_stats()
-        self._active_runs = self._conn.get_active_runs()
+        self._active_runs = [view_inst.ActiveInstanceRow(i.snap(), i.liveness) for i in self._conn.get_instances()]
         self._populate_table()
         self._refresh_header()
 
     def _build_rows(self) -> list[JobRow]:
-        """Combine stats with active-instance counts, sorted by job_id."""
-        running_by_job = Counter(r.job_id for r in self._active_runs)
-        rows = [JobRow(stats=s, running=running_by_job.get(s.job_id, 0)) for s in self._stats_list]
+        """Combine stats with active-instance counts, sorted by job_id.
+
+        Lost instances (owner stopped attesting — transport doc point 8) are counted
+        separately: they must not inflate "running".
+        """
+        running_by_job = Counter(r.job_id for r in self._active_runs if not _is_lost(r))
+        lost_by_job = Counter(r.job_id for r in self._active_runs if _is_lost(r))
+        rows = [JobRow(stats=s, running=running_by_job.get(s.job_id, 0), lost=lost_by_job.get(s.job_id, 0))
+                for s in self._stats_list]
         return sorted(rows, key=lambda r: r.stats.job_id)
 
     def _populate_table(self) -> None:

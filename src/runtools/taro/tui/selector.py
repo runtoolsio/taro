@@ -22,12 +22,22 @@ from runtools.taro.tui.widgets import APP_CSS, ScreenHeader, Section, build_hist
 from runtools.taro.view import instance as view_inst
 from runtools.taro.view.instance import render_cell
 
-COLUMNS = [view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.TERM_STATUS,
-           view_inst.PHASES, view_inst.STATUS]
+COLUMNS = view_inst.lost_aware(
+    [view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.TERM_STATUS,
+     view_inst.PHASES, view_inst.STATUS])
 
 
 def row_key(iid: InstanceID) -> str:
     return str(iid)
+
+
+def active_row(run: JobRun, inst: Optional[JobInstance]):
+    """Attach the instance's liveness verdict for rendering (transport doc point 8).
+
+    Wrapped at paint time, not at store time — the verdict is read fresh from the proxy on
+    every repaint, so table rows can keep holding bare snapshots.
+    """
+    return view_inst.ActiveInstanceRow(run, inst.liveness) if inst is not None else run
 
 
 def build_cells(run: JobRun, columns: Sequence = COLUMNS, *,
@@ -145,9 +155,19 @@ class _LiveSelectorApp(App[Optional[JobInstance]]):
         setup_theme(self)
         table = self.query_one(DataTable)
         for key, run in self._runs.items():
-            table.add_row(*build_cells(run), key=key)
+            table.add_row(*build_cells(active_row(run, self._instances.get(key))), key=key)
         self._env_handler = lambda e: self.call_from_thread(self._on_event, e)
         self._conn.notifications.add_observer_all_events(self._env_handler)
+        # Liveness verdicts change without instance events (the directory's heartbeat scan
+        # updates proxies silently — and a lost run emits nothing ever again), so repaint
+        # periodically; 2s is plenty at the 45s staleness scale
+        self.set_interval(2.0, self._refresh_rows)
+
+    def _refresh_rows(self) -> None:
+        table = self.query_one(DataTable)
+        for key, run in self._runs.items():
+            if key in table.rows:
+                update_row(table, key, active_row(run, self._instances.get(key)))
 
     def on_unmount(self) -> None:
         if self._env_handler is not None:
@@ -180,13 +200,13 @@ class _LiveSelectorApp(App[Optional[JobInstance]]):
             return
         elif key in self._runs:
             self._runs[key] = job_run
-            update_row(table, key, job_run)
+            update_row(table, key, active_row(job_run, self._instances.get(key)))
         else:
             inst = self._conn.get_instance(iid)
             if inst is not None:
                 self._instances[key] = inst
                 self._runs[key] = job_run
-                table.add_row(*build_cells(job_run), key=key)
+                table.add_row(*build_cells(active_row(job_run, inst)), key=key)
 
 
 def select_instance(conn: EnvironmentConnector, instances: Sequence[JobInstance], *,

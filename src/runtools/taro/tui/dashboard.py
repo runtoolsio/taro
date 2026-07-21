@@ -22,17 +22,17 @@ from runtools.runcore.run import Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
-    LinkedTable, add_columns, build_cells, last_col_width, reset_auto_widths, row_key,
+    LinkedTable, active_row, add_columns, build_cells, last_col_width, reset_auto_widths, row_key,
 )
 from runtools.taro.tui.widgets import APP_CSS, Section, build_history_metrics, setup_theme
 from runtools.taro.view import instance as view_inst
 
 log = logging.getLogger(__name__)
 
-ACTIVE_COLUMNS = [
+ACTIVE_COLUMNS = view_inst.lost_aware([
     view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME,
     view_inst.PHASES, view_inst.WARNINGS, view_inst.STATUS,
-]
+])
 HISTORY_COLUMNS = [
     view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.ENDED_COMPACT,
     view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
@@ -252,7 +252,8 @@ class DashboardScreen(Screen):
         reset_auto_widths(active_table)
         sorted_active = sorted(self._live_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_active:
-            active_table.add_row(*build_cells(run, ACTIVE_COLUMNS, render_width=rw), key=key)
+            row = active_row(run, self._instances.get(key))
+            active_table.add_row(*build_cells(row, ACTIVE_COLUMNS, render_width=rw), key=key)
         history_table.clear()
         reset_auto_widths(history_table)
         sorted_history = sorted(self._history_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
