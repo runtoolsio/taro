@@ -77,7 +77,7 @@ class LiveView:
     def run(self) -> None:
         """Subscribe to instance events and run event-driven refresh loop with slow RPC heartbeat."""
         handler = lambda e: self._event_queue.put(e)
-        self._conn.notifications.add_observer_all_events(handler)
+        self._conn.notifications.add_observer_state_events(handler)
         try:
             self._refresh_active_runs()
             with Live(self._build_table(), console=console, refresh_per_second=10) as live_display:
@@ -90,7 +90,7 @@ class LiveView:
                 except KeyboardInterrupt:
                     pass
         finally:
-            self._conn.notifications.remove_observer_all_events(handler)
+            self._conn.notifications.remove_observer_state_events(handler)
 
     def _poll_if_due(self) -> None:
         """Run RPC poll when the heartbeat interval has elapsed."""

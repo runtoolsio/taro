@@ -157,7 +157,7 @@ class _LiveSelectorApp(App[Optional[JobInstance]]):
         for key, run in self._runs.items():
             table.add_row(*build_cells(active_row(run, self._instances.get(key))), key=key)
         self._env_handler = lambda e: self.call_from_thread(self._on_event, e)
-        self._conn.notifications.add_observer_all_events(self._env_handler)
+        self._conn.notifications.add_observer_state_events(self._env_handler)
         # Liveness verdicts change without instance events (the directory's heartbeat scan
         # updates proxies silently — and a lost run emits nothing ever again), so repaint
         # periodically; 2s is plenty at the 45s staleness scale
@@ -171,7 +171,7 @@ class _LiveSelectorApp(App[Optional[JobInstance]]):
 
     def on_unmount(self) -> None:
         if self._env_handler is not None:
-            self._conn.notifications.remove_observer_all_events(self._env_handler)
+            self._conn.notifications.remove_observer_state_events(self._env_handler)
             self._env_handler = None
 
     def action_cancel(self) -> None:

@@ -151,14 +151,14 @@ class JobScreen(Screen):
         self._populate_tables()
         self._refresh_header()
         self._env_handler = lambda e: self.app.call_from_thread(self._on_event, e)
-        self._conn.notifications.add_observer_all_events(self._env_handler)
+        self._conn.notifications.add_observer_state_events(self._env_handler)
         self.set_interval(0.25, self._refresh_active_rows)
         if not self._live_runs and self._history_runs:
             self.query_one("#history-table", LinkedTable).focus()
 
     def on_unmount(self) -> None:
         if self._env_handler is not None:
-            self._conn.notifications.remove_observer_all_events(self._env_handler)
+            self._conn.notifications.remove_observer_state_events(self._env_handler)
             self._env_handler = None
 
     # -- Actions ---------------------------------------------------------------
