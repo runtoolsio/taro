@@ -749,14 +749,16 @@ class OutputBuffer:
         self._lines: list[OutputLine] = []
         self._seen: set[int] = set()
 
-    def add_line(self, line: OutputLine):
+    def add_line(self, line: OutputLine) -> bool:
+        """Add the line unless its ordinal was already seen; returns whether it was added."""
         if line.ordinal in self._seen:
-            return
+            return False
         self._seen.add(line.ordinal)
         if not self._lines or line.ordinal > self._lines[-1].ordinal:
             self._lines.append(line)
         else:
             insort(self._lines, line, key=lambda l: l.ordinal)
+        return True
 
     def add_lines(self, lines: Iterable[OutputLine]):
         for line in lines:
@@ -855,8 +857,9 @@ class OutputPanel(RichLog):
 
     def _on_output(self, event: InstanceOutputEvent) -> None:
         """Handle a live output event — called on Textual's event loop via call_from_thread."""
-        self._buffer.add_line(event.output_line)
-        if self._should_show(event.output_line):
+        # Stream delivery overlaps the initial pull (and replays the retained tail), so only
+        # lines the buffer has not seen yet reach the display
+        if self._buffer.add_line(event.output_line) and self._should_show(event.output_line):
             self._live_pending.append(event.output_line)
 
     def _flush_live_output(self) -> None:

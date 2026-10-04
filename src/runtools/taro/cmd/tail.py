@@ -1,6 +1,6 @@
 import signal
 from collections import defaultdict
-from threading import Lock, Event
+from threading import Event, Lock
 from typing import List, Optional
 
 import typer
@@ -8,7 +8,6 @@ from rich.console import Console
 from rich.text import Text
 
 from runtools.runcore import connector
-from runtools.runcore.connector import EnvironmentConnector
 from runtools.runcore.job import InstanceOutputObserver, InstanceOutputEvent
 from runtools.runcore.matching import JobRunCriteria, MetadataCriterion
 from runtools.runcore.output import OutputLine
@@ -18,14 +17,6 @@ from runtools.taro.view.output_render import format_line_verbose, format_line_pl
 
 app = typer.Typer(name="tail", invoke_without_command=True)
 console = Console()
-
-_connector: Optional[EnvironmentConnector] = None
-
-
-def _close_connector(_, __):
-    if _connector:
-        _connector.close()
-
 
 @app.callback()
 def tail(
@@ -68,28 +59,36 @@ def tail(
     resolved = cli.select_env(env)
     conn = connector.connect(resolved)
     tail_print = TailPrint(conn, metadata_criteria, show_ordinal, verbose)
-    conn.notifications.add_observer_output(tail_print)
-    conn.open()
+    previous_handlers = {}
+
+    def stop_follow(_, __):
+        tail_print.stopped.set()
+
     try:
+        if follow:
+            conn.notifications.add_observer_output(tail_print)
+            for signum in (signal.SIGINT, signal.SIGTERM):
+                previous_handlers[signum] = signal.signal(signum, stop_follow)
+        conn.open()
         for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
             print_instance_header(inst)
             for output_line in inst.output.tail(max_lines=lines):
+                instance_to_last_line[inst.metadata] = output_line.ordinal
                 if _should_show(output_line, verbose):
                     print_line(output_line, show_ordinal, verbose)
-                    instance_to_last_line[inst.metadata] = output_line.ordinal
                     last_printed_instance = inst.metadata
+        if follow:
+            tail_print.release(last_printed_instance, instance_to_last_line)
+            tail_print.stopped.wait()
     finally:
-        if not follow:
+        try:
             conn.close()
+        finally:
+            for signum, previous in previous_handlers.items():
+                signal.signal(signum, previous)
 
-    if not follow:
-        return
-
-    global _connector
-    _connector = conn
-    signal.signal(signal.SIGINT, _close_connector)
-    signal.signal(signal.SIGTERM, _close_connector)
-    tail_print.release(last_printed_instance, instance_to_last_line)
+    if tail_print.broken_pipe:
+        cliutil.handle_broken_pipe(exit_code=1)
 
 
 class TailPrint(InstanceOutputObserver):
@@ -101,30 +100,47 @@ class TailPrint(InstanceOutputObserver):
         self.verbose = verbose
         self.last_printed_instance = None
         self.print_lock = Lock()
-        self.latch = Event()
+        self.stopped = Event()
+        self.broken_pipe = False
+        self._pending: list[InstanceOutputEvent] = []
         self.instance_to_last_line = None
 
     def release(self, last_printed_instance, instance_to_last_line):
-        self.last_printed_instance = last_printed_instance
-        self.instance_to_last_line = instance_to_last_line
-        self.latch.set()
+        try:
+            with self.print_lock:
+                self.last_printed_instance = last_printed_instance
+                self.instance_to_last_line = instance_to_last_line
+                pending, self._pending = self._pending, []
+                for event in pending:
+                    self._print_event(event)
+        except BrokenPipeError:
+            self.broken_pipe = True
+            self.stopped.set()
 
     def instance_output_update(self, event: InstanceOutputEvent):
-        self.latch.wait()
-        last_line = self.instance_to_last_line[event.instance]
-        if event.output_line.ordinal <= last_line or not any(1 for c in self.metadata_criteria if c(event.instance)):
-            return
-        if not _should_show(event.output_line, self.verbose):
+        if self.stopped.is_set() or not any(c(event.instance) for c in self.metadata_criteria):
             return
         try:
             with self.print_lock:
-                if self.last_printed_instance != event.instance:
-                    print_instance_header(event.instance)
-                self.last_printed_instance = event.instance
-                print_line(event.output_line, self.show_ordinal, self.verbose)
+                if self.instance_to_last_line is None:
+                    self._pending.append(event)
+                else:
+                    self._print_event(event)
         except BrokenPipeError:
-            self.connector.close()
-            cliutil.handle_broken_pipe(exit_code=1)
+            self.broken_pipe = True
+            self.stopped.set()
+
+    def _print_event(self, event: InstanceOutputEvent) -> None:
+        """Print under the caller's lock, deduplicating initial replay and live delivery."""
+        if event.output_line.ordinal <= self.instance_to_last_line[event.instance]:
+            return
+        self.instance_to_last_line[event.instance] = event.output_line.ordinal
+        if not _should_show(event.output_line, self.verbose):
+            return
+        if self.last_printed_instance != event.instance:
+            print_instance_header(event.instance)
+        self.last_printed_instance = event.instance
+        print_line(event.output_line, self.show_ordinal, self.verbose)
 
 
 def _should_show(line: OutputLine, verbose: bool) -> bool:
