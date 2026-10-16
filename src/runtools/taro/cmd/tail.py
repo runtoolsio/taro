@@ -67,8 +67,6 @@ def tail(
     try:
         if follow:
             conn.notifications.add_observer_output(tail_print)
-            for signum in (signal.SIGINT, signal.SIGTERM):
-                previous_handlers[signum] = signal.signal(signum, stop_follow)
         conn.open()
         for inst in conn.get_instances(JobRunCriteria(metadata_criteria=metadata_criteria)):
             print_instance_header(inst)
@@ -78,6 +76,10 @@ def tail(
                     print_line(output_line, show_ordinal, verbose)
                     last_printed_instance = inst.metadata
         if follow:
+            # Installed only now: until here Ctrl-C must keep raising, so a hanging connect or
+            # initial read stays interruptible
+            for signum in (signal.SIGINT, signal.SIGTERM):
+                previous_handlers[signum] = signal.signal(signum, stop_follow)
             tail_print.release(last_printed_instance, instance_to_last_line)
             tail_print.stopped.wait()
     finally:

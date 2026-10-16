@@ -47,7 +47,7 @@ def test_startup_output_is_queued_without_blocking_and_deduplicated(monkeypatch)
 def test_tail_subscribes_only_when_following_and_handles_replay_during_open(monkeypatch, follow):
     run = fake_job_run('job', term_status=None)
     notifications = InstanceObservableNotifications()
-    printed, subscriptions, closed = [], [], []
+    printed, subscriptions, closed, handlers_during_open = [], [], [], []
     conn = SimpleNamespace(notifications=notifications)
     conn.get_instances = lambda _: [SimpleNamespace(
         job_id=run.job_id, run_id=run.run_id, metadata=run.metadata,
@@ -55,6 +55,7 @@ def test_tail_subscribes_only_when_following_and_handles_replay_during_open(monk
 
     def open_connector():
         subscriptions.append(bool(notifications.output_notification.observers))
+        handlers_during_open.append(dict(handlers))  # Ctrl-C must still raise while connecting
         for n in (1, 2, 3):
             notifications.output_notification.observer_proxy.instance_output_update(_event(run, n))
 
@@ -81,6 +82,7 @@ def test_tail_subscribes_only_when_following_and_handles_replay_during_open(monk
     tail.tail(instance_patterns=[], env='test', lines=1, follow=follow, show_ordinal=False, verbose=False)
 
     assert subscriptions == [follow]
+    assert handlers_during_open == [{}]
     assert printed == ([2, 3] if follow else [2])
     assert closed == [True]
     assert all(handler is None for handler in handlers.values())
