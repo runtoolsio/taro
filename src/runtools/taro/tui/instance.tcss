@@ -35,7 +35,14 @@ InstanceHeader {
     height: 1fr;
 }
 
+/* Textual sizes ContentSwitcher and TabPane to their content (height: auto), so a pane
+   never overflows and long content is clipped; bound both to make the pane scroll */
+#lower-left-tabs ContentSwitcher {
+    height: 1fr;
+}
+
 #lower-left-tabs TabPane {
+    height: 1fr;
     overflow-y: auto;
 }
 
