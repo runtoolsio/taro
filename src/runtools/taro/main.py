@@ -25,30 +25,38 @@ def main(version: Optional[bool] = typer.Option(None, "--version", "-V", "-v", c
                                                  help="Show version and exit.")):
     pass
 
-app.add_typer(approve.app, name="approve")
-app.add_typer(dash.app, name="dash")
-app.add_typer(env.app, name="env")
-app.add_typer(history.app, name="history")
-app.add_typer(jobs.app, name="jobs")
-app.add_typer(inspect.app, name="inspect")
-app.add_typer(listen.app, name="listen")
-app.add_typer(live.app, name="live")
-app.add_typer(output.app, name="output")
-app.add_typer(ps.app, name="ps")
-app.add_typer(resume.app, name="resume")
-app.add_typer(stop.app, name="stop")
-app.add_typer(tail.app, name="tail")
-app.add_typer(wait.app, name="wait")
+def _add_command(command_app: typer.Typer, name: str, *, hidden: bool = False):
+    """Register a callback-style command — a Click group without subcommands.
+
+    Click groups stop option parsing at the first positional argument, so ``taro stop job@r1 -f -e prod``
+    would take ``-f -e prod`` as patterns; these commands have no subcommands to protect, so re-enable it.
+    """
+    app.add_typer(command_app, name=name, hidden=hidden, context_settings={"allow_interspersed_args": True})
+
+
+_add_command(approve.app, "approve")
+_add_command(dash.app, "dash")
+app.add_typer(env.app, name="env")  # A real group: interspersed options would swallow its subcommands' options
+_add_command(history.app, "history")
+_add_command(jobs.app, "jobs")
+_add_command(inspect.app, "inspect")
+_add_command(listen.app, "listen")
+_add_command(live.app, "live")
+_add_command(output.app, "output")
+_add_command(ps.app, "ps")
+_add_command(resume.app, "resume")
+_add_command(stop.app, "stop")
+_add_command(tail.app, "tail")
+_add_command(wait.app, "wait")
 
 # Single-char aliases for frequently used commands
-app.add_typer(dash.app, name="d", hidden=True)
-app.add_typer(history.app, name="h", hidden=True)
-app.add_typer(jobs.app, name="j", hidden=True)
-app.add_typer(live.app, name="l", hidden=True)
-app.add_typer(tail.app, name="t", hidden=True)
-app.add_typer(output.app, name="o", hidden=True)
-app.add_typer(stop.app, name="x", hidden=True)
-
+_add_command(dash.app, "d", hidden=True)
+_add_command(history.app, "h", hidden=True)
+_add_command(jobs.app, "j", hidden=True)
+_add_command(live.app, "l", hidden=True)
+_add_command(tail.app, "t", hidden=True)
+_add_command(output.app, "o", hidden=True)
+_add_command(stop.app, "x", hidden=True)
 
 def run():
     try:
