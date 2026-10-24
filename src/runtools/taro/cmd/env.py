@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 import tomllib
 from datetime import datetime, timedelta, UTC
-from typing import Optional
+from typing import List, Optional
 
 import typer
 from pydantic import ValidationError
@@ -14,14 +14,16 @@ from runtools.runcore import connector
 from runtools.runcore.transport.unix_socket import resolve_env_dir, clean_stale_component_dirs
 from runtools.runcore.env import (
     EnvironmentEntry, EnvironmentKind, LocalEnvironmentConfig,
-    available_environments, load_env_config, save_env_config, lookup,
+    available_environments, load_env_config, save_env_config, lookup, open_env_db,
     create_environment, delete_environment,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
 )
+from runtools.runcore.job import HEARTBEAT_STALE_AFTER
 from runtools.runcore.matching import criteria
 from runtools.runcore.util import MatchingStrategy
 from runtools.runcore.util.files import format_toml, read_toml_file
-from runtools.taro import cli
+from runtools.taro import cli, cliutil, printer
+from runtools.taro.view import instance as view_inst
 
 app = typer.Typer(name="env", invoke_without_command=True, no_args_is_help=True)
 console = Console()
@@ -226,3 +228,48 @@ def prune(
         removed = conn.remove_history_runs(match)
         n = len(removed)
         console.print(f"[green]Removed {n} {'run' if n == 1 else 'runs'} and output files[/]")
+
+
+@app.command("mark-lost")
+def mark_lost(
+        instance_patterns: Optional[List[str]] = typer.Argument(
+            default=None, metavar="PATTERN", help="Instance ID patterns (all lost runs when omitted)"),
+        env_id: Optional[str] = cli.ENV_OPTION_FIELD,
+        force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
+):
+    """Resolve lost runs — their owner stopped heartbeating — as LOST.
+
+    A deliberate operator act: lost runs are never resolved automatically, since a silent owner may
+    still recover and finish truthfully. A run whose owner attests again before the mark is kept.
+
+    Examples:
+        taro env mark-lost                  # all lost runs
+        taro env mark-lost "backup@*" -e prod
+    """
+    resolved = cli.select_env(env_id)
+    run_match = criteria().patterns_or_all(instance_patterns, MatchingStrategy.FN_MATCH).build()
+    with open_env_db(resolved) as db:  # Storage, not the live view: a dead node's runs are listed on every kind
+        lost = [run for run in db.read_active_runs(run_match) if run.is_lost()]
+        if not lost:
+            console.print("[dim]No lost runs found[/]")
+            raise typer.Exit()
+
+        if not force:
+            printer.print_table(
+                lost,
+                [view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED, view_inst.EXEC_TIME, view_inst.PHASES,
+                 view_inst.STATUS],
+                show_header=True, pager=False,
+            )
+            if not cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True, newline_before=True):
+                raise typer.Exit()
+
+        marked = set(db.mark_lost_runs([run.instance_id for run in lost], HEARTBEAT_STALE_AFTER))
+        for run in lost:
+            if run.instance_id in marked:
+                console.print(f"  [green]✓[/] Marked lost {run.instance_id}")
+            else:
+                console.print(f"  [yellow]⚠[/] {run.instance_id} no longer lost "
+                              f"(owner attested or run already ended)")
+
+        console.print(f"\n[{'bold' if marked else 'yellow'}]Total marked lost: {len(marked)}[/]")

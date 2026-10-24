@@ -44,6 +44,10 @@ def stop(
 
         total = 0
         for inst in instances:
+            if inst.snap().is_lost():  # A stop request needs an owner to act on it
+                console.print(f"  [yellow]⚠[/] {inst.id} is lost: its owner stopped heartbeating — "
+                              f"resolve with `taro env mark-lost {inst.id}`")
+                continue
             try:
                 inst.stop()
                 total += 1
