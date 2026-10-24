@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 import tomllib
 from datetime import datetime, timedelta, UTC
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import typer
 from pydantic import ValidationError
@@ -18,9 +18,10 @@ from runtools.runcore.env import (
     create_environment, delete_environment,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
 )
-from runtools.runcore.job import HEARTBEAT_STALE_AFTER
+from runtools.runcore.db import Signal, TAIL_LINGER_AFTER_END
+from runtools.runcore.job import HEARTBEAT_STALE_AFTER, InstanceID
 from runtools.runcore.matching import criteria
-from runtools.runcore.util import MatchingStrategy
+from runtools.runcore.util import MatchingStrategy, utc_now
 from runtools.runcore.util.files import format_toml, read_toml_file
 from runtools.taro import cli, cliutil, printer
 from runtools.taro.view import instance as view_inst
@@ -146,14 +147,23 @@ def edit(
 
 
 @app.command()
-def clean(env_id: Optional[str] = cli.ENV_OPTION_FIELD):
-    """Remove stale component directories left by dead processes."""
+def clean(
+        env_id: Optional[str] = cli.ENV_OPTION_FIELD,
+        force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
+):
+    """Remove state left behind by dead processes.
+
+    Stale component directories (local environments) and the signal and output-tail rows of runs that
+    have ended or no longer exist. Lost runs are not ended — resolve them with `mark-lost` first.
+    Run history is never touched.
+    """
     entry = cli.select_env(env_id)
+    if entry.kind is EnvironmentKind.LOCAL:
+        _clean_component_dirs(entry)
+    _clean_orphan_rows(entry, force)
 
-    if entry.kind is not EnvironmentKind.LOCAL:
-        console.print(f"[dim]No filesystem state to clean for a [bold]{entry.kind}[/bold] environment[/dim]")
-        return
 
+def _clean_component_dirs(entry: EnvironmentEntry):
     env_config = load_env_config(entry)
     env_dir = resolve_env_dir(entry.id, env_config.root_dir)
     removed = clean_stale_component_dirs(env_dir)
@@ -163,6 +173,45 @@ def clean(env_id: Optional[str] = cli.ENV_OPTION_FIELD):
             console.print(f"  {d}")
     else:
         console.print(f"No stale component directories found in {env_dir}")
+
+
+def _clean_orphan_rows(entry: EnvironmentEntry, force: bool):
+    with open_env_db(entry) as db:
+        signals, tails = _orphan_rows(db)
+        if not signals and not tails:
+            console.print("No orphan signal or output-tail rows found")
+            return
+
+        console.print(f"Orphan rows of ended or missing runs in [bold]{entry.id}[/]: "
+                      f"[bold]{len(signals)}[/] signals, [bold]{len(tails)}[/] output tails")
+        if not force and not cliutil.user_confirmation(catch_interrupt=True):
+            raise typer.Exit()
+
+        # Delete the previewed rows as is: ended stays ended and a deleted run stays deleted — except an ID
+        # re-run under a reused ordinal while the prompt waits, an accepted limitation (ops are re-sendable)
+        db.delete_signals([s.signal_id for s in signals])
+        db.delete_output_tails(tails)
+        console.print(f"[green]Removed {len(signals)} signals and {len(tails)} output tails[/]")
+
+
+def _orphan_rows(db) -> Tuple[List[Signal], List[InstanceID]]:
+    """Signal and output-tail rows whose run has ended or no longer exists.
+
+    Lifecycle, not liveness: a lost run is still non-ended, so its rows stay until `mark-lost` resolves
+    it. An ended run's tail lingers briefly (`TAIL_LINGER_AFTER_END`) so a follower's last poll sees it.
+    """
+    signals = db.read_signals()
+    tails = db.output_tail_instances()
+    ends = db.read_run_ends({s.instance_id for s in signals} | set(tails))
+    linger_cutoff = utc_now() - timedelta(seconds=TAIL_LINGER_AFTER_END)
+
+    def gone(instance_id, ended_before=None):
+        if instance_id not in ends:
+            return True  # The run row is gone
+        ended = ends[instance_id]
+        return ended is not None and (ended_before is None or ended < ended_before)
+
+    return [s for s in signals if gone(s.instance_id)], [i for i in tails if gone(i, ended_before=linger_cutoff)]
 
 
 @app.command()
