@@ -2,9 +2,9 @@ from typing import List, Optional, Tuple
 
 from rich.text import Text
 
-from runtools.runcore.job import InstanceLiveness, JobRun
+from runtools.runcore.job import JobRun
 from runtools.runcore.run import TerminationStatus, PhaseVisitor, PhaseRun, PhasePath
-from runtools.runcore.util import format_dt_local_tz, format_dt_compact
+from runtools.runcore.util import format_dt_local_tz, format_dt_compact, utc_now
 from runtools.taro.printer import Column
 from runtools.taro.style import general_style, job_id_style, run_id_style, run_term_style, warn_count_style
 from runtools.taro.theme import Theme
@@ -31,21 +31,7 @@ def mid_ellipsis(text: str, width: int) -> str:
     return text[:head] + "…" + text[-tail:]
 
 
-class ActiveInstanceRow:
-    """A JobRun table item enriched with the consumer-side liveness verdict (transport doc
-    point 8). Delegates everything else to the run, so all JobRun columns render unchanged."""
-
-    def __init__(self, run: JobRun, liveness: InstanceLiveness):
-        self.run = run
-        self.liveness = liveness
-
-    def __getattr__(self, name):
-        return getattr(self.run, name)
-
-
-def _format_age(seconds) -> str:
-    if seconds is None:
-        return '?'
+def _format_age(seconds: float) -> str:
     if seconds < 60:
         return f"{int(seconds)}s"
     if seconds < 3600:
@@ -53,21 +39,20 @@ def _format_age(seconds) -> str:
     return f"{int(seconds // 3600)}h"
 
 
-def _lost_badge(j) -> Optional[str]:
+def _lost_badge(j: JobRun) -> Optional[str]:
     """The verdict as text — must survive pipes and NO_COLOR; row colour is reinforcement only."""
-    liveness = getattr(j, 'liveness', None)
-    if liveness and liveness.is_lost:
-        return f"LOST {_format_age(liveness.heartbeat_age)}"
+    now = utc_now()
+    if j.is_lost(now=now):
+        return f"LOST {_format_age((now - j.heartbeat_at).total_seconds())}"
     return None
 
 
 def lost_aware(columns: List[Column]) -> List[Column]:
-    """Copies of ``columns`` that dim a lost run's whole row (plain ``JobRun`` items are
-    unaffected — they carry no liveness)."""
+    """Copies of ``columns`` that dim a lost run's whole row (ended and heartbeat-less runs are
+    never lost, so history rows are unaffected)."""
     def dimmed(colour_fnc):
         def style(j):
-            liveness = getattr(j, 'liveness', None)
-            if liveness and liveness.is_lost:
+            if j.is_lost():
                 return Theme.subtle
             return colour_fnc(j)
         return style

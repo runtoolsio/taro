@@ -42,7 +42,7 @@ def ps(
     empty_envs = []
     for env_id, conn in connectors:
         with conn:
-            rows = [view_inst.ActiveInstanceRow(i.snap(), i.liveness) for i in conn.get_instances(run_match)]
+            rows = conn.get_active_runs(run_match)
 
         if not rows:
             empty_envs.append(env_id)

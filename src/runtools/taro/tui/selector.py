@@ -4,6 +4,7 @@ Provides table-building utilities (LinkedTable, add_columns, build_cells, etc.) 
 the selector and the dashboard, plus pick-and-exit selector apps for action commands.
 """
 
+from dataclasses import replace
 from typing import Optional, Sequence
 
 from rich.text import Text
@@ -31,13 +32,13 @@ def row_key(iid: InstanceID) -> str:
     return str(iid)
 
 
-def active_row(run: JobRun, inst: Optional[JobInstance]):
-    """Attach the instance's liveness verdict for rendering (transport doc point 8).
+def active_row(run: JobRun, inst: Optional[JobInstance]) -> JobRun:
+    """Attach the instance's latest heartbeat for rendering (transport doc point 8).
 
-    Wrapped at paint time, not at store time — the verdict is read fresh from the proxy on
-    every repaint, so table rows can keep holding bare snapshots.
+    Read at paint time, not at store time — heartbeat refreshes emit no events, so a held
+    snapshot's heartbeat ages while the proxy's stays current; table rows keep holding bare snapshots.
     """
-    return view_inst.ActiveInstanceRow(run, inst.liveness) if inst is not None else run
+    return replace(run, heartbeat_at=inst.snap().heartbeat_at) if inst is not None else run
 
 
 def build_cells(run: JobRun, columns: Sequence = COLUMNS, *,

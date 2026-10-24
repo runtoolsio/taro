@@ -26,7 +26,6 @@ from runtools.taro.style import job_id_stats_style, stats_state_style
 from runtools.taro.theme import Theme
 from runtools.taro.tui.selector import add_columns
 from runtools.taro.tui.widgets import APP_CSS, METRIC_SEP, ScreenHeader, Section, setup_theme
-from runtools.taro.view import instance as view_inst
 
 log = logging.getLogger(__name__)
 
@@ -44,12 +43,6 @@ class JobRow(NamedTuple):
 # ---------------------------------------------------------------------------
 
 _muted = lambda _: Theme.subtle
-
-
-def _is_lost(r) -> bool:
-    """Liveness verdict of an active-run row; rows without one count as live (presumed)."""
-    liveness = getattr(r, 'liveness', None)
-    return liveness is not None and liveness.is_lost
 
 
 def _last_status_display(r: JobRow) -> str:
@@ -111,8 +104,8 @@ def build_jobs_metrics(stats_list: list[JobStats], active_runs: list[JobRun]) ->
     # total_jobs matches the table (historical jobs only).  Active-only jobs
     # are surfaced via the separate "running" count, not added to the catalog.
     total_jobs = len(stats_list)
-    running_count = len({r.job_id for r in active_runs if not _is_lost(r)})
-    lost_count = len({r.job_id for r in active_runs if _is_lost(r)})
+    running_count = len({r.job_id for r in active_runs if not r.is_lost()})
+    lost_count = len({r.job_id for r in active_runs if r.is_lost()})
 
     success_jobs = 0
     non_success_jobs = 0
@@ -219,7 +212,7 @@ class JobsScreen(Screen):
     def _do_refresh(self) -> None:
         """Re-query stats and active runs, then repaint."""
         self._stats_list = self._conn.read_run_stats()
-        self._active_runs = [view_inst.ActiveInstanceRow(i.snap(), i.liveness) for i in self._conn.get_instances()]
+        self._active_runs = self._conn.get_active_runs()
         self._populate_table()
         self._refresh_header()
 
@@ -229,8 +222,8 @@ class JobsScreen(Screen):
         Lost instances (owner stopped attesting — transport doc point 8) are counted
         separately: they must not inflate "running".
         """
-        running_by_job = Counter(r.job_id for r in self._active_runs if not _is_lost(r))
-        lost_by_job = Counter(r.job_id for r in self._active_runs if _is_lost(r))
+        running_by_job = Counter(r.job_id for r in self._active_runs if not r.is_lost())
+        lost_by_job = Counter(r.job_id for r in self._active_runs if r.is_lost())
         rows = [JobRow(stats=s, running=running_by_job.get(s.job_id, 0), lost=lost_by_job.get(s.job_id, 0))
                 for s in self._stats_list]
         return sorted(rows, key=lambda r: r.stats.job_id)
