@@ -24,10 +24,10 @@ from runtools.runcore.util import format_timedelta
 from runtools.taro.style import term_style
 from runtools.taro.theme import Theme
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
-from runtools.taro.tui.dashboard import ACTIVE_COLUMNS, HISTORY_COLUMNS
+from runtools.taro.tui.dashboard import ACTIVE_COLUMNS, ACTIVE_DROP_ORDER, HISTORY_COLUMNS, HISTORY_DROP_ORDER
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
-    LinkedTable, active_row, add_columns, build_cells, last_col_width, reset_auto_widths, row_key,
+    LinkedTable, active_row, add_columns, build_cells, fit_table_columns, last_col_width, reset_auto_widths, row_key,
 )
 from runtools.taro.tui.widgets import METRIC_SEP, ScreenHeader, Section, build_history_metrics
 
@@ -115,6 +115,8 @@ class JobScreen(Screen):
         self._output_reader = MultiSourceOutputReader(conn.output_backends)
         self._env_handler = None
         self._selected_key: str | None = None
+        self._active_columns = list(ACTIVE_COLUMNS)
+        self._history_columns = list(HISTORY_COLUMNS)
 
         active_ids = set()
         for inst in instances:
@@ -135,7 +137,7 @@ class JobScreen(Screen):
         active_table = LinkedTable(cursor_type="row", id="active-table", cursor_foreground_priority="renderable")
         add_columns(active_table, ACTIVE_COLUMNS)
         history_table = LinkedTable(cursor_type="row", id="history-table", cursor_foreground_priority="renderable")
-        add_columns(history_table, HISTORY_COLUMNS, data=self._history_runs.values())
+        add_columns(history_table, HISTORY_COLUMNS)
         active_table.next_table = history_table
         history_table.prev_table = active_table
 
@@ -155,6 +157,19 @@ class JobScreen(Screen):
         self.set_interval(0.25, self._refresh_active_rows)
         if not self._live_runs and self._history_runs:
             self.query_one("#history-table", LinkedTable).focus()
+
+    def on_resize(self) -> None:
+        self.call_after_refresh(self._fit_columns)
+
+    def _fit_columns(self) -> None:
+        """Hide low-priority columns when the tables are too narrow, instead of scrolling sideways."""
+        active_table = self.query_one("#active-table", LinkedTable)
+        history_table = self.query_one("#history-table", LinkedTable)
+        active = fit_table_columns(active_table, ACTIVE_COLUMNS, ACTIVE_DROP_ORDER)
+        history = fit_table_columns(history_table, HISTORY_COLUMNS, HISTORY_DROP_ORDER)
+        if (active, history) != (self._active_columns, self._history_columns):
+            self._active_columns, self._history_columns = active, history
+            self._populate_tables()
 
     def on_unmount(self) -> None:
         if self._env_handler is not None:
@@ -300,7 +315,7 @@ class JobScreen(Screen):
 
     def _active_render_width(self) -> dict[str, int]:
         active_table = self.query_one("#active-table", LinkedTable)
-        return {'STATUS': last_col_width(active_table, ACTIVE_COLUMNS)}
+        return {'STATUS': last_col_width(active_table, self._active_columns)}
 
     def _populate_tables(self, *, focus_key: str | None = None) -> None:
         active_table = self.query_one("#active-table", LinkedTable)
@@ -322,12 +337,12 @@ class JobScreen(Screen):
         sorted_active = sorted(self._live_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_active:
             row = active_row(run, self._instances.get(key))
-            active_table.add_row(*build_cells(row, ACTIVE_COLUMNS, render_width=rw), key=key)
+            active_table.add_row(*build_cells(row, self._active_columns, render_width=rw), key=key)
         history_table.clear()
         reset_auto_widths(history_table)
         sorted_history = sorted(self._history_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_history:
-            history_table.add_row(*build_cells(run, HISTORY_COLUMNS), key=key)
+            history_table.add_row(*build_cells(run, self._history_columns), key=key)
 
         if focus_key:
             for table in tables:

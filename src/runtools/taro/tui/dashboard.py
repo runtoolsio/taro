@@ -22,7 +22,7 @@ from runtools.runcore.run import Stage
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.selector import (
-    LinkedTable, active_row, add_columns, build_cells, last_col_width, reset_auto_widths, row_key,
+    LinkedTable, active_row, add_columns, build_cells, fit_table_columns, last_col_width, reset_auto_widths, row_key,
 )
 from runtools.taro.tui.widgets import APP_CSS, Section, build_history_metrics, setup_theme
 from runtools.taro.view import instance as view_inst
@@ -33,10 +33,15 @@ ACTIVE_COLUMNS = view_inst.lost_aware([
     view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME,
     view_inst.PHASES, view_inst.WARNINGS, view_inst.STATUS,
 ])
+# Both tables open with the same columns (N … TIME) at the same fixed widths, so they line up on screen
 HISTORY_COLUMNS = [
-    view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.ENDED_COMPACT,
-    view_inst.EXEC_TIME, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
+    view_inst.N, view_inst.JOB_ID, view_inst.RUN_ID, view_inst.CREATED_COMPACT, view_inst.EXEC_TIME,
+    view_inst.ENDED_COMPACT, view_inst.TERM_STATUS, view_inst.WARNINGS, view_inst.RESULT,
 ]
+# Hidden first when a table is narrower than its columns (e.g. a split terminal pane); the shared columns go in the
+# same order in both, so the tables keep lining up
+ACTIVE_DROP_ORDER = ('PHASES', 'WARN', 'CREATED', 'N', 'RUN ID', 'TIME')
+HISTORY_DROP_ORDER = ('WARN', 'ENDED', 'CREATED', 'N', 'RUN ID', 'TIME')
 
 
 class DashboardScreen(Screen):
@@ -62,6 +67,8 @@ class DashboardScreen(Screen):
         self._output_reader = MultiSourceOutputReader(conn.output_backends)
         self._env_handler = None
         self._selected_key: str | None = None
+        self._active_columns = list(ACTIVE_COLUMNS)
+        self._history_columns = list(HISTORY_COLUMNS)
 
         active_ids = set()
         for inst in instances:
@@ -81,7 +88,7 @@ class DashboardScreen(Screen):
         active_table = LinkedTable(cursor_type="row", id="active-table", cursor_foreground_priority="renderable")
         add_columns(active_table, ACTIVE_COLUMNS)
         history_table = LinkedTable(cursor_type="row", id="history-table", cursor_foreground_priority="renderable")
-        add_columns(history_table, HISTORY_COLUMNS, data=self._history_runs.values())
+        add_columns(history_table, HISTORY_COLUMNS)
         active_table.next_table = history_table
         history_table.prev_table = active_table
 
@@ -101,6 +108,19 @@ class DashboardScreen(Screen):
         self.set_interval(0.25, self._refresh_active_rows)
         if not self._live_runs and self._history_runs:
             self.query_one("#history-table", LinkedTable).focus()
+
+    def on_resize(self) -> None:
+        self.call_after_refresh(self._fit_columns)
+
+    def _fit_columns(self) -> None:
+        """Hide low-priority columns when the tables are too narrow, instead of scrolling sideways."""
+        active_table = self.query_one("#active-table", LinkedTable)
+        history_table = self.query_one("#history-table", LinkedTable)
+        active = fit_table_columns(active_table, ACTIVE_COLUMNS, ACTIVE_DROP_ORDER)
+        history = fit_table_columns(history_table, HISTORY_COLUMNS, HISTORY_DROP_ORDER)
+        if (active, history) != (self._active_columns, self._history_columns):
+            self._active_columns, self._history_columns = active, history
+            self._populate_tables()
 
     def on_unmount(self) -> None:
         if self._env_handler is not None:
@@ -196,7 +216,7 @@ class DashboardScreen(Screen):
 
     def _active_render_width(self) -> dict[str, int]:
         active_table = self.query_one("#active-table", LinkedTable)
-        return {'STATUS': last_col_width(active_table, ACTIVE_COLUMNS)}
+        return {'STATUS': last_col_width(active_table, self._active_columns)}
 
     def _on_event(self, event) -> None:
         job_run = getattr(event, 'job_run', None)
@@ -253,12 +273,12 @@ class DashboardScreen(Screen):
         sorted_active = sorted(self._live_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_active:
             row = active_row(run, self._instances.get(key))
-            active_table.add_row(*build_cells(row, ACTIVE_COLUMNS, render_width=rw), key=key)
+            active_table.add_row(*build_cells(row, self._active_columns, render_width=rw), key=key)
         history_table.clear()
         reset_auto_widths(history_table)
         sorted_history = sorted(self._history_runs.items(), key=lambda kv: kv[1].lifecycle.created_at, reverse=True)
         for key, run in sorted_history:
-            history_table.add_row(*build_cells(run, HISTORY_COLUMNS), key=key)
+            history_table.add_row(*build_cells(run, self._history_columns), key=key)
 
         # Restore cursor position (focus_key resolved after repopulation — row may have moved between tables)
         if focus_key:

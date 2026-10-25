@@ -16,6 +16,7 @@ Textual quick reference for maintainers:
 
 import os
 from bisect import insort
+from dataclasses import replace
 from datetime import datetime, UTC
 from typing import Callable, Iterable, Optional
 
@@ -27,7 +28,7 @@ from textual.app import App
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.message import Message
-from textual.theme import Theme as TextualTheme
+from textual.theme import BUILTIN_THEMES, Theme as TextualTheme
 from textual.widgets import RichLog, Static, Tree
 from textual.widgets._tree import TreeNode
 from textual.worker import get_current_worker
@@ -63,22 +64,24 @@ TARO_THEME = TextualTheme(
 )
 
 
-_FALLBACK_THEME = TextualTheme(
-    name="taro-fallback",
-    primary="green",
-    panel="#1e1e1e",
-    dark=True,
-)
+# Textual's ``ansi-dark`` draws everything on the terminal's default background, which may be transparent or an
+# image; the palette's black keeps tables readable whatever is behind the terminal. Palette colours cannot be
+# dimmed, so scrollbars use the palette's grey to stay out of the way.
+_ANSI_DARK = BUILTIN_THEMES["ansi-dark"]
+_ANSI_THEME = replace(_ANSI_DARK, name="taro-ansi",
+                      background="ansi_black", surface="ansi_black", panel="ansi_black",
+                      variables={**_ANSI_DARK.variables,
+                                 "scrollbar": "ansi_bright_black",
+                                 "scrollbar-hover": "ansi_white",
+                                 "scrollbar-active": "ansi_bright_white"})
 
 
 def setup_theme(app: "App") -> None:
-    """Register and activate the Taro theme, or a minimal fallback without truecolor."""
-    if os.environ.get("COLORTERM") in ("truecolor", "24bit"):
-        app.register_theme(TARO_THEME)
-        app.theme = TARO_THEME.name
-    else:
-        app.register_theme(_FALLBACK_THEME)
-        app.theme = _FALLBACK_THEME.name
+    """Activate the Taro theme on truecolor terminals; elsewhere an ANSI theme that draws with the terminal's own
+    palette instead of approximating the Taro colours."""
+    theme = TARO_THEME if os.environ.get("COLORTERM") in ("truecolor", "24bit") else _ANSI_THEME
+    app.register_theme(theme)
+    app.theme = theme.name
 
 
 APP_CSS = """
@@ -107,6 +110,23 @@ Footer {
 }
 DataTable > .datatable--cursor {
     background: $accent 20%;
+}
+/* ANSI theme: the Screen's scrollbars follow the theme's muted scrollbar colours instead of $accent; Textual fills
+   headers and footer keys with a palette colour, which leaves the text unreadable in palettes where that colour is
+   light — draw them as coloured text on the background instead */
+Screen:ansi {
+    scrollbar-color: $scrollbar;
+    scrollbar-color-hover: $scrollbar-hover;
+    scrollbar-color-active: $scrollbar-active;
+}
+DataTable:ansi > .datatable--header {
+    background: $background;
+    color: ansi_bright_blue;
+}
+Footer:ansi .footer-key--key {
+    background: $background;
+    color: ansi_bright_blue;
+    text-style: bold;
 }
 DataTable:focus > .datatable--cursor {
     background: $accent 30%;
@@ -786,6 +806,17 @@ class OutputPanel(RichLog):
 
     _WRITE_BATCH_SIZE = 500
     _DEFAULT_TAIL_LINES = 1000
+
+    HELP = """
+## Output
+
+- **j** / **k** — scroll down / up; **ctrl+d** / **ctrl+u** — half a page
+- **g** / **G** — jump to the top / bottom
+- **/** — search; **n** / **N** — next / previous match
+- **e** / **v** — errors only / verbose lines; **F** — full output
+
+To copy text, select it with your terminal's own selection (hold **Shift**, or **Option** in iTerm2, while dragging).
+"""
 
     BINDINGS = [
         Binding("j", "scroll_down", "Down", show=False),

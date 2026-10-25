@@ -17,6 +17,7 @@ from runtools.runcore.matching import JobRunCriteria
 from runtools.runcore.job import InstanceID, InstancePhaseEvent, JobInstance, JobRun
 from runtools.runcore.output import MultiSourceOutputReader
 from runtools.runcore.run import Stage
+from runtools.taro.printer import Column
 from runtools.taro.tui.confirm import ConfirmDeleteScreen
 from runtools.taro.tui.instance_screen import InstanceScreen
 from runtools.taro.tui.widgets import APP_CSS, ScreenHeader, Section, build_history_metrics, setup_theme
@@ -59,6 +60,41 @@ def add_columns(table: DataTable, columns: Sequence = COLUMNS, *, data: Sequence
         else:
             width = col.max_width
         table.add_column(col.name, key=col.name, width=width)
+
+
+_MIN_LAST_COLUMN_WIDTH = 16  # The last column (status/result) takes the remaining width; never squeeze it below this
+
+
+def fit_columns(columns: Sequence[Column], width: int, drop_order: Sequence[str]) -> list[Column]:
+    """The columns that fit ``width`` cells: drop the named columns in ``drop_order`` until they fit.
+
+    Args:
+        columns (Sequence[Column]): All columns, in display order; the last one is never dropped.
+        width (int): Available table width in cells; 0 (not laid out yet) keeps every column.
+        drop_order (Sequence[str]): Column names, least important first.
+
+    Returns:
+        list[Column]: The kept columns in display order — possibly still too wide if ``drop_order`` runs out.
+    """
+    fitted = list(columns)
+    if width <= 0:
+        return fitted
+    for name in drop_order:
+        *fixed, _ = fitted
+        if sum(col.max_width for col in fixed) + _MIN_LAST_COLUMN_WIDTH + 2 * len(fitted) <= width:
+            break  # DataTable pads every cell by 2
+        fitted = [col for col in fitted if col.name != name]
+    return fitted
+
+
+def fit_table_columns(table: DataTable, columns: Sequence[Column], drop_order: Sequence[str]) -> list[Column]:
+    """Rebuild ``table``'s columns to those fitting its current width — only when that set changed, since
+    rebuilding clears the rows. Returns the fitted columns; the caller re-adds rows with them."""
+    fitted = fit_columns(columns, table.size.width, drop_order)
+    if [col.name for col in fitted] != [str(key.value) for key in table.columns]:
+        table.clear(columns=True)
+        add_columns(table, fitted)
+    return fitted
 
 
 def reset_auto_widths(table: DataTable) -> None:

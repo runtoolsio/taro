@@ -42,6 +42,17 @@ class InstanceScreen(Screen):
 
     CSS_PATH = "instance.tcss"
 
+    HELP = """
+## Instance
+
+- **tab** — switch between the Operations and Details tabs (**o** / **d** jump to one)
+- **s** — show or hide the operations of nested phases (Operations tab)
+- **e** — output: errors only
+- **v** — output: verbose lines (timestamp, level, source)
+- **F** — load the full output instead of the recent tail
+- **?** — toggle this help
+"""
+
     BINDINGS = [
         Binding("escape", "dismiss", "Back", show=True),
         Binding("q", "dismiss", "Quit", show=True),
@@ -52,6 +63,7 @@ class InstanceScreen(Screen):
         Binding("tab", "switch_tab", "Switch tab", show=True),
         Binding("o", "show_operations", "Operations", show=False),
         Binding("d", "show_details", "Details", show=False),
+        Binding("question_mark", "toggle_help", "Help", show=True),
     ]
 
     def __init__(self, *, instance: Optional[JobInstance] = None, job_run: Optional[JobRun] = None,
@@ -220,6 +232,12 @@ class InstanceScreen(Screen):
 
     def action_show_details(self) -> None:
         self.query_one("#lower-left-tabs", TabbedContent).active = "details-tab"
+
+    def action_toggle_help(self) -> None:
+        if self.query("HelpPanel"):
+            self.app.action_hide_help_panel()
+        else:
+            self.app.action_show_help_panel()
 
     def action_switch_tab(self) -> None:
         tabs = self.query_one("#lower-left-tabs", TabbedContent)
