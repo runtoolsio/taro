@@ -13,9 +13,9 @@ from rich.padding import Padding
 from runtools.runcore import connector
 from runtools.runcore.transport.unix_socket import resolve_env_dir, clean_stale_component_dirs
 from runtools.runcore.env import (
-    EnvironmentEntry, EnvironmentKind, LocalEnvironmentConfig,
+    EnvironmentEntry, EnvironmentKind, LocalEnvironmentConfig, PostgresEnvironmentConfig,
     available_environments, load_env_config, save_env_config, lookup, open_env_db,
-    create_environment, delete_environment,
+    create_environment, add_environment, delete_environment,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
 )
 from runtools.runcore.db import Signal, TAIL_LINGER_AFTER_END
@@ -30,20 +30,69 @@ app = typer.Typer(name="env", invoke_without_command=True, no_args_is_help=True)
 console = Console()
 
 
+_PATH_OPTION = typer.Option(None, "--path", "-p", help="local: database file (default path when omitted)")
+_DSN_OPTION = typer.Option(None, "--dsn", help="postgres: libpq connection string — keep the password in ~/.pgpass")
+
+
+def _entry(name: str, path: Optional[str], dsn: Optional[str]) -> EnvironmentEntry:
+    """The kind follows the location option: ``--dsn`` is a postgres environment, otherwise local (sqlite)."""
+    if path and dsn:
+        console.print("[red]Error:[/] use either --path (local) or --dsn (postgres), not both")
+        raise typer.Exit(2)
+    if dsn:
+        return EnvironmentEntry(id=name, kind=EnvironmentKind.POSTGRES, location=dsn)
+    return EnvironmentEntry(id=name, kind=EnvironmentKind.LOCAL, location=path)
+
+
 @app.command()
 def create(
         name: str = typer.Argument(..., help="Environment name"),
-        path: Optional[str] = typer.Option(None, "--path", "-p", help="Custom path for the database file"),
+        path: Optional[str] = _PATH_OPTION,
+        dsn: Optional[str] = _DSN_OPTION,
 ):
-    """Create a new local environment (SQLite DB + registry entry)."""
+    """Create a new environment: a local SQLite database, or a schema in PostgreSQL with --dsn.
+
+    Examples:
+        taro env create dev
+        taro env create staging --path ~/data/staging.db
+        taro env create work --dsn postgresql://runtools@db/runtools
+
+    An environment that already exists in PostgreSQL (created from another machine) is joined with `add`.
+    """
+    entry = _entry(name, path, dsn)
     try:
-        # TODO: creation wizard for kind selection
-        entry = EnvironmentEntry(id=name, kind=EnvironmentKind.LOCAL, location=path)
-        create_environment(entry, LocalEnvironmentConfig())
-        console.print(f"[green]Created environment '[bold]{name}[/bold]'[/]")
+        config = PostgresEnvironmentConfig() if dsn else LocalEnvironmentConfig()
+        create_environment(entry, config)
     except EnvironmentAlreadyExistsError:
-        console.print(f"[red]Environment '{name}' already exists[/]")
+        console.print(f"[red]Environment '{name}' already exists[/] — to use one created elsewhere, run "
+                      f"`taro env add {name}` with the same location")
         raise typer.Exit(1)
+    console.print(f"[green]Created {entry.kind.value} environment '[bold]{name}[/bold]'[/]")
+
+
+@app.command()
+def add(
+        name: str = typer.Argument(..., help="Environment name — the same as where it was created"),
+        path: Optional[str] = _PATH_OPTION,
+        dsn: Optional[str] = _DSN_OPTION,
+):
+    """Register an existing environment on this machine, e.g. a postgres one created from another machine.
+
+    Its stored config is left untouched.
+
+    Examples:
+        taro env add work --dsn postgresql://runtools@db/runtools
+    """
+    entry = _entry(name, path, dsn)
+    try:
+        add_environment(entry)
+    except EnvironmentAlreadyExistsError:
+        console.print(f"[red]Environment '{name}' is already registered[/]")
+        raise typer.Exit(1)
+    except EnvironmentNotFoundError:
+        console.print(f"[red]No environment '{name}' at that location[/] — create it with `taro env create`")
+        raise typer.Exit(1)
+    console.print(f"[green]Added {entry.kind.value} environment '[bold]{name}[/bold]'[/]")
 
 
 @app.command("list")
