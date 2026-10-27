@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import tempfile
 import tomllib
@@ -34,6 +35,21 @@ _PATH_OPTION = typer.Option(None, "--path", "-p", help="local: database file (de
 _DSN_OPTION = typer.Option(None, "--dsn", help="postgres: libpq connection string — keep the password in ~/.pgpass")
 
 
+_URI_PASSWORD = re.compile(r"(://[^:/@\s]+:)[^@\s]*@")                 # postgresql://user:secret@host
+_KEYWORD_PASSWORD = re.compile(r"(\bpassword\s*=\s*)('[^']*'|[^\s&]+)")  # password=secret, ?password=secret
+
+
+def _redact(location: str) -> str:
+    """The location with any DSN password masked — for display, and to detect one."""
+    return _KEYWORD_PASSWORD.sub(r"\1***", _URI_PASSWORD.sub(r"\1***@", location))
+
+
+def _warn_if_password(dsn: Optional[str]):
+    if dsn and _redact(dsn) != dsn:
+        console.print("[yellow]Warning:[/] the DSN contains a password, stored as plain text in the environment "
+                      "registry — prefer leaving it out and putting it in ~/.pgpass")
+
+
 def _entry(name: str, path: Optional[str], dsn: Optional[str]) -> EnvironmentEntry:
     """The kind follows the location option: ``--dsn`` is a postgres environment, otherwise local (sqlite)."""
     if path and dsn:
@@ -60,6 +76,7 @@ def create(
     An environment that already exists in PostgreSQL (created from another machine) is joined with `add`.
     """
     entry = _entry(name, path, dsn)
+    _warn_if_password(dsn)
     try:
         config = PostgresEnvironmentConfig() if dsn else LocalEnvironmentConfig()
         create_environment(entry, config)
@@ -84,6 +101,7 @@ def add(
         taro env add work --dsn postgresql://runtools@db/runtools
     """
     entry = _entry(name, path, dsn)
+    _warn_if_password(dsn)
     try:
         add_environment(entry)
     except EnvironmentAlreadyExistsError:
@@ -104,7 +122,7 @@ def list_envs():
         return
     for entry in envs:
         label = "[dim](built-in)[/]" if entry.is_builtin_local else f"[dim]{entry.kind}[/]"
-        path_info = entry.location or "(default)"
+        path_info = _redact(entry.location) if entry.location else "(default)"
         console.print(f"  [bold]{entry.id}[/]  {label}  {path_info}")
 
 
