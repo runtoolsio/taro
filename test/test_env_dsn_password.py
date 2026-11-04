@@ -27,7 +27,7 @@ def test_location_without_password_is_unchanged(location):
 
 @pytest.fixture
 def created(monkeypatch):
-    monkeypatch.setattr(env, 'create_environment', lambda entry, config: None)
+    monkeypatch.setattr(env, 'create_environment', lambda entry, config, **options: None)
 
 
 def test_create_warns_when_the_dsn_holds_a_password(created):

@@ -19,7 +19,7 @@ from runtools.runcore.env import (
     create_environment, add_environment, delete_environment,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
 )
-from runtools.runcore.db import Signal, TAIL_LINGER_AFTER_END
+from runtools.runcore.db import ProfileRolesNotFoundError, Signal, TAIL_LINGER_AFTER_END
 from runtools.runcore.job import HEARTBEAT_STALE_AFTER, InstanceID
 from runtools.runcore.matching import criteria
 from runtools.runcore.util import MatchingStrategy, utc_now
@@ -65,6 +65,9 @@ def create(
         name: str = typer.Argument(..., help="Environment name"),
         path: Optional[str] = _PATH_OPTION,
         dsn: Optional[str] = _DSN_OPTION,
+        grant_profiles: Optional[str] = typer.Option(
+            None, "--grant-profiles", metavar="PREFIX",
+            help="postgres: grant the existing roles PREFIX_node, PREFIX_operator and PREFIX_viewer access"),
 ):
     """Create a new environment: a local SQLite database, or a schema in PostgreSQL with --dsn.
 
@@ -72,17 +75,24 @@ def create(
         taro env create dev
         taro env create staging --path ~/data/staging.db
         taro env create work --dsn postgresql://runtools@db/runtools
+        taro env create billing --dsn postgresql://stan@db/runtools_db --grant-profiles billing
 
     An environment that already exists in PostgreSQL (created from another machine) is joined with `add`.
     """
     entry = _entry(name, path, dsn)
+    if grant_profiles and not dsn:
+        console.print("[red]Error:[/] --grant-profiles needs --dsn — only postgres environments have roles")
+        raise typer.Exit(2)
     _warn_if_password(dsn)
     try:
         config = PostgresEnvironmentConfig() if dsn else LocalEnvironmentConfig()
-        create_environment(entry, config)
+        create_environment(entry, config, grant_profiles=grant_profiles)
     except EnvironmentAlreadyExistsError:
         console.print(f"[red]Environment '{name}' already exists[/] — to use one created elsewhere, run "
                       f"`taro env add {name}` with the same location")
+        raise typer.Exit(1)
+    except ProfileRolesNotFoundError as e:
+        console.print(f"[red]Roles not found: {', '.join(e.roles)}[/] — create them first, nothing was created")
         raise typer.Exit(1)
     console.print(f"[green]Created {entry.kind.value} environment '[bold]{name}[/bold]'[/]")
 
