@@ -16,10 +16,10 @@ from runtools.runcore.transport.unix_socket import resolve_env_dir, clean_stale_
 from runtools.runcore.env import (
     EnvironmentEntry, EnvironmentKind, LocalEnvironmentConfig, PostgresEnvironmentConfig,
     available_environments, load_env_config, save_env_config, lookup, open_env_db,
-    create_environment, add_environment, delete_environment,
+    create_environment, add_environment, delete_environment, grant_profiles,
     EnvironmentNotFoundError, EnvironmentAlreadyExistsError,
 )
-from runtools.runcore.db import ProfileRolesNotFoundError, Signal, TAIL_LINGER_AFTER_END
+from runtools.runcore.db import NotEnvironmentOwnerError, ProfileRolesNotFoundError, Signal, TAIL_LINGER_AFTER_END
 from runtools.runcore.job import HEARTBEAT_STALE_AFTER, InstanceID
 from runtools.runcore.matching import criteria
 from runtools.runcore.util import MatchingStrategy, utc_now
@@ -121,6 +121,40 @@ def add(
         console.print(f"[red]No environment '{name}' at that location[/] — create it with `taro env create`")
         raise typer.Exit(1)
     console.print(f"[green]Added {entry.kind.value} environment '[bold]{name}[/bold]'[/]")
+
+
+@app.command()
+def grant(
+        name: str = typer.Argument(..., help="Environment name"),
+        profiles: str = typer.Option(
+            ..., "--profiles", metavar="PREFIX",
+            help="grant the existing roles PREFIX_node, PREFIX_operator and PREFIX_viewer access"),
+):
+    """Grant profile roles access to an existing postgres environment, as its owner.
+
+    For an environment created without --grant-profiles; repeating it is harmless.
+
+    Examples:
+        taro env grant billing --profiles runtools
+    """
+    try:
+        entry = lookup(name)
+    except EnvironmentNotFoundError:
+        console.print(f"[red]Environment '{name}' not found[/]")
+        raise typer.Exit(1)
+    if entry.kind != EnvironmentKind.POSTGRES:
+        console.print("[red]Error:[/] only postgres environments have roles to grant")
+        raise typer.Exit(2)
+    try:
+        grant_profiles(entry, profiles)
+    except NotEnvironmentOwnerError:
+        console.print(f"[red]Not the owner of environment '{name}'[/] — register it with the login that created it, "
+                      f"nothing was granted")
+        raise typer.Exit(1)
+    except ProfileRolesNotFoundError as e:
+        console.print(f"[red]Roles not found: {', '.join(e.roles)}[/] — create them first, nothing was granted")
+        raise typer.Exit(1)
+    console.print(f"[green]Granted profiles '[bold]{profiles}[/bold]' access to '[bold]{name}[/bold]'[/]")
 
 
 @app.command("list")
