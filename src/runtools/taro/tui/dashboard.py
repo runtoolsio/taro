@@ -15,6 +15,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer
 
 from runtools.runcore.connector import EnvironmentConnector
+from runtools.runcore.db import PermissionDeniedError
 from runtools.runcore.matching import JobRunCriteria
 from runtools.runcore.job import InstancePhaseEvent, JobInstance, JobRun
 from runtools.runcore.output import MultiSourceOutputReader
@@ -144,7 +145,7 @@ class DashboardScreen(Screen):
                 return
             try:
                 self._conn.remove_history_runs(JobRunCriteria.instance_match(run.instance_id))
-            except (ValueError, OSError) as e:
+            except (ValueError, OSError, PermissionDeniedError) as e:
                 self.app.notify(str(e), severity="error")
                 return
             self._history_runs.pop(row_key_val, None)
