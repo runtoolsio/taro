@@ -3,7 +3,7 @@ import re
 import subprocess
 import tempfile
 import tomllib
-from datetime import datetime, timedelta, UTC
+from datetime import timedelta
 from typing import List, Optional, Tuple
 
 import typer
@@ -22,6 +22,7 @@ from runtools.runcore.env import (
 from runtools.runcore.db import NotEnvironmentOwnerError, ProfileRolesNotFoundError, Signal, TAIL_LINGER_AFTER_END
 from runtools.runcore.job import HEARTBEAT_STALE_AFTER, InstanceID
 from runtools.runcore.matching import criteria
+from runtools.runcore.run import Stage
 from runtools.runcore.util import MatchingStrategy, utc_now
 from runtools.runcore.util.files import format_toml, read_toml_file
 from runtools.taro import cli, cliutil, printer
@@ -325,6 +326,16 @@ def _orphan_rows(db) -> Tuple[List[Signal], List[InstanceID]]:
     return [s for s in signals if gone(s.instance_id)], [i for i in tails if gone(i, ended_before=linger_cutoff)]
 
 
+def _prune_match(pattern: str, keep_days: int):
+    """The runs to prune and their description — ended runs only: an active run isn't history yet, and removing
+    history refuses any match that includes one."""
+    runs = criteria().pattern(pattern, MatchingStrategy.FN_MATCH)
+    if keep_days == 0:
+        return runs.reached_stage(Stage.ENDED).build(), f"runs matching '{pattern}'"
+    cutoff = utc_now() - timedelta(days=keep_days)
+    return runs.ended(until=cutoff).build(), f"runs matching '{pattern}' older than {keep_days} days"
+
+
 @app.command()
 def prune(
         pattern: str = typer.Argument("*", metavar="PATTERN",
@@ -358,16 +369,7 @@ def prune(
         console.print("[red]Error:[/] --keep-days must be >= 0")
         raise typer.Exit(2)
 
-    if keep_days == 0:
-        match = criteria().pattern(pattern, MatchingStrategy.FN_MATCH).build()
-        desc = f"runs matching '{pattern}'"
-    else:
-        cutoff = datetime.now(UTC) - timedelta(days=keep_days)
-        match = (criteria()
-                 .pattern(pattern, MatchingStrategy.FN_MATCH)
-                 .ended(until=cutoff)
-                 .build())
-        desc = f"runs matching '{pattern}' older than {keep_days} days"
+    match, desc = _prune_match(pattern, keep_days)
 
     with connector.connect(resolved) as conn:
         # Preview: count matching runs
